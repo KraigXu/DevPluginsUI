@@ -1,0 +1,24 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "0.1.0",
+	"FriendlyName": "Metaplot",
+	"Description": "Scenario asset and editor framework plugin.",
+	"Category": "Tools",
+	"CreatedBy": "Metaplot",
+	"EnabledByDefault": true,
+	"CanContainContent": true,
+	"IsBetaVersion": true,
+	"Modules": [
+		{
+			"Name": "Metaplot",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "MetaplotEditor",
+			"Type": "Editor",
+			"LoadingPhase": "Default"
+		}
+	]
+}

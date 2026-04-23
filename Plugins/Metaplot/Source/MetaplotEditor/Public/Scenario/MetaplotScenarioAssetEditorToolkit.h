@@ -1,0 +1,77 @@
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Toolkits/AssetEditorToolkit.h"
+#include "Widgets/Views/STableViewBase.h"
+
+class IDetailsView;
+class SDockTab;
+template <typename ItemType> class SListView;
+class ITableRow;
+class UMetaplotFlow;
+class SMetaplotFlowGraphWidget;
+
+enum class EMetaplotAssetFilter : uint8
+{
+	All,
+	Used,
+	Unused
+};
+
+class FMetaplotScenarioAssetEditorToolkit : public FAssetEditorToolkit
+{
+public:
+	void InitMetaplotScenarioAssetEditor(
+		const EToolkitMode::Type Mode,
+		const TSharedPtr<IToolkitHost>& InitToolkitHost,
+		UMetaplotFlow* InFlowAsset);
+
+	virtual FName GetToolkitFName() const override;
+	virtual FText GetBaseToolkitName() const override;
+	virtual FString GetWorldCentricTabPrefix() const override;
+	virtual FLinearColor GetWorldCentricTabColorScale() const override;
+	virtual void RegisterTabSpawners(const TSharedRef<class FTabManager>& InTabManager) override;
+	virtual void UnregisterTabSpawners(const TSharedRef<class FTabManager>& InTabManager) override;
+
+private:
+	TSharedRef<SDockTab> SpawnTab_NodeList(const class FSpawnTabArgs& Args);
+	TSharedRef<SDockTab> SpawnTab_AssetList(const class FSpawnTabArgs& Args);
+	TSharedRef<SDockTab> SpawnTab_Details(const class FSpawnTabArgs& Args);
+	TSharedRef<SDockTab> SpawnTab_Main(const class FSpawnTabArgs& Args);
+	TSharedRef<class SWidget> BuildAssetFilterMenu();
+	FReply OnAddAssetClicked();
+	FReply OnAddNodeClicked();
+	FReply OnDeleteNodeClicked();
+	FReply OnAddTransitionClicked();
+	FReply OnDeleteTransitionClicked();
+	FReply OnAutoLayoutClicked();
+	void SetAssetFilter(EMetaplotAssetFilter InFilter);
+	void OnAssetSearchTextChanged(const FText& InSearchText);
+	FText GetActiveFilterLabel() const;
+	FText GetStartNodeText() const;
+	void RefreshFlowLists();
+	void AutoLayoutNodesByTimeline();
+	TSharedRef<ITableRow> GenerateNodeRow(TSharedPtr<FGuid> Item, const TSharedRef<STableViewBase>& OwnerTable);
+	TSharedRef<ITableRow> GenerateTransitionRow(TSharedPtr<int32> Item, const TSharedRef<STableViewBase>& OwnerTable);
+	void OnNodeSelectionChanged(TSharedPtr<FGuid> Item, ESelectInfo::Type SelectInfo);
+	void OnTransitionSelectionChanged(TSharedPtr<int32> Item, ESelectInfo::Type SelectInfo);
+	void OnMainGraphNodeSelected(FGuid NodeId);
+
+private:
+	TObjectPtr<UMetaplotFlow> EditingFlowAsset = nullptr;
+	TSharedPtr<IDetailsView> DetailsView;
+	TArray<TSharedPtr<FGuid>> NodeItems;
+	TArray<TSharedPtr<int32>> TransitionItems;
+	TSharedPtr<SListView<TSharedPtr<FGuid>>> NodeListView;
+	TSharedPtr<SListView<TSharedPtr<int32>>> TransitionListView;
+	TSharedPtr<SMetaplotFlowGraphWidget> FlowGraphWidget;
+	FGuid SelectedNodeId;
+	int32 SelectedTransitionIndex = INDEX_NONE;
+	EMetaplotAssetFilter ActiveAssetFilter = EMetaplotAssetFilter::All;
+	FText AssetSearchText;
+
+	static const FName NodeListTabId;
+	static const FName AssetListTabId;
+	static const FName MainTabId;
+	static const FName DetailsTabId;
+};
