@@ -3,15 +3,182 @@
 #include "Scenario/MetaplotFlowPlacement.h"
 #include "Flow/MetaplotFlow.h"
 #include "Framework/Application/SlateApplication.h"
+#include "Framework/Commands/UIAction.h"
+#include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "Layout/Geometry.h"
 #include "Layout/PaintGeometry.h"
 #include "Rendering/DrawElements.h"
 #include "Styling/AppStyle.h"
 #include "Styling/CoreStyle.h"
+#include "Widgets/Input/SSearchBox.h"
 #include "Widgets/SLeafWidget.h"
+#include "Widgets/SCompoundWidget.h"
+#include "Widgets/Views/SListView.h"
+#include "Widgets/Views/STableRow.h"
+#include "Widgets/Layout/SBorder.h"
+#include "Widgets/Text/STextBlock.h"
 
 namespace MetaplotGraphWidgetPrivate
 {
+	struct FNodeSearchItem
+	{
+		EMetaplotNodeType Type = EMetaplotNodeType::Normal;
+		FText Label;
+		FText Keywords;
+	};
+
+	class SNodeSearchMenuWidget : public SCompoundWidget
+	{
+	public:
+		SLATE_BEGIN_ARGS(SNodeSearchMenuWidget) {}
+			SLATE_EVENT(FSimpleDelegate, OnCloseMenu)
+			SLATE_EVENT(FOnMetaplotGraphCreateNodeRequested, OnCreateNodeRequested)
+			SLATE_ARGUMENT(int32, StageIndex)
+			SLATE_ARGUMENT(int32, LayerIndex)
+		SLATE_END_ARGS()
+
+		void Construct(const FArguments& InArgs)
+		{
+			OnCloseMenu = InArgs._OnCloseMenu;
+			OnCreateNodeRequested = InArgs._OnCreateNodeRequested;
+			StageIndex = InArgs._StageIndex;
+			LayerIndex = InArgs._LayerIndex;
+
+			AllItems = {
+				MakeItem(EMetaplotNodeType::Start, TEXT("Start"), TEXT("开始 起始 起点")),
+				MakeItem(EMetaplotNodeType::Normal, TEXT("Normal"), TEXT("普通 常规")),
+				MakeItem(EMetaplotNodeType::Conditional, TEXT("Conditional"), TEXT("条件 分支 判断")),
+				MakeItem(EMetaplotNodeType::Parallel, TEXT("Parallel"), TEXT("并行")),
+				MakeItem(EMetaplotNodeType::Terminal, TEXT("Terminal"), TEXT("结束 终止"))
+			};
+			FilteredItems = AllItems;
+
+			ChildSlot
+			[
+				SNew(SBorder)
+				.BorderImage(FAppStyle::GetBrush("Menu.Background"))
+				.Padding(8.0f)
+				[
+					SNew(SVerticalBox)
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					[
+						SAssignNew(SearchBox, SSearchBox)
+						.HintText(FText::FromString(TEXT("搜索节点...")))
+						.OnTextChanged(this, &SNodeSearchMenuWidget::OnSearchTextChanged)
+					]
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					.Padding(0.0f, 4.0f, 0.0f, 6.0f)
+					[
+						SNew(STextBlock)
+						.Text(FText::Format(FText::FromString(TEXT("创建到 Stage {0} / Layer {1}")), FText::AsNumber(StageIndex), FText::AsNumber(LayerIndex)))
+						.ColorAndOpacity(FLinearColor(0.78f, 0.80f, 0.84f, 0.95f))
+					]
+					+ SVerticalBox::Slot()
+					.AutoHeight()
+					[
+						SAssignNew(ListView, SListView<TSharedPtr<FNodeSearchItem>>)
+						.ListItemsSource(&FilteredItems)
+						.SelectionMode(ESelectionMode::Single)
+						.OnGenerateRow(this, &SNodeSearchMenuWidget::GenerateRow)
+						.OnSelectionChanged(this, &SNodeSearchMenuWidget::OnItemSelected)
+						.OnMouseButtonDoubleClick(this, &SNodeSearchMenuWidget::OnItemDoubleClicked)
+					]
+				]
+			];
+
+			if (SearchBox.IsValid())
+			{
+				FSlateApplication::Get().SetKeyboardFocus(SearchBox, EFocusCause::SetDirectly);
+			}
+		}
+
+	private:
+		static TSharedPtr<FNodeSearchItem> MakeItem(EMetaplotNodeType Type, const TCHAR* LabelText, const TCHAR* KeywordsText)
+		{
+			TSharedPtr<FNodeSearchItem> Item = MakeShared<FNodeSearchItem>();
+			Item->Type = Type;
+			Item->Label = FText::FromString(LabelText);
+			Item->Keywords = FText::FromString(KeywordsText);
+			return Item;
+		}
+
+		void OnSearchTextChanged(const FText& InText)
+		{
+			const FString Query = InText.ToString().TrimStartAndEnd();
+			FilteredItems.Reset();
+
+			for (const TSharedPtr<FNodeSearchItem>& Item : AllItems)
+			{
+				if (!Item.IsValid())
+				{
+					continue;
+				}
+
+				if (Query.IsEmpty() ||
+					Item->Label.ToString().Contains(Query, ESearchCase::IgnoreCase) ||
+					Item->Keywords.ToString().Contains(Query, ESearchCase::IgnoreCase))
+				{
+					FilteredItems.Add(Item);
+				}
+			}
+
+			if (ListView.IsValid())
+			{
+				ListView->RequestListRefresh();
+			}
+		}
+
+		TSharedRef<ITableRow> GenerateRow(TSharedPtr<FNodeSearchItem> Item, const TSharedRef<STableViewBase>& OwnerTable) const
+		{
+			const FText DisplayText = Item.IsValid() ? Item->Label : FText::FromString(TEXT("Unknown"));
+			return SNew(STableRow<TSharedPtr<FNodeSearchItem>>, OwnerTable)
+			[
+				SNew(STextBlock).Text(DisplayText)
+			];
+		}
+
+		void OnItemDoubleClicked(TSharedPtr<FNodeSearchItem> Item)
+		{
+			CommitCreate(Item);
+		}
+
+		void OnItemSelected(TSharedPtr<FNodeSearchItem> Item, ESelectInfo::Type SelectInfo)
+		{
+			if (SelectInfo == ESelectInfo::OnMouseClick || SelectInfo == ESelectInfo::OnKeyPress)
+			{
+				CommitCreate(Item);
+			}
+		}
+
+		void CommitCreate(const TSharedPtr<FNodeSearchItem>& Item)
+		{
+			if (!Item.IsValid())
+			{
+				return;
+			}
+			if (OnCreateNodeRequested.IsBound())
+			{
+				OnCreateNodeRequested.Execute(Item->Type, StageIndex, LayerIndex);
+			}
+			if (OnCloseMenu.IsBound())
+			{
+				OnCloseMenu.Execute();
+			}
+		}
+
+	private:
+		FSimpleDelegate OnCloseMenu;
+		FOnMetaplotGraphCreateNodeRequested OnCreateNodeRequested;
+		int32 StageIndex = 0;
+		int32 LayerIndex = 0;
+		TSharedPtr<SSearchBox> SearchBox;
+		TSharedPtr<SListView<TSharedPtr<FNodeSearchItem>>> ListView;
+		TArray<TSharedPtr<FNodeSearchItem>> AllItems;
+		TArray<TSharedPtr<FNodeSearchItem>> FilteredItems;
+	};
+
 	static constexpr float GridHeaderTop = -36.0f;
 	static constexpr float GridHeaderHeight = 16.0f;
 	static constexpr float TimelineY = -18.0f;
@@ -194,6 +361,20 @@ namespace MetaplotGraphWidgetPrivate
 	{
 		BuildRoundedOrthogonalPathViaX(Start, End, (Start.X + End.X) * 0.5f, OutPoints);
 	}
+
+	static float DistanceSquaredToSegment(const FVector2D& Point, const FVector2D& SegmentStart, const FVector2D& SegmentEnd)
+	{
+		const FVector2D Segment = SegmentEnd - SegmentStart;
+		const float SegmentLenSq = Segment.SizeSquared();
+		if (SegmentLenSq <= KINDA_SMALL_NUMBER)
+		{
+			return (Point - SegmentStart).SizeSquared();
+		}
+
+		const float T = FMath::Clamp(FVector2D::DotProduct(Point - SegmentStart, Segment) / SegmentLenSq, 0.0f, 1.0f);
+		const FVector2D Closest = SegmentStart + Segment * T;
+		return (Point - Closest).SizeSquared();
+	}
 }
 
 void SMetaplotFlowGraphWidget::Construct(const FArguments& InArgs)
@@ -203,6 +384,9 @@ void SMetaplotFlowGraphWidget::Construct(const FArguments& InArgs)
 	OnHorizontalPanChanged = InArgs._OnHorizontalPanChanged;
 	OnCreateTransition = InArgs._OnCreateTransition;
 	OnMoveNode = InArgs._OnMoveNode;
+	OnCreateNodeRequested = InArgs._OnCreateNodeRequested;
+	OnDeleteNodeRequested = InArgs._OnDeleteNodeRequested;
+	OnDeleteTransitionRequested = InArgs._OnDeleteTransitionRequested;
 	SelectedNodeId = FGuid();
 }
 
@@ -405,6 +589,129 @@ bool SMetaplotFlowGraphWidget::HitTestPin(const FGeometry& MyGeometry, const FVe
 	}
 
 	return false;
+}
+
+bool SMetaplotFlowGraphWidget::HitTestTransition(
+	const FGeometry& MyGeometry,
+	const FVector2D& LocalPos,
+	FGuid& OutSourceNodeId,
+	FGuid& OutTargetNodeId) const
+{
+	OutSourceNodeId.Invalidate();
+	OutTargetNodeId.Invalidate();
+
+	UMetaplotFlow* Flow = WeakFlow.Get();
+	if (!Flow || Flow->Transitions.IsEmpty())
+	{
+		return false;
+	}
+
+	const FVector2D LocalSize = MyGeometry.GetLocalSize();
+	const float HitThresholdSq = FMath::Square(7.0f);
+	float BestDistSq = TNumericLimits<float>::Max();
+
+	for (const FMetaplotTransition& Transition : Flow->Transitions)
+	{
+		const FMetaplotNode* SourceNode = Flow->Nodes.FindByPredicate([&Transition](const FMetaplotNode& Node)
+		{
+			return Node.NodeId == Transition.SourceNodeId;
+		});
+		const FMetaplotNode* TargetNode = Flow->Nodes.FindByPredicate([&Transition](const FMetaplotNode& Node)
+		{
+			return Node.NodeId == Transition.TargetNodeId;
+		});
+		if (!SourceNode || !TargetNode)
+		{
+			continue;
+		}
+
+		const FVector2D StartLocal = GraphToLocal(GetPinGraphPosition(*SourceNode, EPinSide::Right), LocalSize);
+		const FVector2D EndLocal = GraphToLocal(GetPinGraphPosition(*TargetNode, EPinSide::Left), LocalSize);
+		TArray<FVector2D> PathPoints;
+		MetaplotGraphWidgetPrivate::BuildRoundedOrthogonalPath(StartLocal, EndLocal, PathPoints);
+		if (PathPoints.Num() < 2)
+		{
+			continue;
+		}
+
+		for (int32 Index = 1; Index < PathPoints.Num(); ++Index)
+		{
+			const float DistSq = MetaplotGraphWidgetPrivate::DistanceSquaredToSegment(LocalPos, PathPoints[Index - 1], PathPoints[Index]);
+			if (DistSq <= HitThresholdSq && DistSq < BestDistSq)
+			{
+				BestDistSq = DistSq;
+				OutSourceNodeId = Transition.SourceNodeId;
+				OutTargetNodeId = Transition.TargetNodeId;
+			}
+		}
+	}
+
+	return OutSourceNodeId.IsValid() && OutTargetNodeId.IsValid();
+}
+
+void SMetaplotFlowGraphWidget::OpenContextMenuAtScreen(
+	const FPointerEvent& MouseEvent,
+	const FGuid& NodeId,
+	const FGuid& SourceNodeId,
+	const FGuid& TargetNodeId)
+{
+	FMenuBuilder MenuBuilder(true, nullptr);
+	if (NodeId.IsValid())
+	{
+		MenuBuilder.AddMenuEntry(
+			FText::FromString(TEXT("删除节点")),
+			FText::FromString(TEXT("删除当前节点及其相关连线")),
+			FSlateIcon(),
+			FUIAction(FExecuteAction::CreateLambda([this, NodeId]()
+			{
+				if (OnDeleteNodeRequested.IsBound())
+				{
+					OnDeleteNodeRequested.Execute(NodeId);
+				}
+			})));
+	}
+	else if (SourceNodeId.IsValid() && TargetNodeId.IsValid())
+	{
+		MenuBuilder.AddMenuEntry(
+			FText::FromString(TEXT("删除连线")),
+			FText::FromString(TEXT("删除当前选中的连线")),
+			FSlateIcon(),
+			FUIAction(FExecuteAction::CreateLambda([this, SourceNodeId, TargetNodeId]()
+			{
+				if (OnDeleteTransitionRequested.IsBound())
+				{
+					OnDeleteTransitionRequested.Execute(SourceNodeId, TargetNodeId);
+				}
+			})));
+	}
+
+	TSharedRef<SWidget> MenuWidget = MenuBuilder.MakeWidget();
+	FSlateApplication::Get().PushMenu(
+		AsShared(),
+		FWidgetPath(),
+		MenuWidget,
+		MouseEvent.GetScreenSpacePosition(),
+		FPopupTransitionEffect(FPopupTransitionEffect::ContextMenu));
+}
+
+void SMetaplotFlowGraphWidget::OpenCreateNodeSearchMenuAtScreen(const FPointerEvent& MouseEvent, int32 StageIndex, int32 LayerIndex)
+{
+	TSharedRef<SWidget> MenuWidget =
+		SNew(MetaplotGraphWidgetPrivate::SNodeSearchMenuWidget)
+		.OnCloseMenu(FSimpleDelegate::CreateLambda([]()
+		{
+			FSlateApplication::Get().DismissAllMenus();
+		}))
+		.OnCreateNodeRequested(OnCreateNodeRequested)
+		.StageIndex(StageIndex)
+		.LayerIndex(LayerIndex);
+
+	FSlateApplication::Get().PushMenu(
+		AsShared(),
+		FWidgetPath(),
+		MenuWidget,
+		MouseEvent.GetScreenSpacePosition(),
+		FPopupTransitionEffect(FPopupTransitionEffect::ContextMenu));
 }
 
 bool SMetaplotFlowGraphWidget::IsTransitionRuleValid(const FGuid& SourceNodeId, const FGuid& TargetNodeId) const
@@ -658,6 +965,36 @@ FReply SMetaplotFlowGraphWidget::OnMouseButtonDown(const FGeometry& MyGeometry, 
 			OnNodeSelected.Execute(FGuid());
 		}
 		Invalidate(EInvalidateWidgetReason::Paint);
+		return FReply::Handled();
+	}
+
+	if (MouseEvent.GetEffectingButton() == EKeys::RightMouseButton)
+	{
+		FGuid HitNodeId;
+		if (HitTestNode(MyGeometry, LocalPos, HitNodeId))
+		{
+			SelectedNodeId = HitNodeId;
+			if (OnNodeSelected.IsBound())
+			{
+				OnNodeSelected.Execute(HitNodeId);
+			}
+			OpenContextMenuAtScreen(MouseEvent, HitNodeId, FGuid(), FGuid());
+			Invalidate(EInvalidateWidgetReason::Paint);
+			return FReply::Handled();
+		}
+
+		FGuid HitSourceNodeId;
+		FGuid HitTargetNodeId;
+		if (HitTestTransition(MyGeometry, LocalPos, HitSourceNodeId, HitTargetNodeId))
+		{
+			OpenContextMenuAtScreen(MouseEvent, FGuid(), HitSourceNodeId, HitTargetNodeId);
+			return FReply::Handled();
+		}
+
+		const FVector2D GraphPos = LocalToGraph(LocalPos, CachedLocalSize);
+		const int32 TargetStage = FMath::Max(0, FMath::FloorToInt(GraphPos.X / StageCellWidth));
+		const int32 TargetLayer = FMath::Max(0, FMath::FloorToInt(GraphPos.Y / LayerCellHeight));
+		OpenCreateNodeSearchMenuAtScreen(MouseEvent, TargetStage, TargetLayer);
 		return FReply::Handled();
 	}
 

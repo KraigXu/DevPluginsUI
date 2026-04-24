@@ -18,7 +18,9 @@
 #include "Widgets/Input/SSearchBox.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
+#include "Widgets/Layout/SSpacer.h"
 #include "Widgets/SBoxPanel.h"
+#include "Widgets/Images/SImage.h"
 #include "Widgets/Text/STextBlock.h"
 #include "Widgets/Views/SListView.h"
 #include "Widgets/Views/STableRow.h"
@@ -101,9 +103,9 @@ namespace MetaplotScenarioEditorPrivate
 	}
 }
 
-const FName FMetaplotScenarioAssetEditorToolkit::AssetListTabId(TEXT("MetaplotScenarioEditor_AssetList"));
 const FName FMetaplotScenarioAssetEditorToolkit::MainTabId(TEXT("MetaplotScenarioEditor_Main"));
 const FName FMetaplotScenarioAssetEditorToolkit::DetailsTabId(TEXT("MetaplotScenarioEditor_Details"));
+const FName FMetaplotScenarioAssetEditorToolkit::NodeDetailsTabId(TEXT("MetaplotScenarioEditor_NodeDetails"));
 
 void FMetaplotScenarioAssetEditorToolkit::InitMetaplotScenarioAssetEditor(
 	const EToolkitMode::Type Mode,
@@ -125,16 +127,19 @@ void FMetaplotScenarioAssetEditorToolkit::InitMetaplotScenarioAssetEditor(
 			->SetOrientation(Orient_Horizontal)
 			->Split(
 				FTabManager::NewStack()
-				->SetSizeCoefficient(0.26f)
-				->AddTab(AssetListTabId, ETabState::OpenedTab))
-			->Split(
-				FTabManager::NewStack()
-				->SetSizeCoefficient(0.53f)
+				->SetSizeCoefficient(0.75f)
 				->AddTab(MainTabId, ETabState::OpenedTab))
 			->Split(
-				FTabManager::NewStack()
-				->SetSizeCoefficient(0.25f)
-				->AddTab(DetailsTabId, ETabState::OpenedTab)));
+				FTabManager::NewSplitter()
+				->SetOrientation(Orient_Vertical)
+				->Split(
+					FTabManager::NewStack()
+					->SetSizeCoefficient(0.5f)
+					->AddTab(DetailsTabId, ETabState::OpenedTab))
+				->Split(
+					FTabManager::NewStack()
+					->SetSizeCoefficient(0.5f)
+					->AddTab(NodeDetailsTabId, ETabState::OpenedTab))));
 
 	InitAssetEditor(Mode, InitToolkitHost, FName(TEXT("MetaplotScenarioEditorApp")), Layout, true, true, InFlowAsset);
 }
@@ -163,22 +168,35 @@ void FMetaplotScenarioAssetEditorToolkit::RegisterTabSpawners(const TSharedRef<F
 {
 	FAssetEditorToolkit::RegisterTabSpawners(InTabManager);
 
-	InTabManager->RegisterTabSpawner(AssetListTabId, FOnSpawnTab::CreateRaw(this, &FMetaplotScenarioAssetEditorToolkit::SpawnTab_AssetList))
-		.SetDisplayName(LOCTEXT("ControlBoardTabLabel", "控制板"));
+	WorkspaceMenuCategory = InTabManager->AddLocalWorkspaceMenuCategory(LOCTEXT("MetaplotEditorWorkspace", "Metaplot Scenario Editor"));
+	const TSharedRef<FWorkspaceItem> WorkspaceCategoryRef = WorkspaceMenuCategory.ToSharedRef();
+
+	// 维护约定：先反注册再注册，并统一 SetGroup；可避免热重载/重复初始化导致 Window 菜单出现重复项。
+	InTabManager->UnregisterTabSpawner(MainTabId);
+	InTabManager->UnregisterTabSpawner(DetailsTabId);
+	InTabManager->UnregisterTabSpawner(NodeDetailsTabId);
 
 	InTabManager->RegisterTabSpawner(MainTabId, FOnSpawnTab::CreateRaw(this, &FMetaplotScenarioAssetEditorToolkit::SpawnTab_Main))
-		.SetDisplayName(LOCTEXT("FlowChartTabLabel", "流程图表"));
+		.SetDisplayName(LOCTEXT("FlowChartTabLabel", "流程图表"))
+		.SetGroup(WorkspaceCategoryRef);
 
 	InTabManager->RegisterTabSpawner(DetailsTabId, FOnSpawnTab::CreateRaw(this, &FMetaplotScenarioAssetEditorToolkit::SpawnTab_Details))
-		.SetDisplayName(LOCTEXT("DetailsTabLabel", "Details"));
+		.SetDisplayName(LOCTEXT("DetailsTabLabel", "Details"))
+		.SetGroup(WorkspaceCategoryRef);
+
+	InTabManager->RegisterTabSpawner(NodeDetailsTabId, FOnSpawnTab::CreateRaw(this, &FMetaplotScenarioAssetEditorToolkit::SpawnTab_NodeDetails))
+		.SetDisplayName(LOCTEXT("NodeDetailsTabLabel", "节点详情"))
+		.SetGroup(WorkspaceCategoryRef);
 }
 
 void FMetaplotScenarioAssetEditorToolkit::UnregisterTabSpawners(const TSharedRef<FTabManager>& InTabManager)
 {
 	FAssetEditorToolkit::UnregisterTabSpawners(InTabManager);
-	InTabManager->UnregisterTabSpawner(AssetListTabId);
+	// 与 RegisterTabSpawners 成对清理，避免编辑器生命周期切换后残留菜单分组/Tab 注册状态。
 	InTabManager->UnregisterTabSpawner(MainTabId);
 	InTabManager->UnregisterTabSpawner(DetailsTabId);
+	InTabManager->UnregisterTabSpawner(NodeDetailsTabId);
+	WorkspaceMenuCategory.Reset();
 }
 
 TSharedRef<SDockTab> FMetaplotScenarioAssetEditorToolkit::SpawnTab_AssetList(const FSpawnTabArgs& Args)
@@ -366,19 +384,227 @@ TSharedRef<SDockTab> FMetaplotScenarioAssetEditorToolkit::SpawnTab_Details(const
 	];
 }
 
+TSharedRef<SDockTab> FMetaplotScenarioAssetEditorToolkit::SpawnTab_NodeDetails(const FSpawnTabArgs& Args)
+{
+	return SNew(SDockTab)
+	[
+		SNew(SBorder)
+		.BorderImage(FAppStyle::GetBrush("ToolPanel.GroupBorder"))
+		.Padding(8.0f)
+		[
+			SNew(SVerticalBox)
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			[
+				SNew(STextBlock)
+				.Text(this, &FMetaplotScenarioAssetEditorToolkit::GetNodeDetailsSummaryText)
+				.ColorAndOpacity(FSlateColor(FLinearColor(0.85f, 0.88f, 0.93f, 1.0f)))
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(0.0f, 10.0f, 0.0f, 0.0f)
+			[
+				SNew(STextBlock)
+				.Text(this, &FMetaplotScenarioAssetEditorToolkit::GetNodeDetailsNameText)
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(0.0f, 6.0f, 0.0f, 0.0f)
+			[
+				SNew(STextBlock)
+				.Text(this, &FMetaplotScenarioAssetEditorToolkit::GetNodeDetailsTypeText)
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(0.0f, 6.0f, 0.0f, 0.0f)
+			[
+				SNew(STextBlock)
+				.Text(this, &FMetaplotScenarioAssetEditorToolkit::GetNodeDetailsStageLayerText)
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(0.0f, 6.0f, 0.0f, 0.0f)
+			[
+				SNew(STextBlock)
+				.Text(this, &FMetaplotScenarioAssetEditorToolkit::GetNodeDetailsDescriptionText)
+				.AutoWrapText(true)
+			]
+		]
+	];
+}
+
 TSharedRef<SDockTab> FMetaplotScenarioAssetEditorToolkit::SpawnTab_Main(const FSpawnTabArgs& Args)
 {
 	TSharedRef<SDockTab> Tab = SNew(SDockTab)
 	[
 		SNew(SVerticalBox)
 		+ SVerticalBox::Slot()
+		.AutoHeight()
+		[
+			SNew(SBox)
+			.HeightOverride(30.0f)
+			[
+				SNew(SBorder)
+				.BorderImage(FAppStyle::GetBrush("NoBorder"))
+				.BorderBackgroundColor(FLinearColor(0.02f, 0.02f, 0.03f, 0.5f))
+				.Padding(FMargin(8.0f, 2.0f))
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					.Padding(0.0f, 0.0f, 4.0f, 0.0f)
+					[
+						SNew(SButton)
+						.ButtonStyle(FAppStyle::Get(), "SimpleButton")
+						.OnClicked(this, &FMetaplotScenarioAssetEditorToolkit::OnAddNodeClicked)
+						[
+							SNew(SHorizontalBox)
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							.VAlign(VAlign_Center)
+							.Padding(0.0f, 0.0f, 4.0f, 0.0f)
+							[
+								SNew(SImage)
+								.Image(FAppStyle::GetBrush("Icons.PlusCircle"))
+							]
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							.VAlign(VAlign_Center)
+							[
+								SNew(STextBlock)
+								.Text(LOCTEXT("ToolbarAddNodeLabel", "节点"))
+							]
+						]
+					]
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					.Padding(0.0f, 0.0f, 8.0f, 0.0f)
+					[
+						SNew(SButton)
+						.ButtonStyle(FAppStyle::Get(), "SimpleButton")
+						.OnClicked(this, &FMetaplotScenarioAssetEditorToolkit::OnDeleteNodeClicked)
+						[
+							SNew(SHorizontalBox)
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							.VAlign(VAlign_Center)
+							.Padding(0.0f, 0.0f, 4.0f, 0.0f)
+							[
+								SNew(SImage)
+								.Image(FAppStyle::GetBrush("Icons.Delete"))
+							]
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							.VAlign(VAlign_Center)
+							[
+								SNew(STextBlock)
+								.Text(LOCTEXT("ToolbarDeleteNodeLabel", "删除节点"))
+							]
+						]
+					]
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					.Padding(0.0f, 0.0f, 4.0f, 0.0f)
+					[
+						SNew(SButton)
+						.ButtonStyle(FAppStyle::Get(), "SimpleButton")
+						.OnClicked(this, &FMetaplotScenarioAssetEditorToolkit::OnAddTransitionClicked)
+						[
+							SNew(SHorizontalBox)
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							.VAlign(VAlign_Center)
+							.Padding(0.0f, 0.0f, 4.0f, 0.0f)
+							[
+								SNew(SImage)
+								.Image(FAppStyle::GetBrush("Icons.PlusCircle"))
+							]
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							.VAlign(VAlign_Center)
+							[
+								SNew(STextBlock)
+								.Text(LOCTEXT("ToolbarAddTransitionLabel", "连线"))
+							]
+						]
+					]
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					.Padding(0.0f, 0.0f, 8.0f, 0.0f)
+					[
+						SNew(SButton)
+						.ButtonStyle(FAppStyle::Get(), "SimpleButton")
+						.OnClicked(this, &FMetaplotScenarioAssetEditorToolkit::OnDeleteTransitionClicked)
+						[
+							SNew(SHorizontalBox)
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							.VAlign(VAlign_Center)
+							.Padding(0.0f, 0.0f, 4.0f, 0.0f)
+							[
+								SNew(SImage)
+								.Image(FAppStyle::GetBrush("Icons.Delete"))
+							]
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							.VAlign(VAlign_Center)
+							[
+								SNew(STextBlock)
+								.Text(LOCTEXT("ToolbarDeleteTransitionLabel", "删除连线"))
+							]
+						]
+					]
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					[
+						SNew(SButton)
+						.ButtonStyle(FAppStyle::Get(), "SimpleButton")
+						.OnClicked(this, &FMetaplotScenarioAssetEditorToolkit::OnAutoLayoutClicked)
+						[
+							SNew(SHorizontalBox)
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							.VAlign(VAlign_Center)
+							.Padding(0.0f, 0.0f, 4.0f, 0.0f)
+							[
+								SNew(SImage)
+								.Image(FAppStyle::GetBrush("Icons.Layout"))
+							]
+							+ SHorizontalBox::Slot()
+							.AutoWidth()
+							.VAlign(VAlign_Center)
+							[
+								SNew(STextBlock)
+								.Text(LOCTEXT("ToolbarAutoLayoutLabel", "自动布局"))
+							]
+						]
+					]
+					+ SHorizontalBox::Slot()
+					.FillWidth(1.0f)
+					[
+						SNew(SSpacer)
+					]
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					.VAlign(VAlign_Center)
+					[
+						SNew(STextBlock)
+						.Text(this, &FMetaplotScenarioAssetEditorToolkit::GetStartNodeText)
+					]
+				]
+			]
+		]
+		+ SVerticalBox::Slot()
 		.FillHeight(1.0f)
 		[
 			SAssignNew(FlowGraphWidget, SMetaplotFlowGraphWidget)
 			.FlowAsset(TWeakObjectPtr<UMetaplotFlow>(EditingFlowAsset))
 			.OnNodeSelected(FOnMetaplotGraphNodeSelected::CreateSP(this, &FMetaplotScenarioAssetEditorToolkit::OnMainGraphNodeSelected))
+			.OnCreateNodeRequested(FOnMetaplotGraphCreateNodeRequested::CreateSP(this, &FMetaplotScenarioAssetEditorToolkit::OnMainGraphCreateNodeRequested))
 			.OnCreateTransition(FOnMetaplotGraphCreateTransition::CreateSP(this, &FMetaplotScenarioAssetEditorToolkit::OnMainGraphCreateTransition))
 			.OnMoveNode(FOnMetaplotGraphMoveNode::CreateSP(this, &FMetaplotScenarioAssetEditorToolkit::OnMainGraphMoveNode))
+			.OnDeleteNodeRequested(FOnMetaplotGraphDeleteNodeRequested::CreateSP(this, &FMetaplotScenarioAssetEditorToolkit::OnMainGraphDeleteNodeRequested))
+			.OnDeleteTransitionRequested(FOnMetaplotGraphDeleteTransitionRequested::CreateSP(this, &FMetaplotScenarioAssetEditorToolkit::OnMainGraphDeleteTransitionRequested))
 			.OnHorizontalPanChanged(FOnMetaplotGraphHorizontalPanChanged::CreateSP(this, &FMetaplotScenarioAssetEditorToolkit::OnMainGraphHorizontalPanChanged))
 		]
 		+ SVerticalBox::Slot()
@@ -948,6 +1174,83 @@ void FMetaplotScenarioAssetEditorToolkit::OnMainGraphMoveNode(FGuid NodeId, int3
 	}
 }
 
+void FMetaplotScenarioAssetEditorToolkit::OnMainGraphCreateNodeRequested(EMetaplotNodeType NodeType, int32 StageIndex, int32 LayerIndex)
+{
+	if (!EditingFlowAsset)
+	{
+		return;
+	}
+
+	const FScopedTransaction Transaction(LOCTEXT("CreateNodeByContextMenuTransaction", "Create Metaplot Node From Graph Search"));
+	EditingFlowAsset->Modify();
+
+	FMetaplotNode NewNode;
+	NewNode.NodeId = FGuid::NewGuid();
+	NewNode.NodeType = NodeType;
+	const UEnum* NodeTypeEnum = StaticEnum<EMetaplotNodeType>();
+	const FText NodeTypeText = NodeTypeEnum
+		? NodeTypeEnum->GetDisplayNameTextByValue(static_cast<int64>(NodeType))
+		: LOCTEXT("FallbackNodeTypeText", "Normal");
+	NewNode.NodeName = FText::Format(LOCTEXT("ContextCreateNodeNameFormat", "{0} Node"), NodeTypeText);
+	NewNode.Description = LOCTEXT("ContextCreateNodeDescription", "Created from graph search");
+	NewNode.StageIndex = FMath::Max(0, StageIndex);
+	NewNode.LayerIndex = FMath::Max(0, LayerIndex);
+
+	// 避免同格冲突，向下寻找第一个空 Layer。
+	while (EditingFlowAsset->Nodes.ContainsByPredicate([&NewNode](const FMetaplotNode& Node)
+	{
+		return Node.StageIndex == NewNode.StageIndex && Node.LayerIndex == NewNode.LayerIndex;
+	}))
+	{
+		++NewNode.LayerIndex;
+	}
+
+	EditingFlowAsset->Nodes.Add(NewNode);
+	if (NodeType == EMetaplotNodeType::Start || !EditingFlowAsset->StartNodeId.IsValid())
+	{
+		EditingFlowAsset->StartNodeId = NewNode.NodeId;
+	}
+
+	SelectedNodeId = NewNode.NodeId;
+	EditingFlowAsset->MarkPackageDirty();
+	RefreshFlowLists();
+	if (DetailsView.IsValid())
+	{
+		DetailsView->ForceRefresh();
+	}
+}
+
+void FMetaplotScenarioAssetEditorToolkit::OnMainGraphDeleteNodeRequested(FGuid NodeId)
+{
+	if (!NodeId.IsValid())
+	{
+		return;
+	}
+
+	SelectedNodeId = NodeId;
+	OnDeleteNodeClicked();
+}
+
+void FMetaplotScenarioAssetEditorToolkit::OnMainGraphDeleteTransitionRequested(FGuid SourceNodeId, FGuid TargetNodeId)
+{
+	if (!EditingFlowAsset || !SourceNodeId.IsValid() || !TargetNodeId.IsValid())
+	{
+		return;
+	}
+
+	const int32 TransitionIndex = EditingFlowAsset->Transitions.IndexOfByPredicate([SourceNodeId, TargetNodeId](const FMetaplotTransition& Transition)
+	{
+		return Transition.SourceNodeId == SourceNodeId && Transition.TargetNodeId == TargetNodeId;
+	});
+	if (TransitionIndex == INDEX_NONE)
+	{
+		return;
+	}
+
+	SelectedTransitionIndex = TransitionIndex;
+	OnDeleteTransitionClicked();
+}
+
 void FMetaplotScenarioAssetEditorToolkit::OnMainGraphCreateTransition(FGuid SourceNodeId, FGuid TargetNodeId)
 {
 	if (!EditingFlowAsset || !SourceNodeId.IsValid() || !TargetNodeId.IsValid() || SourceNodeId == TargetNodeId)
@@ -1067,6 +1370,98 @@ void FMetaplotScenarioAssetEditorToolkit::RefreshMainHorizontalScrollBar()
 
 	TGuardValue<bool> SyncGuard(bSyncingHorizontalScrollBar, true);
 	MainHorizontalScrollBar->SetState(OffsetFraction, ThumbFraction);
+}
+
+FText FMetaplotScenarioAssetEditorToolkit::GetNodeDetailsSummaryText() const
+{
+	if (!SelectedNodeId.IsValid())
+	{
+		return LOCTEXT("NodeDetailsNoSelection", "未选择节点");
+	}
+	return LOCTEXT("NodeDetailsSelection", "已选择节点");
+}
+
+FText FMetaplotScenarioAssetEditorToolkit::GetNodeDetailsNameText() const
+{
+	if (!EditingFlowAsset || !SelectedNodeId.IsValid())
+	{
+		return LOCTEXT("NodeDetailsNameEmpty", "名称: -");
+	}
+
+	const FMetaplotNode* Node = EditingFlowAsset->Nodes.FindByPredicate([this](const FMetaplotNode& Candidate)
+	{
+		return Candidate.NodeId == SelectedNodeId;
+	});
+	if (!Node)
+	{
+		return LOCTEXT("NodeDetailsNameMissing", "名称: 无效节点");
+	}
+	return FText::Format(LOCTEXT("NodeDetailsNameFmt", "名称: {0}"), Node->NodeName.IsEmpty() ? LOCTEXT("NodeDetailsUnnamed", "Unnamed") : Node->NodeName);
+}
+
+FText FMetaplotScenarioAssetEditorToolkit::GetNodeDetailsTypeText() const
+{
+	if (!EditingFlowAsset || !SelectedNodeId.IsValid())
+	{
+		return LOCTEXT("NodeDetailsTypeEmpty", "类型: -");
+	}
+
+	const FMetaplotNode* Node = EditingFlowAsset->Nodes.FindByPredicate([this](const FMetaplotNode& Candidate)
+	{
+		return Candidate.NodeId == SelectedNodeId;
+	});
+	if (!Node)
+	{
+		return LOCTEXT("NodeDetailsTypeMissing", "类型: -");
+	}
+
+	const UEnum* NodeTypeEnum = StaticEnum<EMetaplotNodeType>();
+	const FText TypeText = NodeTypeEnum
+		? NodeTypeEnum->GetDisplayNameTextByValue(static_cast<int64>(Node->NodeType))
+		: LOCTEXT("NodeDetailsTypeFallback", "Unknown");
+	return FText::Format(LOCTEXT("NodeDetailsTypeFmt", "类型: {0}"), TypeText);
+}
+
+FText FMetaplotScenarioAssetEditorToolkit::GetNodeDetailsStageLayerText() const
+{
+	if (!EditingFlowAsset || !SelectedNodeId.IsValid())
+	{
+		return LOCTEXT("NodeDetailsStageLayerEmpty", "位置: -");
+	}
+
+	const FMetaplotNode* Node = EditingFlowAsset->Nodes.FindByPredicate([this](const FMetaplotNode& Candidate)
+	{
+		return Candidate.NodeId == SelectedNodeId;
+	});
+	if (!Node)
+	{
+		return LOCTEXT("NodeDetailsStageLayerMissing", "位置: -");
+	}
+
+	return FText::Format(
+		LOCTEXT("NodeDetailsStageLayerFmt", "位置: Stage {0}, Layer {1}"),
+		FText::AsNumber(Node->StageIndex),
+		FText::AsNumber(Node->LayerIndex));
+}
+
+FText FMetaplotScenarioAssetEditorToolkit::GetNodeDetailsDescriptionText() const
+{
+	if (!EditingFlowAsset || !SelectedNodeId.IsValid())
+	{
+		return LOCTEXT("NodeDetailsDescEmpty", "描述: -");
+	}
+
+	const FMetaplotNode* Node = EditingFlowAsset->Nodes.FindByPredicate([this](const FMetaplotNode& Candidate)
+	{
+		return Candidate.NodeId == SelectedNodeId;
+	});
+	if (!Node)
+	{
+		return LOCTEXT("NodeDetailsDescMissing", "描述: -");
+	}
+
+	const FText DescText = Node->Description.IsEmpty() ? LOCTEXT("NodeDetailsDescNone", "无") : Node->Description;
+	return FText::Format(LOCTEXT("NodeDetailsDescFmt", "描述: {0}"), DescText);
 }
 
 #undef LOCTEXT_NAMESPACE

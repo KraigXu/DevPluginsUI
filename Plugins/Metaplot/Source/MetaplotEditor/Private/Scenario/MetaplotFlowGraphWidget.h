@@ -5,11 +5,15 @@
 #include "Widgets/SLeafWidget.h"
 
 class UMetaplotFlow;
+enum class EMetaplotNodeType : uint8;
 
 DECLARE_DELEGATE_OneParam(FOnMetaplotGraphNodeSelected, FGuid);
 DECLARE_DELEGATE_OneParam(FOnMetaplotGraphHorizontalPanChanged, float);
 DECLARE_DELEGATE_TwoParams(FOnMetaplotGraphCreateTransition, FGuid, FGuid);
 DECLARE_DELEGATE_ThreeParams(FOnMetaplotGraphMoveNode, FGuid, int32, int32);
+DECLARE_DELEGATE_ThreeParams(FOnMetaplotGraphCreateNodeRequested, EMetaplotNodeType, int32, int32);
+DECLARE_DELEGATE_OneParam(FOnMetaplotGraphDeleteNodeRequested, FGuid);
+DECLARE_DELEGATE_TwoParams(FOnMetaplotGraphDeleteTransitionRequested, FGuid, FGuid);
 
 /** 主视图：科技树风格网格画布（Stage 水平、Layer 垂直）、贝塞尔连线与中键平移。 */
 class SMetaplotFlowGraphWidget : public SLeafWidget
@@ -21,6 +25,9 @@ public:
 		SLATE_EVENT(FOnMetaplotGraphHorizontalPanChanged, OnHorizontalPanChanged)
 		SLATE_EVENT(FOnMetaplotGraphCreateTransition, OnCreateTransition)
 		SLATE_EVENT(FOnMetaplotGraphMoveNode, OnMoveNode)
+		SLATE_EVENT(FOnMetaplotGraphCreateNodeRequested, OnCreateNodeRequested)
+		SLATE_EVENT(FOnMetaplotGraphDeleteNodeRequested, OnDeleteNodeRequested)
+		SLATE_EVENT(FOnMetaplotGraphDeleteTransitionRequested, OnDeleteTransitionRequested)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
@@ -73,6 +80,7 @@ private:
 	FVector2D LocalToGraph(const FVector2D& LocalPos, const FVector2D& LocalSize) const;
 	bool HitTestNode(const FGeometry& MyGeometry, const FVector2D& LocalPos, FGuid& OutNodeId) const;
 	bool HitTestPin(const FGeometry& MyGeometry, const FVector2D& LocalPos, FGuid& OutNodeId, EPinSide& OutSide) const;
+	bool HitTestTransition(const FGeometry& MyGeometry, const FVector2D& LocalPos, FGuid& OutSourceNodeId, FGuid& OutTargetNodeId) const;
 	bool IsTransitionRuleValid(const FGuid& SourceNodeId, const FGuid& TargetNodeId) const;
 	EConnectionInvalidReason GetTransitionInvalidReason(const FGuid& SourceNodeId, const FGuid& TargetNodeId) const;
 	EConnectionInvalidReason GetConnectionCandidateInvalidReason(const FGuid& PinDragNodeId, EPinSide DragSide, const FGuid& HoverNodeId, EPinSide HoverSide) const;
@@ -82,6 +90,8 @@ private:
 	void GetContentBounds(float& OutMinX, float& OutMinY, float& OutMaxX, float& OutMaxY) const;
 	void ClampPanToContent(const FVector2D& LocalSize);
 	void BroadcastHorizontalPanChanged() const;
+	void OpenContextMenuAtScreen(const FPointerEvent& MouseEvent, const FGuid& NodeId, const FGuid& SourceNodeId, const FGuid& TargetNodeId);
+	void OpenCreateNodeSearchMenuAtScreen(const FPointerEvent& MouseEvent, int32 StageIndex, int32 LayerIndex);
 
 private:
 	TWeakObjectPtr<UMetaplotFlow> WeakFlow;
@@ -89,6 +99,9 @@ private:
 	FOnMetaplotGraphHorizontalPanChanged OnHorizontalPanChanged;
 	FOnMetaplotGraphCreateTransition OnCreateTransition;
 	FOnMetaplotGraphMoveNode OnMoveNode;
+	FOnMetaplotGraphCreateNodeRequested OnCreateNodeRequested;
+	FOnMetaplotGraphDeleteNodeRequested OnDeleteNodeRequested;
+	FOnMetaplotGraphDeleteTransitionRequested OnDeleteTransitionRequested;
 
 	FVector2D PanScreen = FVector2D(80.0f, 80.0f);
 	bool bPanning = false;

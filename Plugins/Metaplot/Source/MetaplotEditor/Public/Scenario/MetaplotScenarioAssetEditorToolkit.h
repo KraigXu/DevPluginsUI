@@ -11,6 +11,8 @@ class ITableRow;
 class UMetaplotFlow;
 class SMetaplotFlowGraphWidget;
 class SScrollBar;
+class FWorkspaceItem;
+enum class EMetaplotNodeType : uint8;
 
 enum class EMetaplotAssetFilter : uint8
 {
@@ -37,6 +39,7 @@ public:
 private:
 	TSharedRef<SDockTab> SpawnTab_AssetList(const class FSpawnTabArgs& Args);
 	TSharedRef<SDockTab> SpawnTab_Details(const class FSpawnTabArgs& Args);
+	TSharedRef<SDockTab> SpawnTab_NodeDetails(const class FSpawnTabArgs& Args);
 	TSharedRef<SDockTab> SpawnTab_Main(const class FSpawnTabArgs& Args);
 	TSharedRef<class SWidget> BuildAssetFilterMenu();
 	FReply OnAddAssetClicked();
@@ -56,11 +59,19 @@ private:
 	void OnNodeSelectionChanged(TSharedPtr<FGuid> Item, ESelectInfo::Type SelectInfo);
 	void OnTransitionSelectionChanged(TSharedPtr<int32> Item, ESelectInfo::Type SelectInfo);
 	void OnMainGraphNodeSelected(FGuid NodeId);
+	void OnMainGraphCreateNodeRequested(EMetaplotNodeType NodeType, int32 StageIndex, int32 LayerIndex);
 	void OnMainGraphCreateTransition(FGuid SourceNodeId, FGuid TargetNodeId);
 	void OnMainGraphMoveNode(FGuid NodeId, int32 NewStage, int32 NewLayer);
+	void OnMainGraphDeleteNodeRequested(FGuid NodeId);
+	void OnMainGraphDeleteTransitionRequested(FGuid SourceNodeId, FGuid TargetNodeId);
 	void OnMainGraphHorizontalPanChanged(float InPanScreenX);
 	void OnMainGraphHorizontalScroll(float ScrollOffsetFraction);
 	void RefreshMainHorizontalScrollBar();
+	FText GetNodeDetailsSummaryText() const;
+	FText GetNodeDetailsNameText() const;
+	FText GetNodeDetailsTypeText() const;
+	FText GetNodeDetailsStageLayerText() const;
+	FText GetNodeDetailsDescriptionText() const;
 
 private:
 	TObjectPtr<UMetaplotFlow> EditingFlowAsset = nullptr;
@@ -76,8 +87,9 @@ private:
 	EMetaplotAssetFilter ActiveAssetFilter = EMetaplotAssetFilter::All;
 	FText AssetSearchText;
 	bool bSyncingHorizontalScrollBar = false;
+	TSharedPtr<FWorkspaceItem> WorkspaceMenuCategory;
 
-	static const FName AssetListTabId;
 	static const FName MainTabId;
 	static const FName DetailsTabId;
+	static const FName NodeDetailsTabId;
 };
