@@ -8,10 +8,18 @@
 
 ## Metaplot 事件流程编辑器 — 设计文档
 
-**设计文档版本：** 2.0（目标规格；实现进度以代码为准）  
+**设计文档版本：** 2.1（目标规格；实现进度以代码为准）  
 **插件实现版本：** **0.1.0**（见 `Plugins/Metaplot/Metaplot.uplugin` 的 `VersionName`，当前标记为 Beta）  
 **适用范围：** Unreal Engine 5.3+ 编辑器扩展插件  
 **核心定位：** 模拟事物发展过程，支持**线性、非循环、单向**事件流，适用于多人游戏叙事与玩法流程设计。
+
+### 设计微调（v2.1，向 StateTree 执行语义对齐）
+
+- 节点语义从「单行为节点」升级为「状态节点（State）」，每个节点可挂载多个故事任务（StoryTask）。
+- 故事任务支持继承与生命周期函数（`Enter` / `Tick` / `Exit`），任务结果为 `Running / Succeeded / Failed`。
+- 节点进入后并发或顺序执行其任务（实现可配置）；默认要求节点内任务全部结束后才允许评估出边并流转。
+- 节点最终结果由策略聚合（例如：任一失败即节点失败；全部成功才节点成功）。
+- 连线条件可读取黑板与上一节点结果，便于构建成功分支/失败补偿分支。
 
 ### 当前实现状态标记（基于仓库代码）
 
@@ -26,7 +34,7 @@
 
 #### B. 编辑器目标功能（第 5 章）
 
-- [~] 节点创建/删除/属性编辑已具备最小可用能力（工具栏与主视图右键菜单可增删，属性可在**流程设置界面**编辑）；主视图支持节点拖拽移动并带事务写回；复制/粘贴与完整图节点语义未实现。
+- [~] 节点创建/删除/属性编辑已具备最小可用能力（工具栏与主视图右键菜单可增删，属性可在**流程设置界面**编辑）；主视图支持节点拖拽移动并带事务写回；已为每个节点建立任务集合 `NodeTaskSets` 对应关系并在主视图展示任务数；节点详情页已提供“聚焦当前节点任务配置”快捷入口（将对应 `NodeTaskSets` 条目置顶便于编辑）；复制/粘贴与完整图节点语义未实现。
 - [~] 连线在资产与主视图中可读写（`Transitions` 数据 + 流程图表区圆角折线/箭头绘制）；画布支持左右引脚拖拽建线，并实时校验与拒绝无效连接（自连、右往左、同行跨列、重复、成环）；连线绘制已加入 lane 分流、长跨度走廊 bundling 与交互高亮。前置条件编辑器与更完整图编辑语义仍未实现。
 - [ ] 前置条件编辑器未实现（暂无条件模型与对应 UI）。
 - [ ] 自动对齐、拓扑布局、子流程折叠未实现。
@@ -35,10 +43,10 @@
 
 #### C. 运行时目标功能（第 4/7/8 章）
 
-- [ ] `UMetaplotSubsystem`、`UMetaplotInstance` 未实现。
-- [ ] `FMetaplotNode`、`FMetaplotTransition`、`FMetaplotCondition`、黑板结构未实现。
-- [ ] 行为接口 `IMetaplotBehavior` 与行为注册表未实现。
-- [ ] 蓝图运行时 API（如 `StartMetaplotInstance`、`MetaplotAdvanceNode`）未实现。
+- [~] `UMetaplotSubsystem`、`UMetaplotInstance` 已具备最小骨架（初始化、启动、Tick 推进、按连线条件流转）；网络复制与完整生命周期事件未实现。
+- [~] `FMetaplotNode`、`FMetaplotTransition`、`FMetaplotCondition`、黑板结构已存在基础声明，并已引入 StoryTask 相关字段与节点结果策略；编辑器配置面板尚未对齐。
+- [~] 故事任务接口（StateTree 风格生命周期）已提供 `UMetaplotStoryTask` 基类，含 `EnterTask/TickTask/ExitTask`；任务注册/发现机制未实现。
+- [~] 蓝图运行时 API 已有最小入口（`StartMetaplotInstance`、黑板读写 API），`MetaplotAdvanceNode` 与更多调试 API 未实现。
 - [ ] 子流程运行时编排能力未实现。
 
 #### D. 校验/调试与多人网络（第 6/7 章）
@@ -49,6 +57,14 @@
 - [ ] 网络复制、Server/Multicast RPC、多人实例策略未实现。
 
 > 备注：Runtime 与「模拟运行」等仍为规划能力；编辑器侧已具备 **流程图表可视化 + 引脚拖拽建线 + 节点拖拽换位（可放置高亮）+ 基础实时校验** 与基础资产编辑，整体仍偏「可编辑脚手架」而非完整第 5 章编辑器。
+
+### 最近迭代记录（2026-04-24）
+
+- Runtime：新增 `UMetaplotStoryTask`、`UMetaplotInstance`、`UMetaplotSubsystem` 最小骨架，支持启动、Tick、任务结果聚合与按条件流转。
+- 数据模型：`UMetaplotFlow` 新增 `NodeTaskSets` 与节点完成/结果策略字段，适配 StateTree 风格“节点内多任务”语义。
+- 黑板 API：`UMetaplotInstance` 新增 Int/Bool/Float/String 读写接口（BlueprintCallable）。
+- 编辑器：节点增删与 `NodeTaskSets` 自动同步；主图节点显示任务数；节点详情新增“聚焦当前节点任务配置”快捷按钮。
+- 示例任务归属：示例 StoryTask 已放入测试项目模块 `Source/DevPluginsUI`（`MetaplotSampleStoryTasks.*`），插件侧仅保留通用框架能力。
 
 ### 1. 引言
 
@@ -67,9 +83,10 @@
 - **名称：** Metaplot（元剧情）
 - **定位：** 专为 Unreal Engine 设计的事件流程编辑与运行时系统，以《文明6》科技树风格的视觉图表为核心，允许设计师快速创建、编辑、调试线性单向事件链。
 
-#### 1.3 与 UE 内置蓝图编辑器的关系
+#### 1.3 与 UE StateTree / 蓝图编辑器的关系
 
-- **不替代蓝图**，而是与蓝图协作：每个节点可绑定一个实现 `IMetaplotBehavior` 的蓝图类或 Actor，具体行为由蓝图 / C++ 实现。
+- **执行语义参考 StateTree：** 节点作为状态容器，节点内任务按生命周期执行并汇总结果后再决定流转。
+- **不替代蓝图**，而是与蓝图协作：故事任务可由蓝图 / C++ 实现，负责具体玩法逻辑。
 - 作为独立编辑器窗口，复用 UE 的 Slate UI、资产管理、**流程设置界面**（原 Details）及事务系统（Undo/Redo）。
 
 #### 1.4 核心设计原则
@@ -173,7 +190,11 @@
 - **展示：** `FText NodeName`、`FText Description`（多行）
 - **类型：** `EMetaplotNodeType`（Start, Normal, Conditional, Parallel, Terminal）
 - **布局：** `StageIndex`（水平阶段）、`LayerIndex`（垂直层）
-- **行为：** `BehaviorObject`（软引用，可指向实现 `IMetaplotBehavior` 的 `UObject`）、`BehaviorActorClass`（可选，需 Spawn Actor 时使用）
+- **故事任务列表：** `StoryTasks`（每项为故事任务规格，指向可实例化任务类）
+- **完成策略：** `CompletionPolicy`（默认：全部任务结束后节点可流转）
+- **结果策略：** `ResultPolicy`（默认：任一任务失败则节点失败）
+
+> v2.1 起，节点不再强调单一 `BehaviorObject`，而是通过任务列表组合节点行为。
 
 #### 4.2 连线结构 (`FMetaplotTransition`)
 
@@ -202,6 +223,7 @@
 
 - 在**服务器**上创建，拥有独立状态机。
 - 存储当前节点集合（支持**并行节点**，允许多个节点同时处于「进行中」）。
+- 为每个活跃节点维护其故事任务运行状态（`Running/Succeeded/Failed`）与节点聚合结果。
 - 维护黑板副本。
 - **复制策略（设计目标）：**
   - 实例对象复制到所有客户端（`ReplicatedUsing` 等）。
@@ -218,7 +240,7 @@
 - **创建：** 从模板库拖拽或右键「添加节点」。
 - **删除：** 选中节点按 Delete 或右键删除（同时删除相关连线）。
 - **复制/粘贴：** 复制节点及所有出边/入边（GUID 重新生成）。
-- **属性：** 在细节面板中修改名称、描述、类型、行为引用。
+- **属性：** 在细节面板中修改名称、描述、类型、故事任务列表与聚合策略。
 
 #### 5.2 连线管理
 
@@ -241,9 +263,9 @@
 
 #### 5.5 与蓝图交互
 
-- 细节面板行为下拉显示所有实现 `IMetaplotBehavior` 的蓝图类。
-- 「新建行为蓝图」可生成继承接口的蓝图并打开编辑器。
-- 可从蓝图编辑器拖拽函数到 Metaplot 图表，快速创建节点并绑定行为。
+- 细节面板故事任务下拉显示所有可用故事任务类（蓝图/C++）。
+- 「新建故事任务蓝图」可生成任务基类并打开编辑器。
+- 可从蓝图编辑器快速创建节点并预绑定任务模板（规划能力）。
 
 #### 5.6 撤销/重做
 
@@ -272,7 +294,7 @@
 #### 6.3 游戏内调试
 
 - 控制台：`Metaplot.Debug <FlowAssetPath>` 显示运行时流程状态。
-- 日志：节点进入/退出、黑板变量变化。
+- 日志：节点进入/退出、黑板变量变化（当前仅具备基础运行日志骨架，待补详细事件输出）。
 
 ---
 
@@ -311,31 +333,25 @@ int32 GetMetaplotBlackboardInt(UMetaplotInstance* Instance, FName Key);
 
 ### 8. 扩展性设计
 
-#### 8.1 行为接口 (`IMetaplotBehavior`)
+#### 8.1 故事任务接口（StateTree 风格，规划）
 
 ```cpp
-UINTERFACE(BlueprintType)
-class UMetaplotBehavior : public UInterface { GENERATED_BODY() };
-
-class IMetaplotBehavior
+UCLASS(Abstract, Blueprintable, EditInlineNew, DefaultToInstanced)
+class UMetaplotStoryTask : public UObject
 {
+    GENERATED_BODY()
 public:
-    // 进入节点时调用（服务器）
-    virtual void OnEnterNode(UMetaplotInstance* Instance, const FMetaplotNode& Node) = 0;
-    // 可选：每帧（持续行为，如下雪）
-    virtual void OnTickNode(UMetaplotInstance* Instance, float DeltaTime) {}
-    // 除常规条件外的自定义过渡判断
-    virtual bool CanTransition(UMetaplotInstance* Instance, const FMetaplotNode& Node, const FMetaplotTransition& Transition) const { return true; }
-    virtual void OnExitNode(UMetaplotInstance* Instance, const FMetaplotNode& Node) {}
-    virtual FString GetDebugString(const FMetaplotNode& Node) const { return Node.NodeName.ToString(); }
+    UFUNCTION(BlueprintNativeEvent) void EnterTask(UMetaplotInstance* Instance, FGuid NodeId);
+    UFUNCTION(BlueprintNativeEvent) EMetaplotTaskRunState TickTask(UMetaplotInstance* Instance, float DeltaTime);
+    UFUNCTION(BlueprintNativeEvent) void ExitTask(UMetaplotInstance* Instance, FGuid NodeId);
 };
 ```
 
-可为 C++ 类或蓝图类（继承 `UMetaplotBehaviorObject` 辅助基类，或直接实现接口）。若使用 `BehaviorActorClass`，运行时可 Spawn 临时 Actor 作为行为载体。
+可为 C++ 类或蓝图类（继承 `UMetaplotStoryTask`）。任务执行结果参与节点结果聚合，并可驱动后续连线条件。
 
-#### 8.2 注册自定义行为
+#### 8.2 注册自定义故事任务
 
-通过 `FMetaplotBehaviorRegistry` 单例注册行为模板，出现在编辑器下拉菜单中。
+通过任务发现/注册机制收集可用 `UMetaplotStoryTask` 类，出现在编辑器下拉菜单中。
 
 #### 8.3 节点类型扩展
 
@@ -386,18 +402,18 @@ public:
 | 布局风格 | 自由布局 | 网格化阶段布局 |
 | 适用场景 | 通用逻辑编程 | 事件流程设计 |
 
-#### 附录 C — 简单示例：天气演变流程
+#### 附录 C — 简单示例：天气演变流程（v2.1 任务化表达）
 
 ```
-阶段0: 起始节点 "Start" (行为: 黑板 Weather = "Sunny")
+阶段0: 起始节点 "Start" (任务: SetWeatherTask("Sunny"))
    ↓
-阶段1: 节点 "等待5秒" (行为: Delay 5s)
+阶段1: 节点 "等待5秒" (任务: DelayTask(5s))
    ↓
-阶段2: 节点 "起风" (行为: Play Wind Effect)
+阶段2: 节点 "起风" (任务: PlayWindFxTask + IncWindCountTask)
    ↓ (条件: 黑板 WindCount < 3)
-阶段2: 节点 "再次起风" (并行, 增加 WindCount)
+阶段2: 节点 "再次起风" (任务: PlayWindFxTask + IncWindCountTask)
    ↓ (条件: WindCount >= 3)
-阶段3: 节点 "下大雪" (行为: Spawn Snow Particles)
+阶段3: 节点 "下大雪" (任务: SpawnSnowTask)
    ↓
 阶段4: 终止节点 "End"
 ```
@@ -416,5 +432,6 @@ public:
 - 路径：`Plugins/Metaplot`
 - 模块：`Metaplot`（Runtime）、`MetaplotEditor`（Editor）
 - 版本：`VersionName` **0.1.0**，`IsBetaVersion` **true**（以 `Metaplot.uplugin` 为准）
+- 约束：插件模块仅保留通用框架能力；用于演示/验证的 StoryTask 示例类放在测试项目模块 `Source/DevPluginsUI` 中，避免污染插件公共 API。
 
 详见插件内源码与 `Metaplot.uplugin` 元数据。

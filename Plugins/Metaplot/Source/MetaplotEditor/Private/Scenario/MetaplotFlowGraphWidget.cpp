@@ -264,6 +264,20 @@ namespace MetaplotGraphWidgetPrivate
 		}
 	}
 
+	static int32 GetTaskCount(const UMetaplotFlow* Flow, const FGuid& NodeId)
+	{
+		if (!Flow || !NodeId.IsValid())
+		{
+			return 0;
+		}
+
+		const FMetaplotNodeStoryTasks* TaskSet = Flow->NodeTaskSets.FindByPredicate([NodeId](const FMetaplotNodeStoryTasks& Entry)
+		{
+			return Entry.NodeId == NodeId;
+		});
+		return TaskSet ? TaskSet->StoryTasks.Num() : 0;
+	}
+
 	static void AppendUniquePoint(TArray<FVector2D>& Points, const FVector2D& Point)
 	{
 		if (Points.IsEmpty() || !Points.Last().Equals(Point, 0.1f))
@@ -1660,6 +1674,17 @@ int32 SMetaplotFlowGraphWidget::OnPaint(
 				ESlateDrawEffect::None,
 				FLinearColor(0.65f, 0.68f, 0.72f, 1.0f));
 
+			const int32 TaskCount = MetaplotGraphWidgetPrivate::GetTaskCount(Flow, Node.NodeId);
+			const FString TaskMeta = FString::Printf(TEXT("Tasks %d"), TaskCount);
+			FSlateDrawElement::MakeText(
+				OutDrawElements,
+				LayerId,
+				MakeGeo(LocalTL + FVector2D(10.0f, 52.0f), FVector2D(Sz.X - 20.0f, 16.0f)),
+				TaskMeta,
+				SmallFont,
+				ESlateDrawEffect::None,
+				FLinearColor(0.60f, 0.76f, 0.95f, 1.0f));
+
 			const FString Desc = Node.Description.ToString();
 			if (Desc.Len() > 0)
 			{
@@ -1672,7 +1697,7 @@ int32 SMetaplotFlowGraphWidget::OnPaint(
 				FSlateDrawElement::MakeText(
 					OutDrawElements,
 					LayerId,
-					MakeGeo(LocalTL + FVector2D(10.0f, 56.0f), FVector2D(Sz.X - 20.0f, 80.0f)),
+					MakeGeo(LocalTL + FVector2D(10.0f, 68.0f), FVector2D(Sz.X - 20.0f, 68.0f)),
 					Short,
 					SmallFont,
 					ESlateDrawEffect::None,

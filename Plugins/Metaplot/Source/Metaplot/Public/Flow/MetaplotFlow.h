@@ -6,6 +6,7 @@
 #include "MetaplotFlow.generated.h"
 
 class AActor;
+class UMetaplotStoryTask;
 
 UENUM(BlueprintType)
 enum class EMetaplotNodeType : uint8
@@ -45,6 +46,35 @@ enum class EMetaplotBlackboardType : uint8
 	Float UMETA(DisplayName = "Float"),
 	String UMETA(DisplayName = "String"),
 	Object UMETA(DisplayName = "Object")
+};
+
+UENUM(BlueprintType)
+enum class EMetaplotTaskRunState : uint8
+{
+	Running = 0 UMETA(DisplayName = "Running"),
+	Succeeded UMETA(DisplayName = "Succeeded"),
+	Failed UMETA(DisplayName = "Failed")
+};
+
+UENUM(BlueprintType)
+enum class EMetaplotNodeResult : uint8
+{
+	None = 0 UMETA(DisplayName = "None"),
+	Succeeded UMETA(DisplayName = "Succeeded"),
+	Failed UMETA(DisplayName = "Failed")
+};
+
+UENUM(BlueprintType)
+enum class EMetaplotNodeCompletionPolicy : uint8
+{
+	AllTasksFinished = 0 UMETA(DisplayName = "All Tasks Finished")
+};
+
+UENUM(BlueprintType)
+enum class EMetaplotNodeResultPolicy : uint8
+{
+	AllSucceeded = 0 UMETA(DisplayName = "All Succeeded"),
+	AnyFailedIsFailed UMETA(DisplayName = "Any Failed Is Failed")
 };
 
 USTRUCT(BlueprintType)
@@ -122,10 +152,37 @@ struct FMetaplotNode
 	int32 LayerIndex = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Node")
-	TSoftObjectPtr<UObject> BehaviorObject;
+	EMetaplotNodeCompletionPolicy CompletionPolicy = EMetaplotNodeCompletionPolicy::AllTasksFinished;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Node")
-	TSoftClassPtr<AActor> BehaviorActorClass;
+	EMetaplotNodeResultPolicy ResultPolicy = EMetaplotNodeResultPolicy::AnyFailedIsFailed;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Node")
+	EMetaplotNodeResult RuntimeResult = EMetaplotNodeResult::None;
+};
+
+USTRUCT(BlueprintType)
+struct FMetaplotStoryTaskSpec
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Task")
+	TSoftClassPtr<UMetaplotStoryTask> TaskClass;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Task")
+	bool bRequired = true;
+};
+
+USTRUCT(BlueprintType)
+struct FMetaplotNodeStoryTasks
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Node")
+	FGuid NodeId;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Node")
+	TArray<FMetaplotStoryTaskSpec> StoryTasks;
 };
 
 USTRUCT(BlueprintType)
@@ -166,6 +223,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Flow")
 	TArray<FMetaplotTransition> Transitions;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Flow")
+	TArray<FMetaplotNodeStoryTasks> NodeTaskSets;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Flow")
 	TArray<FMetaplotBlackboardEntry> DefaultBlackboard;

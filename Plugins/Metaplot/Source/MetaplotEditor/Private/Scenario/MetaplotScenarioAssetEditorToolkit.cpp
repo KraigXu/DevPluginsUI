@@ -429,6 +429,27 @@ TSharedRef<SDockTab> FMetaplotScenarioAssetEditorToolkit::SpawnTab_NodeDetails(c
 				.Text(this, &FMetaplotScenarioAssetEditorToolkit::GetNodeDetailsDescriptionText)
 				.AutoWrapText(true)
 			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(0.0f, 10.0f, 0.0f, 0.0f)
+			[
+				SNew(SButton)
+				.ButtonStyle(FAppStyle::Get(), "SimpleButton")
+				.OnClicked(this, &FMetaplotScenarioAssetEditorToolkit::OnFocusSelectedNodeTaskSetClicked)
+				[
+					SNew(STextBlock)
+					.Text(LOCTEXT("FocusNodeTaskSetButton", "聚焦当前节点任务配置"))
+				]
+			]
+			+ SVerticalBox::Slot()
+			.AutoHeight()
+			.Padding(0.0f, 6.0f, 0.0f, 0.0f)
+			[
+				SNew(STextBlock)
+				.Text(this, &FMetaplotScenarioAssetEditorToolkit::GetNodeDetailsTaskSetHintText)
+				.AutoWrapText(true)
+				.ColorAndOpacity(FSlateColor(FLinearColor(0.72f, 0.75f, 0.80f, 1.0f)))
+			]
 		]
 	];
 }
@@ -671,6 +692,7 @@ FReply FMetaplotScenarioAssetEditorToolkit::OnAddNodeClicked()
 	NewNode.LayerIndex = 0;
 
 	EditingFlowAsset->Nodes.Add(NewNode);
+	EnsureTaskSetForNode(NewNode.NodeId);
 	if (!EditingFlowAsset->StartNodeId.IsValid())
 	{
 		EditingFlowAsset->StartNodeId = NewNode.NodeId;
@@ -704,6 +726,7 @@ FReply FMetaplotScenarioAssetEditorToolkit::OnDeleteNodeClicked()
 
 	const FGuid NodeIdToDelete = SelectedNodeId;
 	EditingFlowAsset->Nodes.RemoveAt(NodeIndex);
+	RemoveTaskSetForNode(NodeIdToDelete);
 	EditingFlowAsset->Transitions.RemoveAll([NodeIdToDelete](const FMetaplotTransition& Transition)
 	{
 		return Transition.SourceNodeId == NodeIdToDelete || Transition.TargetNodeId == NodeIdToDelete;
@@ -1004,10 +1027,17 @@ void FMetaplotScenarioAssetEditorToolkit::RefreshFlowLists()
 
 	if (EditingFlowAsset)
 	{
+		TSet<FGuid> ValidNodeIds;
 		for (const FMetaplotNode& Node : EditingFlowAsset->Nodes)
 		{
 			NodeItems.Add(MakeShared<FGuid>(Node.NodeId));
+			ValidNodeIds.Add(Node.NodeId);
+			EnsureTaskSetForNode(Node.NodeId);
 		}
+		EditingFlowAsset->NodeTaskSets.RemoveAll([&ValidNodeIds](const FMetaplotNodeStoryTasks& Entry)
+		{
+			return !ValidNodeIds.Contains(Entry.NodeId);
+		});
 
 		for (int32 TransitionIndex = 0; TransitionIndex < EditingFlowAsset->Transitions.Num(); ++TransitionIndex)
 		{
@@ -1103,6 +1133,10 @@ void FMetaplotScenarioAssetEditorToolkit::OnNodeSelectionChanged(TSharedPtr<FGui
 	if (FlowGraphWidget.IsValid())
 	{
 		FlowGraphWidget->SetSelectedNodeId(SelectedNodeId);
+	}
+	if (DetailsView.IsValid())
+	{
+		DetailsView->ForceRefresh();
 	}
 }
 
@@ -1206,6 +1240,7 @@ void FMetaplotScenarioAssetEditorToolkit::OnMainGraphCreateNodeRequested(EMetapl
 	}
 
 	EditingFlowAsset->Nodes.Add(NewNode);
+	EnsureTaskSetForNode(NewNode.NodeId);
 	if (NodeType == EMetaplotNodeType::Start || !EditingFlowAsset->StartNodeId.IsValid())
 	{
 		EditingFlowAsset->StartNodeId = NewNode.NodeId;
@@ -1419,7 +1454,10 @@ FText FMetaplotScenarioAssetEditorToolkit::GetNodeDetailsTypeText() const
 	const FText TypeText = NodeTypeEnum
 		? NodeTypeEnum->GetDisplayNameTextByValue(static_cast<int64>(Node->NodeType))
 		: LOCTEXT("NodeDetailsTypeFallback", "Unknown");
-	return FText::Format(LOCTEXT("NodeDetailsTypeFmt", "类型: {0}"), TypeText);
+	return FText::Format(
+		LOCTEXT("NodeDetailsTypeFmt", "类型: {0}  ·  任务数: {1}"),
+		TypeText,
+		FText::AsNumber(GetTaskCountForNode(SelectedNodeId)));
 }
 
 FText FMetaplotScenarioAssetEditorToolkit::GetNodeDetailsStageLayerText() const
@@ -1462,6 +1500,105 @@ FText FMetaplotScenarioAssetEditorToolkit::GetNodeDetailsDescriptionText() const
 
 	const FText DescText = Node->Description.IsEmpty() ? LOCTEXT("NodeDetailsDescNone", "无") : Node->Description;
 	return FText::Format(LOCTEXT("NodeDetailsDescFmt", "描述: {0}"), DescText);
+}
+
+FText FMetaplotScenarioAssetEditorToolkit::GetNodeDetailsTaskSetHintText() const
+{
+	if (!EditingFlowAsset || !SelectedNodeId.IsValid())
+	{
+		return LOCTEXT("NodeTaskSetHintNoSelection", "提示: 先选择一个节点，再聚焦其任务配置。");
+	}
+
+	const int32 TaskSetIndex = EditingFlowAsset->NodeTaskSets.IndexOfByPredicate([this](const FMetaplotNodeStoryTasks& Entry)
+	{
+		return Entry.NodeId == SelectedNodeId;
+	});
+	if (TaskSetIndex == INDEX_NONE)
+	{
+		return LOCTEXT("NodeTaskSetHintMissing", "提示: 当前节点暂无任务集合。点击按钮会自动创建并置顶。");
+	}
+
+	return FText::Format(
+		LOCTEXT("NodeTaskSetHintIndex", "提示: 当前节点任务集合位于 NodeTaskSets[{0}]。点击按钮可将其置顶到 [0]，便于在 Details 中快速编辑。"),
+		FText::AsNumber(TaskSetIndex));
+}
+
+FReply FMetaplotScenarioAssetEditorToolkit::OnFocusSelectedNodeTaskSetClicked()
+{
+	if (!EditingFlowAsset || !SelectedNodeId.IsValid())
+	{
+		return FReply::Handled();
+	}
+
+	const FScopedTransaction Transaction(LOCTEXT("FocusNodeTaskSetTransaction", "Focus Selected Node Task Set"));
+	EditingFlowAsset->Modify();
+	EnsureTaskSetForNode(SelectedNodeId);
+
+	const int32 TaskSetIndex = EditingFlowAsset->NodeTaskSets.IndexOfByPredicate([this](const FMetaplotNodeStoryTasks& Entry)
+	{
+		return Entry.NodeId == SelectedNodeId;
+	});
+	if (TaskSetIndex != INDEX_NONE && TaskSetIndex > 0)
+	{
+		FMetaplotNodeStoryTasks FocusEntry = EditingFlowAsset->NodeTaskSets[TaskSetIndex];
+		EditingFlowAsset->NodeTaskSets.RemoveAt(TaskSetIndex, 1, EAllowShrinking::No);
+		EditingFlowAsset->NodeTaskSets.Insert(MoveTemp(FocusEntry), 0);
+	}
+
+	EditingFlowAsset->MarkPackageDirty();
+	if (DetailsView.IsValid())
+	{
+		DetailsView->ForceRefresh();
+	}
+	return FReply::Handled();
+}
+
+void FMetaplotScenarioAssetEditorToolkit::EnsureTaskSetForNode(const FGuid& NodeId)
+{
+	if (!EditingFlowAsset || !NodeId.IsValid())
+	{
+		return;
+	}
+
+	const bool bExists = EditingFlowAsset->NodeTaskSets.ContainsByPredicate([NodeId](const FMetaplotNodeStoryTasks& Entry)
+	{
+		return Entry.NodeId == NodeId;
+	});
+	if (bExists)
+	{
+		return;
+	}
+
+	FMetaplotNodeStoryTasks NewTaskSet;
+	NewTaskSet.NodeId = NodeId;
+	EditingFlowAsset->NodeTaskSets.Add(NewTaskSet);
+}
+
+void FMetaplotScenarioAssetEditorToolkit::RemoveTaskSetForNode(const FGuid& NodeId)
+{
+	if (!EditingFlowAsset || !NodeId.IsValid())
+	{
+		return;
+	}
+
+	EditingFlowAsset->NodeTaskSets.RemoveAll([NodeId](const FMetaplotNodeStoryTasks& Entry)
+	{
+		return Entry.NodeId == NodeId;
+	});
+}
+
+int32 FMetaplotScenarioAssetEditorToolkit::GetTaskCountForNode(const FGuid& NodeId) const
+{
+	if (!EditingFlowAsset || !NodeId.IsValid())
+	{
+		return 0;
+	}
+
+	const FMetaplotNodeStoryTasks* TaskSet = EditingFlowAsset->NodeTaskSets.FindByPredicate([NodeId](const FMetaplotNodeStoryTasks& Entry)
+	{
+		return Entry.NodeId == NodeId;
+	});
+	return TaskSet ? TaskSet->StoryTasks.Num() : 0;
 }
 
 #undef LOCTEXT_NAMESPACE

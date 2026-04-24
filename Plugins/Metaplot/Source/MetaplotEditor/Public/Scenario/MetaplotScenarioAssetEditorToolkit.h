@@ -53,6 +53,9 @@ private:
 	FText GetActiveFilterLabel() const;
 	FText GetStartNodeText() const;
 	void RefreshFlowLists();
+	void EnsureTaskSetForNode(const FGuid& NodeId);
+	void RemoveTaskSetForNode(const FGuid& NodeId);
+	int32 GetTaskCountForNode(const FGuid& NodeId) const;
 	void AutoLayoutNodesByTimeline();
 	TSharedRef<ITableRow> GenerateNodeRow(TSharedPtr<FGuid> Item, const TSharedRef<STableViewBase>& OwnerTable);
 	TSharedRef<ITableRow> GenerateTransitionRow(TSharedPtr<int32> Item, const TSharedRef<STableViewBase>& OwnerTable);
@@ -72,6 +75,8 @@ private:
 	FText GetNodeDetailsTypeText() const;
 	FText GetNodeDetailsStageLayerText() const;
 	FText GetNodeDetailsDescriptionText() const;
+	FText GetNodeDetailsTaskSetHintText() const;
+	FReply OnFocusSelectedNodeTaskSetClicked();
 
 private:
 	TObjectPtr<UMetaplotFlow> EditingFlowAsset = nullptr;
