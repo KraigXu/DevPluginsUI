@@ -1,5 +1,6 @@
 #include "Scenario/MetaplotFlowGraphWidget.h"
 
+#include "Scenario/MetaplotFlowPlacement.h"
 #include "Flow/MetaplotFlow.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Layout/Geometry.h"
@@ -95,12 +96,113 @@ namespace MetaplotGraphWidgetPrivate
 		default: return TEXT("Node");
 		}
 	}
+
+	static void AppendUniquePoint(TArray<FVector2D>& Points, const FVector2D& Point)
+	{
+		if (Points.IsEmpty() || !Points.Last().Equals(Point, 0.1f))
+		{
+			Points.Add(Point);
+		}
+	}
+
+	static void BuildRoundedPolyline(const TArray<FVector2D>& RawPoints, TArray<FVector2D>& OutPoints)
+	{
+		OutPoints.Reset();
+		if (RawPoints.Num() < 2)
+		{
+			return;
+		}
+
+		AppendUniquePoint(OutPoints, RawPoints[0]);
+
+		for (int32 Index = 1; Index < RawPoints.Num() - 1; ++Index)
+		{
+			const FVector2D Prev = RawPoints[Index - 1];
+			const FVector2D Corner = RawPoints[Index];
+			const FVector2D Next = RawPoints[Index + 1];
+			const float DistIn = FVector2D::Distance(Prev, Corner);
+			const float DistOut = FVector2D::Distance(Corner, Next);
+			const float Radius = FMath::Min3(14.0f, DistIn * 0.45f, DistOut * 0.45f);
+			if (Radius < 1.0f)
+			{
+				AppendUniquePoint(OutPoints, Corner);
+				continue;
+			}
+
+			const FVector2D D1 = (Prev - Corner).GetSafeNormal();
+			const FVector2D D2 = (Next - Corner).GetSafeNormal();
+			const FVector2D T1 = Corner + D1 * Radius;
+			const FVector2D T2 = Corner + D2 * Radius;
+			const FVector2D Center = Corner + (D1 + D2) * Radius;
+
+			AppendUniquePoint(OutPoints, T1);
+
+			const FVector2D V1 = T1 - Center;
+			const FVector2D V2 = T2 - Center;
+			float A1 = FMath::Atan2(V1.Y, V1.X);
+			float A2 = FMath::Atan2(V2.Y, V2.X);
+			const float Cross = V1.X * V2.Y - V1.Y * V2.X;
+			if (Cross > 0.0f && A2 < A1)
+			{
+				A2 += 2.0f * PI;
+			}
+			else if (Cross < 0.0f && A2 > A1)
+			{
+				A2 -= 2.0f * PI;
+			}
+
+			const int32 ArcSegments = 5;
+			for (int32 ArcIndex = 1; ArcIndex < ArcSegments; ++ArcIndex)
+			{
+				const float T = static_cast<float>(ArcIndex) / static_cast<float>(ArcSegments);
+				const float Angle = FMath::Lerp(A1, A2, T);
+				AppendUniquePoint(OutPoints, Center + FVector2D(FMath::Cos(Angle), FMath::Sin(Angle)) * Radius);
+			}
+			AppendUniquePoint(OutPoints, T2);
+		}
+
+		AppendUniquePoint(OutPoints, RawPoints.Last());
+	}
+
+	static void BuildRoundedOrthogonalPathViaX(const FVector2D& Start, const FVector2D& End, const float MidX, TArray<FVector2D>& OutPoints)
+	{
+		const TArray<FVector2D> RawPoints = { Start, FVector2D(MidX, Start.Y), FVector2D(MidX, End.Y), End };
+		BuildRoundedPolyline(RawPoints, OutPoints);
+	}
+
+	static void BuildBundledOrthogonalPath(
+		const FVector2D& Start,
+		const FVector2D& End,
+		const float EntryX,
+		const float ExitX,
+		const float BridgeY,
+		TArray<FVector2D>& OutPoints)
+	{
+		const TArray<FVector2D> RawPoints =
+		{
+			Start,
+			FVector2D(EntryX, Start.Y),
+			FVector2D(EntryX, BridgeY),
+			FVector2D(ExitX, BridgeY),
+			FVector2D(ExitX, End.Y),
+			End
+		};
+		BuildRoundedPolyline(RawPoints, OutPoints);
+	}
+
+	static void BuildRoundedOrthogonalPath(const FVector2D& Start, const FVector2D& End, TArray<FVector2D>& OutPoints)
+	{
+		BuildRoundedOrthogonalPathViaX(Start, End, (Start.X + End.X) * 0.5f, OutPoints);
+	}
 }
 
 void SMetaplotFlowGraphWidget::Construct(const FArguments& InArgs)
 {
 	WeakFlow = InArgs._FlowAsset;
 	OnNodeSelected = InArgs._OnNodeSelected;
+	OnHorizontalPanChanged = InArgs._OnHorizontalPanChanged;
+	OnCreateTransition = InArgs._OnCreateTransition;
+	OnMoveNode = InArgs._OnMoveNode;
 	SelectedNodeId = FGuid();
 }
 
@@ -114,6 +216,34 @@ void SMetaplotFlowGraphWidget::SetSelectedNodeId(const FGuid& InNodeId)
 {
 	SelectedNodeId = InNodeId;
 	Invalidate(EInvalidateWidgetReason::Paint);
+}
+
+void SMetaplotFlowGraphWidget::SetHorizontalPanScreen(float InPanScreenX)
+{
+	PanScreen.X = InPanScreenX;
+	ClampPanToContent(CachedLocalSize);
+	BroadcastHorizontalPanChanged();
+	Invalidate(EInvalidateWidgetReason::Paint);
+}
+
+bool SMetaplotFlowGraphWidget::GetHorizontalScrollbarState(float& OutOffsetFraction, float& OutThumbSizeFraction) const
+{
+	float MinX, MinY, MaxX, MaxY;
+	GetContentBounds(MinX, MinY, MaxX, MaxY);
+	const float ContentWidth = FMath::Max(1.0f, MaxX - MinX);
+	const float ViewWidth = FMath::Max(1.0f, CachedLocalSize.X);
+
+	OutThumbSizeFraction = FMath::Clamp(ViewWidth / ContentWidth, 0.0f, 1.0f);
+	if (OutThumbSizeFraction >= 1.0f)
+	{
+		OutOffsetFraction = 0.0f;
+		return false;
+	}
+
+	const float MaxOffset = ContentWidth - ViewWidth;
+	const float CurrentOffset = FMath::Clamp(-PanScreen.X - MinX, 0.0f, MaxOffset);
+	OutOffsetFraction = MaxOffset > KINDA_SMALL_NUMBER ? (CurrentOffset / MaxOffset) : 0.0f;
+	return true;
 }
 
 FVector2D SMetaplotFlowGraphWidget::ComputeDesiredSize(float LayoutScaleMultiplier) const
@@ -139,28 +269,45 @@ FVector2D SMetaplotFlowGraphWidget::GetNodeTopLeftGraph(const FMetaplotNode& Nod
 	return FVector2D(X, Y);
 }
 
+FVector2D SMetaplotFlowGraphWidget::GetPinGraphPosition(const FMetaplotNode& Node, const EPinSide Side) const
+{
+	const FVector2D TL = GetNodeTopLeftGraph(Node);
+	const FVector2D Sz = GetNodeSize(Node);
+	if (Side == EPinSide::Left)
+	{
+		return TL + FVector2D(0.0f, Sz.Y * 0.5f);
+	}
+	if (Side == EPinSide::Right)
+	{
+		return TL + FVector2D(Sz.X, Sz.Y * 0.5f);
+	}
+	return TL + Sz * 0.5f;
+}
+
 FVector2D SMetaplotFlowGraphWidget::GraphToLocal(const FVector2D& GraphPos, const FVector2D& LocalSize) const
 {
 	(void)LocalSize;
-	return GraphPos * Zoom + PanScreen;
+	return GraphPos + PanScreen;
 }
 
 FVector2D SMetaplotFlowGraphWidget::LocalToGraph(const FVector2D& LocalPos, const FVector2D& LocalSize) const
 {
 	(void)LocalSize;
-	return (LocalPos - PanScreen) / Zoom;
+	return LocalPos - PanScreen;
 }
 
 void SMetaplotFlowGraphWidget::ClampPanToContent(const FVector2D& LocalSize)
 {
+	const float PrevPanX = PanScreen.X;
+
 	float BoundMinX, BoundMinY, BoundMaxX, BoundMaxY;
 	GetContentBounds(BoundMinX, BoundMinY, BoundMaxX, BoundMaxY);
 
 	const float ClampPadX = 0.0f;
 	const float ClampPadY = 0.0f;
 
-	const float MinPanX = LocalSize.X - (BoundMaxX + ClampPadX) * Zoom;
-	const float MaxPanX = -(BoundMinX - ClampPadX) * Zoom;
+	const float MinPanX = LocalSize.X - (BoundMaxX + ClampPadX);
+	const float MaxPanX = -(BoundMinX - ClampPadX);
 	if (MinPanX > MaxPanX)
 	{
 		PanScreen.X = (MinPanX + MaxPanX) * 0.5f;
@@ -170,8 +317,8 @@ void SMetaplotFlowGraphWidget::ClampPanToContent(const FVector2D& LocalSize)
 		PanScreen.X = FMath::Clamp(PanScreen.X, MinPanX, MaxPanX);
 	}
 
-	const float MinPanY = LocalSize.Y - (BoundMaxY + ClampPadY) * Zoom;
-	const float MaxPanY = -(BoundMinY - ClampPadY) * Zoom;
+	const float MinPanY = LocalSize.Y - (BoundMaxY + ClampPadY);
+	const float MaxPanY = -(BoundMinY - ClampPadY);
 	if (MinPanY > MaxPanY)
 	{
 		PanScreen.Y = (MinPanY + MaxPanY) * 0.5f;
@@ -179,6 +326,11 @@ void SMetaplotFlowGraphWidget::ClampPanToContent(const FVector2D& LocalSize)
 	else
 	{
 		PanScreen.Y = FMath::Clamp(PanScreen.Y, MinPanY, MaxPanY);
+	}
+
+	if (!FMath::IsNearlyEqual(PrevPanX, PanScreen.X))
+	{
+		BroadcastHorizontalPanChanged();
 	}
 }
 
@@ -219,17 +371,223 @@ bool SMetaplotFlowGraphWidget::HitTestNode(const FGeometry& MyGeometry, const FV
 	return false;
 }
 
+bool SMetaplotFlowGraphWidget::HitTestPin(const FGeometry& MyGeometry, const FVector2D& LocalPos, FGuid& OutNodeId, EPinSide& OutSide) const
+{
+	OutNodeId = FGuid();
+	OutSide = EPinSide::None;
+
+	UMetaplotFlow* Flow = WeakFlow.Get();
+	if (!Flow)
+	{
+		return false;
+	}
+
+	const float HitRadius = PinRadius + 4.0f;
+	const FVector2D LocalSize = MyGeometry.GetLocalSize();
+	for (int32 Index = Flow->Nodes.Num() - 1; Index >= 0; --Index)
+	{
+		const FMetaplotNode& Node = Flow->Nodes[Index];
+		const FVector2D LeftLocal = GraphToLocal(GetPinGraphPosition(Node, EPinSide::Left), LocalSize);
+		if ((LocalPos - LeftLocal).SizeSquared() <= FMath::Square(HitRadius))
+		{
+			OutNodeId = Node.NodeId;
+			OutSide = EPinSide::Left;
+			return true;
+		}
+
+		const FVector2D RightLocal = GraphToLocal(GetPinGraphPosition(Node, EPinSide::Right), LocalSize);
+		if ((LocalPos - RightLocal).SizeSquared() <= FMath::Square(HitRadius))
+		{
+			OutNodeId = Node.NodeId;
+			OutSide = EPinSide::Right;
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool SMetaplotFlowGraphWidget::IsTransitionRuleValid(const FGuid& SourceNodeId, const FGuid& TargetNodeId) const
+{
+	return GetTransitionInvalidReason(SourceNodeId, TargetNodeId) == EConnectionInvalidReason::None;
+}
+
+SMetaplotFlowGraphWidget::EConnectionInvalidReason SMetaplotFlowGraphWidget::GetTransitionInvalidReason(const FGuid& SourceNodeId, const FGuid& TargetNodeId) const
+{
+	if (!SourceNodeId.IsValid() || !TargetNodeId.IsValid())
+	{
+		return EConnectionInvalidReason::InvalidPinPair;
+	}
+	if (SourceNodeId == TargetNodeId)
+	{
+		return EConnectionInvalidReason::SameNode;
+	}
+
+	UMetaplotFlow* Flow = WeakFlow.Get();
+	if (!Flow)
+	{
+		return EConnectionInvalidReason::InvalidPinPair;
+	}
+
+	const FMetaplotNode* SourceNode = Flow->Nodes.FindByPredicate([SourceNodeId](const FMetaplotNode& Node)
+	{
+		return Node.NodeId == SourceNodeId;
+	});
+	const FMetaplotNode* TargetNode = Flow->Nodes.FindByPredicate([TargetNodeId](const FMetaplotNode& Node)
+	{
+		return Node.NodeId == TargetNodeId;
+	});
+	if (!SourceNode || !TargetNode)
+	{
+		return EConnectionInvalidReason::InvalidPinPair;
+	}
+
+	if (TargetNode->StageIndex <= SourceNode->StageIndex)
+	{
+		return EConnectionInvalidReason::BackwardStage;
+	}
+
+	if (SourceNode->LayerIndex == TargetNode->LayerIndex &&
+		TargetNode->StageIndex != SourceNode->StageIndex + 1)
+	{
+		return EConnectionInvalidReason::SameRowSkipStage;
+	}
+
+	return EConnectionInvalidReason::None;
+}
+
+SMetaplotFlowGraphWidget::EConnectionInvalidReason SMetaplotFlowGraphWidget::GetConnectionCandidateInvalidReason(const FGuid& PinDragNodeId, EPinSide DragSide, const FGuid& HoverNodeId, EPinSide HoverSide) const
+{
+	if (!PinDragNodeId.IsValid() || !HoverNodeId.IsValid() || DragSide == EPinSide::None || HoverSide == EPinSide::None)
+	{
+		return EConnectionInvalidReason::InvalidPinPair;
+	}
+	if (PinDragNodeId == HoverNodeId)
+	{
+		return EConnectionInvalidReason::SameNode;
+	}
+	if (HoverSide == DragSide)
+	{
+		return EConnectionInvalidReason::InvalidPinPair;
+	}
+
+	FGuid SourceNodeId;
+	FGuid TargetNodeId;
+	if (DragSide == EPinSide::Right && HoverSide == EPinSide::Left)
+	{
+		SourceNodeId = PinDragNodeId;
+		TargetNodeId = HoverNodeId;
+	}
+	else if (DragSide == EPinSide::Left && HoverSide == EPinSide::Right)
+	{
+		SourceNodeId = HoverNodeId;
+		TargetNodeId = PinDragNodeId;
+	}
+	else
+	{
+		return EConnectionInvalidReason::InvalidPinPair;
+	}
+
+	UMetaplotFlow* Flow = WeakFlow.Get();
+	if (Flow && Flow->Transitions.ContainsByPredicate([SourceNodeId, TargetNodeId](const FMetaplotTransition& Transition)
+	{
+		return Transition.SourceNodeId == SourceNodeId && Transition.TargetNodeId == TargetNodeId;
+	}))
+	{
+		return EConnectionInvalidReason::Duplicate;
+	}
+
+	const EConnectionInvalidReason RuleReason = GetTransitionInvalidReason(SourceNodeId, TargetNodeId);
+	if (RuleReason != EConnectionInvalidReason::None)
+	{
+		return RuleReason;
+	}
+
+	if (WouldCreateCycle(SourceNodeId, TargetNodeId))
+	{
+		return EConnectionInvalidReason::Cycle;
+	}
+
+	return EConnectionInvalidReason::None;
+}
+
+bool SMetaplotFlowGraphWidget::WouldCreateCycle(const FGuid& SourceNodeId, const FGuid& TargetNodeId) const
+{
+	if (!SourceNodeId.IsValid() || !TargetNodeId.IsValid() || SourceNodeId == TargetNodeId)
+	{
+		return true;
+	}
+
+	UMetaplotFlow* Flow = WeakFlow.Get();
+	if (!Flow)
+	{
+		return false;
+	}
+
+	TSet<FGuid> Visited;
+	TArray<FGuid> Stack;
+	Stack.Add(TargetNodeId);
+
+	while (!Stack.IsEmpty())
+	{
+		const FGuid Current = Stack.Pop(EAllowShrinking::No);
+		if (!Current.IsValid() || Visited.Contains(Current))
+		{
+			continue;
+		}
+
+		Visited.Add(Current);
+		if (Current == SourceNodeId)
+		{
+			return true;
+		}
+
+		for (const FMetaplotTransition& Transition : Flow->Transitions)
+		{
+			if (Transition.SourceNodeId == Current && Transition.TargetNodeId.IsValid())
+			{
+				Stack.Add(Transition.TargetNodeId);
+			}
+		}
+	}
+
+	return false;
+}
+
+bool SMetaplotFlowGraphWidget::IsConnectionCandidateValid(const FGuid& PinDragNodeId, EPinSide DragSide, const FGuid& HoverNodeId, EPinSide HoverSide) const
+{
+	return GetConnectionCandidateInvalidReason(PinDragNodeId, DragSide, HoverNodeId, HoverSide) == EConnectionInvalidReason::None;
+}
+
+void SMetaplotFlowGraphWidget::UpdateDragNodePlacementPreview(const FVector2D& LocalPos, const FVector2D& LocalSize)
+{
+	UMetaplotFlow* Flow = WeakFlow.Get();
+	if (!Flow || !DragNodeId.IsValid())
+	{
+		return;
+	}
+
+	const FMetaplotNode* Node = Flow->Nodes.FindByPredicate([this](const FMetaplotNode& N)
+	{
+		return N.NodeId == DragNodeId;
+	});
+	if (!Node)
+	{
+		return;
+	}
+
+	const FVector2D TLGraph = LocalToGraph(LocalPos, LocalSize) - DragGrabOffsetGraph;
+	const FVector2D Sz = GetNodeSize(*Node);
+	const FVector2D Center = TLGraph + Sz * 0.5f;
+	DragPreviewStage = FMath::FloorToInt(Center.X / StageCellWidth);
+	DragPreviewLayer = FMath::FloorToInt(Center.Y / LayerCellHeight);
+	bDragNodePlacementValid = MetaplotFlowPlacement::IsValidCellForNodeMove(Flow, DragNodeId, DragPreviewStage, DragPreviewLayer);
+}
+
 FReply SMetaplotFlowGraphWidget::OnMouseButtonDown(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent)
 {
 	const FVector2D LocalPos = MyGeometry.AbsoluteToLocal(MouseEvent.GetScreenSpacePosition());
-	const FVector2D LocalSize = MyGeometry.GetLocalSize();
-
-	const float Pad = 12.0f;
-	const float MW = 200.0f;
-	const float MH = 120.0f;
-	const FVector2D MiniTL(LocalSize.X - MW - Pad, LocalSize.Y - MH - Pad);
-	const FVector2D MiniBR(LocalSize.X - Pad, LocalSize.Y - Pad);
-	const bool bInMinimap = LocalPos.X >= MiniTL.X && LocalPos.X <= MiniBR.X && LocalPos.Y >= MiniTL.Y && LocalPos.Y <= MiniBR.Y;
+	CachedLocalSize = MyGeometry.GetLocalSize();
 
 	if (MouseEvent.GetEffectingButton() == EKeys::MiddleMouseButton)
 	{
@@ -239,24 +597,58 @@ FReply SMetaplotFlowGraphWidget::OnMouseButtonDown(const FGeometry& MyGeometry, 
 		return FReply::Handled().CaptureMouse(AsShared());
 	}
 
-	if (MouseEvent.GetEffectingButton() == EKeys::LeftMouseButton && bInMinimap)
-	{
-		bDraggingMinimap = true;
-		MinimapGrabLocal = LocalPos;
-		return FReply::Handled().CaptureMouse(AsShared());
-	}
-
 	if (MouseEvent.GetEffectingButton() == EKeys::LeftMouseButton)
 	{
+		FGuid PinNodeId;
+		EPinSide PinSide = EPinSide::None;
+		if (HitTestPin(MyGeometry, LocalPos, PinNodeId, PinSide))
+		{
+			bDraggingConnection = true;
+			DragPinNodeId = PinNodeId;
+			DragPinSide = PinSide;
+			DragCurrentLocal = LocalPos;
+			HoveredPinInvalidReason = EConnectionInvalidReason::None;
+
+			SelectedNodeId = PinNodeId;
+			if (OnNodeSelected.IsBound())
+			{
+				OnNodeSelected.Execute(PinNodeId);
+			}
+
+			Invalidate(EInvalidateWidgetReason::Paint);
+			return FReply::Handled().CaptureMouse(AsShared());
+		}
+
 		FGuid HitId;
 		if (HitTestNode(MyGeometry, LocalPos, HitId))
 		{
+			UMetaplotFlow* Flow = WeakFlow.Get();
+			const FMetaplotNode* HitNode = Flow ? Flow->Nodes.FindByPredicate([HitId](const FMetaplotNode& N)
+			{
+				return N.NodeId == HitId;
+			}) : nullptr;
+
+			if (HitNode)
+			{
+				bDraggingNode = true;
+				DragNodeId = HitId;
+				DragGrabOffsetGraph = LocalToGraph(LocalPos, CachedLocalSize) - GetNodeTopLeftGraph(*HitNode);
+				DragOrigStage = HitNode->StageIndex;
+				DragOrigLayer = HitNode->LayerIndex;
+				UpdateDragNodePlacementPreview(LocalPos, CachedLocalSize);
+				DragCurrentLocal = LocalPos;
+			}
+
 			SelectedNodeId = HitId;
 			if (OnNodeSelected.IsBound())
 			{
 				OnNodeSelected.Execute(HitId);
 			}
 			Invalidate(EInvalidateWidgetReason::Paint);
+			if (HitNode)
+			{
+				return FReply::Handled().CaptureMouse(AsShared());
+			}
 			return FReply::Handled();
 		}
 
@@ -274,15 +666,66 @@ FReply SMetaplotFlowGraphWidget::OnMouseButtonDown(const FGeometry& MyGeometry, 
 
 FReply SMetaplotFlowGraphWidget::OnMouseButtonUp(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent)
 {
+	const FVector2D LocalPos = MyGeometry.AbsoluteToLocal(MouseEvent.GetScreenSpacePosition());
+	CachedLocalSize = MyGeometry.GetLocalSize();
+
 	if (MouseEvent.GetEffectingButton() == EKeys::MiddleMouseButton && bPanning)
 	{
 		bPanning = false;
 		return FReply::Handled().ReleaseMouseCapture();
 	}
 
-	if (MouseEvent.GetEffectingButton() == EKeys::LeftMouseButton && bDraggingMinimap)
+	if (MouseEvent.GetEffectingButton() == EKeys::LeftMouseButton && bDraggingNode)
 	{
-		bDraggingMinimap = false;
+		UMetaplotFlow* Flow = WeakFlow.Get();
+		const bool bMoved = (DragPreviewStage != DragOrigStage || DragPreviewLayer != DragOrigLayer);
+		if (Flow && DragNodeId.IsValid() && bDragNodePlacementValid && bMoved && OnMoveNode.IsBound())
+		{
+			OnMoveNode.Execute(DragNodeId, DragPreviewStage, DragPreviewLayer);
+		}
+
+		bDraggingNode = false;
+		DragNodeId.Invalidate();
+		DragGrabOffsetGraph = FVector2D::ZeroVector;
+		bDragNodePlacementValid = false;
+		Invalidate(EInvalidateWidgetReason::Paint);
+		return FReply::Handled().ReleaseMouseCapture();
+	}
+
+	if (MouseEvent.GetEffectingButton() == EKeys::LeftMouseButton && bDraggingConnection)
+	{
+		FGuid HitPinNodeId;
+		EPinSide HitPinSide = EPinSide::None;
+		if (HitTestPin(MyGeometry, LocalPos, HitPinNodeId, HitPinSide) &&
+			IsConnectionCandidateValid(DragPinNodeId, DragPinSide, HitPinNodeId, HitPinSide))
+		{
+			FGuid SourceNodeId;
+			FGuid TargetNodeId;
+			if (DragPinSide == EPinSide::Right && HitPinSide == EPinSide::Left)
+			{
+				SourceNodeId = DragPinNodeId;
+				TargetNodeId = HitPinNodeId;
+			}
+			else if (DragPinSide == EPinSide::Left && HitPinSide == EPinSide::Right)
+			{
+				SourceNodeId = HitPinNodeId;
+				TargetNodeId = DragPinNodeId;
+			}
+
+			if (SourceNodeId.IsValid() && TargetNodeId.IsValid() && OnCreateTransition.IsBound())
+			{
+				OnCreateTransition.Execute(SourceNodeId, TargetNodeId);
+			}
+		}
+
+		bDraggingConnection = false;
+		DragPinNodeId.Invalidate();
+		DragPinSide = EPinSide::None;
+		HoveredPinNodeId.Invalidate();
+		HoveredPinSide = EPinSide::None;
+		bHoveredPinAcceptsConnection = false;
+		HoveredPinInvalidReason = EConnectionInvalidReason::None;
+		Invalidate(EInvalidateWidgetReason::Paint);
 		return FReply::Handled().ReleaseMouseCapture();
 	}
 
@@ -293,6 +736,7 @@ FReply SMetaplotFlowGraphWidget::OnMouseMove(const FGeometry& MyGeometry, const 
 {
 	const FVector2D LocalPos = MyGeometry.AbsoluteToLocal(MouseEvent.GetScreenSpacePosition());
 	const FVector2D LocalSize = MyGeometry.GetLocalSize();
+	CachedLocalSize = LocalSize;
 
 	if (bPanning && MouseEvent.IsMouseButtonDown(EKeys::MiddleMouseButton))
 	{
@@ -303,26 +747,35 @@ FReply SMetaplotFlowGraphWidget::OnMouseMove(const FGeometry& MyGeometry, const 
 		return FReply::Handled();
 	}
 
-	if (bDraggingMinimap)
+	if (bDraggingNode)
 	{
-		float MinX, MinY, MaxX, MaxY;
-		GetContentBounds(MinX, MinY, MaxX, MaxY);
-		const float ContentW = FMath::Max(1.0f, MaxX - MinX);
-		const float ContentH = FMath::Max(1.0f, MaxY - MinY);
+		DragCurrentLocal = LocalPos;
+		UpdateDragNodePlacementPreview(LocalPos, LocalSize);
+		Invalidate(EInvalidateWidgetReason::Paint);
+		return FReply::Handled();
+	}
 
-		const float Pad = 12.0f;
-		const float MW = 200.0f;
-		const float MH = 120.0f;
-		const FVector2D MiniTL(LocalSize.X - MW - Pad, LocalSize.Y - MH - Pad);
+	if (bDraggingConnection)
+	{
+		DragCurrentLocal = LocalPos;
+		FGuid HitPinNodeId;
+		EPinSide HitPinSide = EPinSide::None;
+		if (HitTestPin(MyGeometry, LocalPos, HitPinNodeId, HitPinSide) &&
+			HitPinNodeId.IsValid())
+		{
+			HoveredPinNodeId = HitPinNodeId;
+			HoveredPinSide = HitPinSide;
+			HoveredPinInvalidReason = GetConnectionCandidateInvalidReason(DragPinNodeId, DragPinSide, HitPinNodeId, HitPinSide);
+			bHoveredPinAcceptsConnection = HoveredPinInvalidReason == EConnectionInvalidReason::None;
+		}
+		else
+		{
+			HoveredPinNodeId.Invalidate();
+			HoveredPinSide = EPinSide::None;
+			bHoveredPinAcceptsConnection = false;
+			HoveredPinInvalidReason = EConnectionInvalidReason::None;
+		}
 
-		const float U = (LocalPos.X - MiniTL.X) / MW;
-		const float V = (LocalPos.Y - MiniTL.Y) / MH;
-		const float TargetCenterGX = MinX + U * ContentW;
-		const float TargetCenterGY = MinY + V * ContentH;
-
-		const FVector2D ViewHalf = LocalSize * 0.5f;
-		PanScreen = ViewHalf - FVector2D(TargetCenterGX, TargetCenterGY) * Zoom;
-		ClampPanToContent(LocalSize);
 		Invalidate(EInvalidateWidgetReason::Paint);
 		return FReply::Handled();
 	}
@@ -345,36 +798,22 @@ FReply SMetaplotFlowGraphWidget::OnMouseMove(const FGeometry& MyGeometry, const 
 	return FReply::Unhandled();
 }
 
-FReply SMetaplotFlowGraphWidget::OnMouseWheel(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent)
-{
-	const float Delta = MouseEvent.GetWheelDelta();
-	if (FMath::IsNearlyZero(Delta))
-	{
-		return FReply::Unhandled();
-	}
-
-	const FVector2D LocalPos = MyGeometry.AbsoluteToLocal(MouseEvent.GetScreenSpacePosition());
-	const FVector2D LocalSize = MyGeometry.GetLocalSize();
-	const FVector2D GraphUnderCursor = LocalToGraph(LocalPos, LocalSize);
-
-	const float OldZoom = Zoom;
-	const float Factor = Delta > 0.0f ? 1.1f : 0.9f;
-	const float NewZoom = FMath::Clamp(OldZoom * Factor, ZoomMin, ZoomMax);
-	if (FMath::IsNearlyEqual(NewZoom, OldZoom))
-	{
-		return FReply::Handled();
-	}
-
-	Zoom = NewZoom;
-	PanScreen = LocalPos - GraphUnderCursor * Zoom;
-	ClampPanToContent(LocalSize);
-	Invalidate(EInvalidateWidgetReason::Paint);
-	return FReply::Handled();
-}
-
 FCursorReply SMetaplotFlowGraphWidget::OnCursorQuery(const FGeometry& MyGeometry, const FPointerEvent& CursorEvent) const
 {
+	(void)MyGeometry;
+	(void)CursorEvent;
+
 	if (bPanning)
+	{
+		return FCursorReply::Cursor(EMouseCursor::GrabHand);
+	}
+
+	if (bDraggingConnection)
+	{
+		return FCursorReply::Cursor(EMouseCursor::Crosshairs);
+	}
+
+	if (bDraggingNode)
 	{
 		return FCursorReply::Cursor(EMouseCursor::GrabHand);
 	}
@@ -395,6 +834,7 @@ int32 SMetaplotFlowGraphWidget::OnPaint(
 	const FSlateFontInfo SmallFont = FCoreStyle::GetDefaultFontStyle("Regular", 8);
 
 	const FVector2D LocalSize = AllottedGeometry.GetLocalSize();
+	CachedLocalSize = LocalSize;
 
 	auto MakeGeo = [&AllottedGeometry](const FVector2D& Position, const FVector2D& Size) -> FPaintGeometry
 	{
@@ -418,12 +858,6 @@ int32 SMetaplotFlowGraphWidget::OnPaint(
 	float BoundMinX, BoundMinY, BoundMaxX, BoundMaxY;
 	GetContentBounds(BoundMinX, BoundMinY, BoundMaxX, BoundMaxY);
 
-	auto EvalBezier = [](const FVector2D& P0, const FVector2D& P1, const FVector2D& P2, const FVector2D& P3, float T) -> FVector2D
-	{
-		const float U = 1.0f - T;
-		return U * U * U * P0 + 3.0f * U * U * T * P1 + 3.0f * U * T * T * P2 + T * T * T * P3;
-	};
-
 	// Grid (major lines at stage/layer cells)
 	{
 		const MetaplotGraphWidgetPrivate::FGridRange GridRange = MetaplotGraphWidgetPrivate::BuildGridRange(Flow);
@@ -441,7 +875,7 @@ int32 SMetaplotFlowGraphWidget::OnPaint(
 		{
 			const float Left = S * StageCellWidth;
 			const FVector2D LocalTL = GraphToLocal(FVector2D(Left, HeaderTop), LocalSize);
-			const FVector2D LocalSizeCell(StageCellWidth * Zoom, (BoundMaxY - HeaderTop) * Zoom);
+			const FVector2D LocalSizeCell(StageCellWidth, (BoundMaxY - HeaderTop));
 			FSlateDrawElement::MakeBox(
 				OutDrawElements,
 				LayerId,
@@ -451,7 +885,7 @@ int32 SMetaplotFlowGraphWidget::OnPaint(
 				(S % 2 == 0) ? StageBandA : StageBandB);
 
 			const FVector2D LocalHeaderTL = GraphToLocal(FVector2D(Left, HeaderTop), LocalSize);
-			const FVector2D LocalHeaderSize(StageCellWidth * Zoom, HeaderHeight * Zoom);
+			const FVector2D LocalHeaderSize(StageCellWidth, HeaderHeight);
 			FSlateDrawElement::MakeBox(
 				OutDrawElements,
 				LayerId + 1,
@@ -579,9 +1013,64 @@ int32 SMetaplotFlowGraphWidget::OnPaint(
 		});
 	};
 
+	const auto LayoutForDraw = [this](const FMetaplotNode& N) -> FMetaplotNode
+	{
+		if (bDraggingNode && N.NodeId == DragNodeId)
+		{
+			FMetaplotNode M = N;
+			M.StageIndex = DragPreviewStage;
+			M.LayerIndex = DragPreviewLayer;
+			return M;
+		}
+		return N;
+	};
+
+	if (bDraggingNode && Flow && DragNodeId.IsValid())
+	{
+		const MetaplotGraphWidgetPrivate::FGridRange GR0 = MetaplotGraphWidgetPrivate::BuildGridRange(Flow);
+		const int32 HS0 = FMath::Min(GR0.MinStage, DragPreviewStage - 2);
+		const int32 HS1 = FMath::Max(GR0.MaxStage, DragPreviewStage + 2);
+		const int32 HL0 = FMath::Min(GR0.MinLayer, DragPreviewLayer - 2);
+		const int32 HL1 = FMath::Max(GR0.MaxLayer, DragPreviewLayer + 2);
+
+		for (int32 S = HS0; S <= HS1; ++S)
+		{
+			for (int32 L = HL0; L <= HL1; ++L)
+			{
+				const bool bOk = MetaplotFlowPlacement::IsValidCellForNodeMove(Flow, DragNodeId, S, L);
+				const FVector2D CellTL = GraphToLocal(FVector2D(S * StageCellWidth, L * LayerCellHeight), LocalSize);
+				const FVector2D CellSz(StageCellWidth, LayerCellHeight);
+				const FLinearColor CellColor = bOk
+					? FLinearColor(0.15f, 0.85f, 0.35f, 0.14f)
+					: FLinearColor(0.95f, 0.28f, 0.22f, 0.11f);
+				FSlateDrawElement::MakeBox(
+					OutDrawElements,
+					LayerId,
+					MakeGeo(CellTL, CellSz),
+					WhiteBox,
+					ESlateDrawEffect::None,
+					CellColor);
+			}
+		}
+	}
+
 	// Transitions (under nodes)
 	if (Flow)
 	{
+		struct FTransitionDrawLaneData
+		{
+			const FMetaplotTransition* Transition = nullptr;
+			FMetaplotNode Src;
+			FMetaplotNode Dst;
+			int32 SrcStage = 0;
+			int32 DstStage = 0;
+			int32 SrcLayer = 0;
+			int32 DstLayer = 0;
+		};
+
+		TArray<FTransitionDrawLaneData> TransitionLanes;
+		TransitionLanes.Reserve(Flow->Transitions.Num());
+
 		for (const FMetaplotTransition& Tr : Flow->Transitions)
 		{
 			const FMetaplotNode* Src = ResolveNode(Tr.SourceNodeId);
@@ -591,62 +1080,179 @@ int32 SMetaplotFlowGraphWidget::OnPaint(
 				continue;
 			}
 
-			const FVector2D SrcTL = GetNodeTopLeftGraph(*Src);
-			const FVector2D SrcSz = GetNodeSize(*Src);
-			const FVector2D DstTL = GetNodeTopLeftGraph(*Dst);
-			const FVector2D DstSz = GetNodeSize(*Dst);
+			FTransitionDrawLaneData LaneData;
+			LaneData.Transition = &Tr;
+			LaneData.Src = LayoutForDraw(*Src);
+			LaneData.Dst = LayoutForDraw(*Dst);
+			LaneData.SrcStage = LaneData.Src.StageIndex;
+			LaneData.DstStage = LaneData.Dst.StageIndex;
+			LaneData.SrcLayer = LaneData.Src.LayerIndex;
+			LaneData.DstLayer = LaneData.Dst.LayerIndex;
+			TransitionLanes.Add(LaneData);
+		}
 
-			const FVector2D P0 = GraphToLocal(SrcTL + FVector2D(SrcSz.X, SrcSz.Y * 0.5f), LocalSize);
-			const FVector2D P3 = GraphToLocal(DstTL + FVector2D(0.0f, DstSz.Y * 0.5f), LocalSize);
-
-			const float Horizontal = FMath::Max(48.0f, FMath::Abs(P3.X - P0.X) * 0.45f);
-			const FVector2D P1 = P0 + FVector2D(Horizontal, 0.0f);
-			const FVector2D P2 = P3 - FVector2D(Horizontal, 0.0f);
-
+		TransitionLanes.Sort([](const FTransitionDrawLaneData& A, const FTransitionDrawLaneData& B)
+		{
+			if (A.SrcStage != B.SrcStage)
 			{
-				const int32 Segments = 24;
-				for (int32 Seg = 0; Seg < Segments; ++Seg)
-				{
-					const float T0 = static_cast<float>(Seg) / static_cast<float>(Segments);
-					const float T1 = static_cast<float>(Seg + 1) / static_cast<float>(Segments);
-					const FVector2D A = EvalBezier(P0, P1, P2, P3, T0);
-					const FVector2D B = EvalBezier(P0, P1, P2, P3, T1);
-					TArray<FVector2D> Line;
-					Line.Add(A);
-					Line.Add(B);
-					FSlateDrawElement::MakeLines(
-						OutDrawElements,
-						LayerId,
-						RootGeo,
-						Line,
-						ESlateDrawEffect::None,
-						FLinearColor(0.72f, 0.74f, 0.78f, 0.85f),
-						true,
-						2.0f);
-				}
+				return A.SrcStage < B.SrcStage;
 			}
-
-			// Arrow head at P3
+			if (A.DstStage != B.DstStage)
 			{
-				const FVector2D Tangent = (P3 - EvalBezier(P0, P1, P2, P3, 0.92f)).GetSafeNormal();
-				const FVector2D Ortho(-Tangent.Y, Tangent.X);
-				const FVector2D A = P3;
-				const FVector2D B = P3 - Tangent * 10.0f + Ortho * 5.0f;
-				const FVector2D C = P3 - Tangent * 10.0f - Ortho * 5.0f;
-				TArray<FVector2D> Tri;
-				Tri.Add(A);
-				Tri.Add(B);
-				Tri.Add(C);
-				Tri.Add(A);
+				return A.DstStage < B.DstStage;
+			}
+			if (A.SrcLayer != B.SrcLayer)
+			{
+				return A.SrcLayer < B.SrcLayer;
+			}
+			if (A.DstLayer != B.DstLayer)
+			{
+				return A.DstLayer < B.DstLayer;
+			}
+			if (A.Transition->SourceNodeId.A != B.Transition->SourceNodeId.A)
+			{
+				return A.Transition->SourceNodeId.A < B.Transition->SourceNodeId.A;
+			}
+			if (A.Transition->SourceNodeId.B != B.Transition->SourceNodeId.B)
+			{
+				return A.Transition->SourceNodeId.B < B.Transition->SourceNodeId.B;
+			}
+			if (A.Transition->SourceNodeId.C != B.Transition->SourceNodeId.C)
+			{
+				return A.Transition->SourceNodeId.C < B.Transition->SourceNodeId.C;
+			}
+			return A.Transition->SourceNodeId.D < B.Transition->SourceNodeId.D;
+		});
+
+		TMap<uint64, int32> GroupCount;
+		for (const FTransitionDrawLaneData& Lane : TransitionLanes)
+		{
+			const uint64 Key = (static_cast<uint64>(static_cast<uint32>(Lane.SrcStage)) << 32)
+				| static_cast<uint32>(Lane.DstStage);
+			GroupCount.FindOrAdd(Key) += 1;
+		}
+
+		TMap<uint64, int32> GroupNextIndex;
+		for (const FTransitionDrawLaneData& Lane : TransitionLanes)
+		{
+			const uint64 Key = (static_cast<uint64>(static_cast<uint32>(Lane.SrcStage)) << 32)
+				| static_cast<uint32>(Lane.DstStage);
+			const int32 LaneCount = GroupCount.FindRef(Key);
+			const int32 LaneIndex = GroupNextIndex.FindOrAdd(Key);
+			GroupNextIndex[Key] = LaneIndex + 1;
+
+			const FVector2D P0 = GraphToLocal(GetPinGraphPosition(Lane.Src, EPinSide::Right), LocalSize);
+			const FVector2D P3 = GraphToLocal(GetPinGraphPosition(Lane.Dst, EPinSide::Left), LocalSize);
+			const float LaneOffset = (static_cast<float>(LaneIndex) - (static_cast<float>(LaneCount - 1) * 0.5f));
+			const float MidXOffset = LaneOffset * 14.0f;
+			const int32 StageSpan = FMath::Max(0, Lane.DstStage - Lane.SrcStage);
+			TArray<FVector2D> PathPoints;
+			if (StageSpan >= 2)
+			{
+				const float EntryGraphX = (Lane.SrcStage + 1) * StageCellWidth - 28.0f;
+				const float ExitGraphX = Lane.DstStage * StageCellWidth + 28.0f;
+				const float EntryX = GraphToLocal(FVector2D(EntryGraphX, 0.0f), LocalSize).X;
+				const float ExitX = GraphToLocal(FVector2D(ExitGraphX, 0.0f), LocalSize).X;
+				const float BridgeY = ((P0.Y + P3.Y) * 0.5f) + LaneOffset * 10.0f;
+				MetaplotGraphWidgetPrivate::BuildBundledOrthogonalPath(
+					P0,
+					P3,
+					FMath::Clamp(EntryX, P0.X + 22.0f, P3.X - 40.0f),
+					FMath::Clamp(ExitX, P0.X + 40.0f, P3.X - 22.0f),
+					BridgeY,
+					PathPoints);
+			}
+			else
+			{
+				const float MidBase = (P0.X + P3.X) * 0.5f;
+				const float MidX = FMath::Clamp(MidBase + MidXOffset, P0.X + 24.0f, P3.X - 24.0f);
+				MetaplotGraphWidgetPrivate::BuildRoundedOrthogonalPathViaX(P0, P3, MidX, PathPoints);
+			}
+			if (PathPoints.Num() >= 2)
+			{
+				const bool bEmphasized = (Lane.Src.NodeId == SelectedNodeId) ||
+					(Lane.Dst.NodeId == SelectedNodeId) ||
+					(Lane.Src.NodeId == HoveredNodeId) ||
+					(Lane.Dst.NodeId == HoveredNodeId);
+				const FLinearColor LineColor = bEmphasized
+					? FLinearColor(0.38f, 0.78f, 1.0f, 0.96f)
+					: FLinearColor(0.68f, 0.70f, 0.74f, 0.52f);
+				const float LineThickness = bEmphasized ? 2.4f : 1.55f;
+
 				FSlateDrawElement::MakeLines(
 					OutDrawElements,
 					LayerId,
 					RootGeo,
-					Tri,
+					PathPoints,
 					ESlateDrawEffect::None,
-					FLinearColor(0.72f, 0.74f, 0.78f, 0.9f),
+					LineColor,
 					true,
-					1.5f);
+					LineThickness);
+
+				const FVector2D EndDir = (PathPoints.Last() - PathPoints[PathPoints.Num() - 2]).GetSafeNormal();
+				const FVector2D Ortho(-EndDir.Y, EndDir.X);
+				const FVector2D A = PathPoints.Last();
+				const FVector2D B = A - EndDir * 10.0f + Ortho * 5.0f;
+				const FVector2D C = A - EndDir * 10.0f - Ortho * 5.0f;
+				TArray<FVector2D> Arrow;
+				Arrow.Add(A);
+				Arrow.Add(B);
+				Arrow.Add(C);
+				Arrow.Add(A);
+				FSlateDrawElement::MakeLines(
+					OutDrawElements,
+					LayerId,
+					RootGeo,
+					Arrow,
+					ESlateDrawEffect::None,
+					LineColor.CopyWithNewOpacity(bEmphasized ? 0.98f : 0.70f),
+					true,
+					bEmphasized ? 1.8f : 1.25f);
+			}
+		}
+	}
+
+	if (bDraggingConnection && DragPinNodeId.IsValid())
+	{
+		const FMetaplotNode* DragNode = ResolveNode(DragPinNodeId);
+		if (DragNode)
+		{
+			const FMetaplotNode DragLayout = LayoutForDraw(*DragNode);
+			const FVector2D P0 = GraphToLocal(GetPinGraphPosition(DragLayout, DragPinSide), LocalSize);
+			const FVector2D P3 = DragCurrentLocal;
+			TArray<FVector2D> PreviewPath;
+			MetaplotGraphWidgetPrivate::BuildRoundedOrthogonalPath(P0, P3, PreviewPath);
+			FLinearColor InvalidPreviewColor(1.0f, 0.45f, 0.35f, 0.92f);
+			switch (HoveredPinInvalidReason)
+			{
+			case EConnectionInvalidReason::BackwardStage:
+				InvalidPreviewColor = FLinearColor(0.65f, 0.65f, 0.68f, 0.95f);
+				break;
+			case EConnectionInvalidReason::SameRowSkipStage:
+				InvalidPreviewColor = FLinearColor(1.0f, 0.62f, 0.30f, 0.95f);
+				break;
+			case EConnectionInvalidReason::Duplicate:
+				InvalidPreviewColor = FLinearColor(0.95f, 0.80f, 0.30f, 0.95f);
+				break;
+			default:
+				break;
+			}
+			const FLinearColor PreviewColor = bHoveredPinAcceptsConnection
+				? FLinearColor(0.35f, 0.75f, 1.0f, 0.9f)
+				: (HoveredPinInvalidReason == EConnectionInvalidReason::None
+					? FLinearColor(0.35f, 0.75f, 1.0f, 0.9f)
+					: InvalidPreviewColor);
+			if (PreviewPath.Num() >= 2)
+			{
+				FSlateDrawElement::MakeLines(
+					OutDrawElements,
+					LayerId + 1,
+					RootGeo,
+					PreviewPath,
+					ESlateDrawEffect::None,
+					PreviewColor,
+					true,
+					2.0f);
 			}
 		}
 	}
@@ -658,7 +1264,8 @@ int32 SMetaplotFlowGraphWidget::OnPaint(
 	{
 		for (const FMetaplotNode& Node : Flow->Nodes)
 		{
-			const FVector2D TL = GetNodeTopLeftGraph(Node);
+			const FMetaplotNode DrawLayout = LayoutForDraw(Node);
+			const FVector2D TL = GetNodeTopLeftGraph(DrawLayout);
 			const FVector2D Sz = GetNodeSize(Node);
 			const FVector2D LocalTL = GraphToLocal(TL, LocalSize);
 
@@ -745,99 +1352,152 @@ int32 SMetaplotFlowGraphWidget::OnPaint(
 				FCoreStyle::GetDefaultFontStyle("Black", 14),
 				ESlateDrawEffect::None,
 				Accent);
+
+			const FVector2D LeftPinLocal = GraphToLocal(GetPinGraphPosition(DrawLayout, EPinSide::Left), LocalSize);
+			const FVector2D RightPinLocal = GraphToLocal(GetPinGraphPosition(DrawLayout, EPinSide::Right), LocalSize);
+
+			const bool bLeftHover = (HoveredPinNodeId == Node.NodeId && HoveredPinSide == EPinSide::Left);
+			const bool bRightHover = (HoveredPinNodeId == Node.NodeId && HoveredPinSide == EPinSide::Right);
+			const bool bLeftDrag = (bDraggingConnection && DragPinNodeId == Node.NodeId && DragPinSide == EPinSide::Left);
+			const bool bRightDrag = (bDraggingConnection && DragPinNodeId == Node.NodeId && DragPinSide == EPinSide::Right);
+
+			const float LeftRadius = PinRadius + (bLeftHover || bLeftDrag ? 2.0f : 0.0f);
+			const float RightRadius = PinRadius + (bRightHover || bRightDrag ? 2.0f : 0.0f);
+			const FLinearColor PinFill(0.11f, 0.13f, 0.16f, 1.0f);
+			const FLinearColor ActiveValidColor(0.35f, 0.75f, 1.0f, 1.0f);
+			FLinearColor ActiveInvalidColor(1.0f, 0.35f, 0.35f, 1.0f);
+			switch (HoveredPinInvalidReason)
+			{
+			case EConnectionInvalidReason::BackwardStage:
+				ActiveInvalidColor = FLinearColor(0.65f, 0.65f, 0.68f, 1.0f);
+				break;
+			case EConnectionInvalidReason::SameRowSkipStage:
+				ActiveInvalidColor = FLinearColor(1.0f, 0.62f, 0.30f, 1.0f);
+				break;
+			case EConnectionInvalidReason::Cycle:
+				ActiveInvalidColor = FLinearColor(1.0f, 0.35f, 0.35f, 1.0f);
+				break;
+			case EConnectionInvalidReason::Duplicate:
+				ActiveInvalidColor = FLinearColor(0.95f, 0.80f, 0.30f, 1.0f);
+				break;
+			case EConnectionInvalidReason::SameNode:
+				ActiveInvalidColor = FLinearColor(1.0f, 0.45f, 0.45f, 1.0f);
+				break;
+			default:
+				ActiveInvalidColor = FLinearColor(1.0f, 0.35f, 0.35f, 1.0f);
+				break;
+			}
+			const bool bLeftInvalid = bLeftHover && bDraggingConnection && !bHoveredPinAcceptsConnection;
+			const bool bRightInvalid = bRightHover && bDraggingConnection && !bHoveredPinAcceptsConnection;
+			const FLinearColor LeftOutline = bLeftDrag ? ActiveValidColor : (bLeftInvalid ? ActiveInvalidColor : ((bLeftHover || bLeftDrag) ? ActiveValidColor : FLinearColor(0.70f, 0.74f, 0.80f, 0.95f)));
+			const FLinearColor RightOutline = bRightDrag ? ActiveValidColor : (bRightInvalid ? ActiveInvalidColor : ((bRightHover || bRightDrag) ? ActiveValidColor : FLinearColor(0.70f, 0.74f, 0.80f, 0.95f)));
+
+			FSlateDrawElement::MakeBox(
+				OutDrawElements,
+				LayerId + 1,
+				MakeGeo(LeftPinLocal - FVector2D(LeftRadius, LeftRadius), FVector2D(LeftRadius * 2.0f, LeftRadius * 2.0f)),
+				WhiteBox,
+				ESlateDrawEffect::None,
+				PinFill);
+			FSlateDrawElement::MakeBox(
+				OutDrawElements,
+				LayerId + 2,
+				MakeGeo(LeftPinLocal - FVector2D(LeftRadius + 1.0f, 1.0f), FVector2D((LeftRadius + 1.0f) * 2.0f, 2.0f)),
+				WhiteBox,
+				ESlateDrawEffect::None,
+				LeftOutline);
+			FSlateDrawElement::MakeBox(
+				OutDrawElements,
+				LayerId + 2,
+				MakeGeo(LeftPinLocal - FVector2D(1.0f, LeftRadius + 1.0f), FVector2D(2.0f, (LeftRadius + 1.0f) * 2.0f)),
+				WhiteBox,
+				ESlateDrawEffect::None,
+				LeftOutline);
+
+			FSlateDrawElement::MakeBox(
+				OutDrawElements,
+				LayerId + 1,
+				MakeGeo(RightPinLocal - FVector2D(RightRadius, RightRadius), FVector2D(RightRadius * 2.0f, RightRadius * 2.0f)),
+				WhiteBox,
+				ESlateDrawEffect::None,
+				PinFill);
+			FSlateDrawElement::MakeBox(
+				OutDrawElements,
+				LayerId + 2,
+				MakeGeo(RightPinLocal - FVector2D(RightRadius + 1.0f, 1.0f), FVector2D((RightRadius + 1.0f) * 2.0f, 2.0f)),
+				WhiteBox,
+				ESlateDrawEffect::None,
+				RightOutline);
+			FSlateDrawElement::MakeBox(
+				OutDrawElements,
+				LayerId + 2,
+				MakeGeo(RightPinLocal - FVector2D(1.0f, RightRadius + 1.0f), FVector2D(2.0f, (RightRadius + 1.0f) * 2.0f)),
+				WhiteBox,
+				ESlateDrawEffect::None,
+				RightOutline);
 		}
+	}
+
+	if (bDraggingConnection && HoveredPinInvalidReason != EConnectionInvalidReason::None && !bHoveredPinAcceptsConnection)
+	{
+		FString ReasonText = TEXT("连接无效");
+		switch (HoveredPinInvalidReason)
+		{
+		case EConnectionInvalidReason::SameNode:
+			ReasonText = TEXT("无效：不能连接到自身");
+			break;
+		case EConnectionInvalidReason::BackwardStage:
+			ReasonText = TEXT("无效：禁止从右往左连接");
+			break;
+		case EConnectionInvalidReason::SameRowSkipStage:
+			ReasonText = TEXT("无效：同行只能连接下一列");
+			break;
+		case EConnectionInvalidReason::Cycle:
+			ReasonText = TEXT("无效：该连接会形成环");
+			break;
+		case EConnectionInvalidReason::Duplicate:
+			ReasonText = TEXT("无效：连线已存在");
+			break;
+		case EConnectionInvalidReason::InvalidPinPair:
+			ReasonText = TEXT("无效：请从右引脚连接到左引脚");
+			break;
+		default:
+			break;
+		}
+
+		const FVector2D HintPos = DragCurrentLocal + FVector2D(12.0f, 10.0f);
+		FSlateDrawElement::MakeText(
+			OutDrawElements,
+			LayerId + 3,
+			MakeGeo(HintPos, FVector2D(220.0f, 20.0f)),
+			ReasonText,
+			SmallFont,
+			ESlateDrawEffect::None,
+			FLinearColor(1.0f, 0.70f, 0.65f, 0.98f));
+	}
+
+	if (bDraggingNode && DragNodeId.IsValid() && !bDragNodePlacementValid)
+	{
+		const FVector2D HintPos = DragCurrentLocal + FVector2D(12.0f, 10.0f);
+		FSlateDrawElement::MakeText(
+			OutDrawElements,
+			LayerId + 3,
+			MakeGeo(HintPos, FVector2D(300.0f, 22.0f)),
+			FString(TEXT("不可放置：与连线 Stage/Layer 规则冲突或格子已被占用")),
+			SmallFont,
+			ESlateDrawEffect::None,
+			FLinearColor(1.0f, 0.70f, 0.65f, 0.98f));
 	}
 
 	++LayerId;
 
-	// Minimap (eagle-eye)
-	{
-		const float Pad = 12.0f;
-		const float MW = 200.0f;
-		const float MH = 120.0f;
-		const FVector2D MiniTL(LocalSize.X - MW - Pad, LocalSize.Y - MH - Pad);
-		const FPaintGeometry MiniGeo = MakeGeo(MiniTL, FVector2D(MW, MH));
-
-		FSlateDrawElement::MakeBox(
-			OutDrawElements,
-			LayerId,
-			MiniGeo,
-			WhiteBox,
-			ESlateDrawEffect::None,
-			FLinearColor(0.04f, 0.04f, 0.045f, 0.92f));
-
-		FSlateDrawElement::MakeBox(
-			OutDrawElements,
-			LayerId,
-			MakeGeo(MiniTL, FVector2D(MW, 1.0f)),
-			WhiteBox,
-			ESlateDrawEffect::None,
-			FLinearColor(0.25f, 0.45f, 0.85f, 0.9f));
-
-		const float ContentW = FMath::Max(1.0f, BoundMaxX - BoundMinX);
-		const float ContentH = FMath::Max(1.0f, BoundMaxY - BoundMinY);
-
-		auto GraphToMini = [&](const FVector2D& G) -> FVector2D
-		{
-			const float U = (G.X - BoundMinX) / ContentW;
-			const float V = (G.Y - BoundMinY) / ContentH;
-			return MiniTL + FVector2D(U * MW, V * MH);
-		};
-
-		if (Flow)
-		{
-			for (const FMetaplotNode& Node : Flow->Nodes)
-			{
-				const FVector2D TL = GetNodeTopLeftGraph(Node);
-				const FVector2D Sz = GetNodeSize(Node);
-				const FVector2D C = TL + Sz * 0.5f;
-				const FVector2D P = GraphToMini(C);
-				const FPaintGeometry DotGeo = MakeGeo(P - FVector2D(1.5f, 1.5f), FVector2D(3.0f, 3.0f));
-				FSlateDrawElement::MakeBox(
-					OutDrawElements,
-					LayerId,
-					DotGeo,
-					WhiteBox,
-					ESlateDrawEffect::None,
-					MetaplotGraphWidgetPrivate::GetTypeAccent(Node.NodeType));
-			}
-		}
-
-		// Viewport rect on minimap
-		{
-			const FVector2D V0 = LocalToGraph(FVector2D::ZeroVector, LocalSize);
-			const FVector2D V1 = LocalToGraph(LocalSize, LocalSize);
-			const FVector2D Mini0 = GraphToMini(V0);
-			const FVector2D Mini1 = GraphToMini(V1);
-			const FVector2D R0(FMath::Min(Mini0.X, Mini1.X), FMath::Min(Mini0.Y, Mini1.Y));
-			const FVector2D R1(FMath::Max(Mini0.X, Mini1.X), FMath::Max(Mini0.Y, Mini1.Y));
-
-			TArray<FVector2D> Frame;
-			Frame.Add(R0);
-			Frame.Add(FVector2D(R1.X, R0.Y));
-			Frame.Add(R1);
-			Frame.Add(FVector2D(R0.X, R1.Y));
-			Frame.Add(R0);
-			FSlateDrawElement::MakeLines(
-				OutDrawElements,
-				LayerId,
-				RootGeo,
-				Frame,
-				ESlateDrawEffect::None,
-				FLinearColor(0.35f, 0.75f, 1.0f, 0.95f),
-				true,
-				1.5f);
-		}
-
-		FSlateDrawElement::MakeText(
-			OutDrawElements,
-			LayerId,
-			MakeGeo(MiniTL + FVector2D(6.0f, 4.0f), FVector2D(MW - 12.0f, 20.0f)),
-			FString(TEXT("鹰眼导航")),
-			SmallFont,
-			ESlateDrawEffect::None,
-			FLinearColor(0.85f, 0.88f, 0.92f, 1.0f));
-	}
-
 	return LayerId;
+}
+
+void SMetaplotFlowGraphWidget::BroadcastHorizontalPanChanged() const
+{
+	if (OnHorizontalPanChanged.IsBound())
+	{
+		OnHorizontalPanChanged.Execute(PanScreen.X);
+	}
 }

@@ -1,6 +1,7 @@
 #include "Scenario/MetaplotScenarioAssetEditorToolkit.h"
 
 #include "Scenario/MetaplotFlowGraphWidget.h"
+#include "Scenario/MetaplotFlowPlacement.h"
 #include "IDetailsView.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "Containers/Map.h"
@@ -13,6 +14,7 @@
 #include "Widgets/Docking/SDockTab.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Input/SComboButton.h"
+#include "Widgets/Layout/SScrollBar.h"
 #include "Widgets/Input/SSearchBox.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
@@ -23,7 +25,82 @@
 
 #define LOCTEXT_NAMESPACE "MetaplotScenarioAssetEditorToolkit"
 
-const FName FMetaplotScenarioAssetEditorToolkit::NodeListTabId(TEXT("MetaplotScenarioEditor_NodeList"));
+namespace MetaplotScenarioEditorPrivate
+{
+	static bool IsTransitionRuleValid(const UMetaplotFlow* Flow, const FGuid& SourceNodeId, const FGuid& TargetNodeId)
+	{
+		if (!Flow || !SourceNodeId.IsValid() || !TargetNodeId.IsValid() || SourceNodeId == TargetNodeId)
+		{
+			return false;
+		}
+
+		const FMetaplotNode* SourceNode = Flow->Nodes.FindByPredicate([SourceNodeId](const FMetaplotNode& Node)
+		{
+			return Node.NodeId == SourceNodeId;
+		});
+		const FMetaplotNode* TargetNode = Flow->Nodes.FindByPredicate([TargetNodeId](const FMetaplotNode& Node)
+		{
+			return Node.NodeId == TargetNodeId;
+		});
+		if (!SourceNode || !TargetNode)
+		{
+			return false;
+		}
+
+		// 规则 3：禁止从右往左，Stage 必须严格递增。
+		if (TargetNode->StageIndex <= SourceNode->StageIndex)
+		{
+			return false;
+		}
+
+		// 规则 2：同行仅允许连接到下一列，禁止跨列。
+		if (SourceNode->LayerIndex == TargetNode->LayerIndex &&
+			TargetNode->StageIndex != SourceNode->StageIndex + 1)
+		{
+			return false;
+		}
+
+		return true;
+	}
+
+	static bool WouldCreateCycle(const UMetaplotFlow* Flow, const FGuid& SourceNodeId, const FGuid& TargetNodeId)
+	{
+		if (!Flow || !SourceNodeId.IsValid() || !TargetNodeId.IsValid() || SourceNodeId == TargetNodeId)
+		{
+			return true;
+		}
+
+		TSet<FGuid> Visited;
+		TArray<FGuid> Stack;
+		Stack.Add(TargetNodeId);
+
+		while (!Stack.IsEmpty())
+		{
+			const FGuid Current = Stack.Pop(EAllowShrinking::No);
+			if (!Current.IsValid() || Visited.Contains(Current))
+			{
+				continue;
+			}
+
+			Visited.Add(Current);
+			if (Current == SourceNodeId)
+			{
+				return true;
+			}
+
+			for (const FMetaplotTransition& Transition : Flow->Transitions)
+			{
+				if (Transition.SourceNodeId == Current && Transition.TargetNodeId.IsValid())
+				{
+					Stack.Add(Transition.TargetNodeId);
+				}
+			}
+		}
+
+		return false;
+	}
+}
+
 const FName FMetaplotScenarioAssetEditorToolkit::AssetListTabId(TEXT("MetaplotScenarioEditor_AssetList"));
 const FName FMetaplotScenarioAssetEditorToolkit::MainTabId(TEXT("MetaplotScenarioEditor_Main"));
 const FName FMetaplotScenarioAssetEditorToolkit::DetailsTabId(TEXT("MetaplotScenarioEditor_Details"));
@@ -47,17 +124,9 @@ void FMetaplotScenarioAssetEditorToolkit::InitMetaplotScenarioAssetEditor(
 			FTabManager::NewPrimaryArea()
 			->SetOrientation(Orient_Horizontal)
 			->Split(
-				FTabManager::NewSplitter()
-				->SetOrientation(Orient_Vertical)
-				->SetSizeCoefficient(0.22f)
-				->Split(
-					FTabManager::NewStack()
-					->SetSizeCoefficient(0.5f)
-					->AddTab(NodeListTabId, ETabState::OpenedTab))
-				->Split(
-					FTabManager::NewStack()
-					->SetSizeCoefficient(0.5f)
-					->AddTab(AssetListTabId, ETabState::OpenedTab)))
+				FTabManager::NewStack()
+				->SetSizeCoefficient(0.26f)
+				->AddTab(AssetListTabId, ETabState::OpenedTab))
 			->Split(
 				FTabManager::NewStack()
 				->SetSizeCoefficient(0.53f)
@@ -94,14 +163,11 @@ void FMetaplotScenarioAssetEditorToolkit::RegisterTabSpawners(const TSharedRef<F
 {
 	FAssetEditorToolkit::RegisterTabSpawners(InTabManager);
 
-	InTabManager->RegisterTabSpawner(NodeListTabId, FOnSpawnTab::CreateRaw(this, &FMetaplotScenarioAssetEditorToolkit::SpawnTab_NodeList))
-		.SetDisplayName(LOCTEXT("NodeListTabLabel", "Node List"));
-
 	InTabManager->RegisterTabSpawner(AssetListTabId, FOnSpawnTab::CreateRaw(this, &FMetaplotScenarioAssetEditorToolkit::SpawnTab_AssetList))
-		.SetDisplayName(LOCTEXT("AssetListTabLabel", "Asset List"));
+		.SetDisplayName(LOCTEXT("ControlBoardTabLabel", "控制板"));
 
 	InTabManager->RegisterTabSpawner(MainTabId, FOnSpawnTab::CreateRaw(this, &FMetaplotScenarioAssetEditorToolkit::SpawnTab_Main))
-		.SetDisplayName(LOCTEXT("MainTabLabel", "Main"));
+		.SetDisplayName(LOCTEXT("FlowChartTabLabel", "流程图表"));
 
 	InTabManager->RegisterTabSpawner(DetailsTabId, FOnSpawnTab::CreateRaw(this, &FMetaplotScenarioAssetEditorToolkit::SpawnTab_Details))
 		.SetDisplayName(LOCTEXT("DetailsTabLabel", "Details"));
@@ -110,13 +176,12 @@ void FMetaplotScenarioAssetEditorToolkit::RegisterTabSpawners(const TSharedRef<F
 void FMetaplotScenarioAssetEditorToolkit::UnregisterTabSpawners(const TSharedRef<FTabManager>& InTabManager)
 {
 	FAssetEditorToolkit::UnregisterTabSpawners(InTabManager);
-	InTabManager->UnregisterTabSpawner(NodeListTabId);
 	InTabManager->UnregisterTabSpawner(AssetListTabId);
 	InTabManager->UnregisterTabSpawner(MainTabId);
 	InTabManager->UnregisterTabSpawner(DetailsTabId);
 }
 
-TSharedRef<SDockTab> FMetaplotScenarioAssetEditorToolkit::SpawnTab_NodeList(const FSpawnTabArgs& Args)
+TSharedRef<SDockTab> FMetaplotScenarioAssetEditorToolkit::SpawnTab_AssetList(const FSpawnTabArgs& Args)
 {
 	RefreshFlowLists();
 
@@ -125,11 +190,67 @@ TSharedRef<SDockTab> FMetaplotScenarioAssetEditorToolkit::SpawnTab_NodeList(cons
 		SNew(SVerticalBox)
 		+ SVerticalBox::Slot()
 		.AutoHeight()
-		.Padding(2.0f)
+		.Padding(2.0f, 2.0f, 2.0f, 4.0f)
 		[
 			SNew(SBorder)
 			.BorderImage(FAppStyle::GetBrush("ToolPanel.GroupBorder"))
-			.Padding(FMargin(4.0f))
+			.Padding(FMargin(8.0f))
+			[
+				SNew(SVerticalBox)
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				[
+					SNew(STextBlock)
+					.Text(LOCTEXT("ControlBoardTitle", "控制板"))
+					.Font(FAppStyle::GetFontStyle("DetailsView.CategoryFontStyle"))
+				]
+				+ SVerticalBox::Slot()
+				.AutoHeight()
+				.Padding(0.0f, 6.0f, 0.0f, 0.0f)
+				[
+					SNew(SHorizontalBox)
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					.Padding(0.0f, 0.0f, 4.0f, 0.0f)
+					[
+						SNew(SButton)
+						.ButtonStyle(FAppStyle::Get(), "SimpleButton")
+						.OnClicked(this, &FMetaplotScenarioAssetEditorToolkit::OnAddAssetClicked)
+						[
+							SNew(STextBlock)
+							.Text(LOCTEXT("AddAssetButtonLabel", "+ 添加"))
+						]
+					]
+					+ SHorizontalBox::Slot()
+					.AutoWidth()
+					.Padding(0.0f, 0.0f, 4.0f, 0.0f)
+					[
+						SNew(SComboButton)
+						.ButtonStyle(FAppStyle::Get(), "SimpleButton")
+						.OnGetMenuContent(this, &FMetaplotScenarioAssetEditorToolkit::BuildAssetFilterMenu)
+						.ButtonContent()
+						[
+							SNew(STextBlock)
+							.Text(this, &FMetaplotScenarioAssetEditorToolkit::GetActiveFilterLabel)
+						]
+					]
+					+ SHorizontalBox::Slot()
+					.FillWidth(1.0f)
+					[
+						SNew(SSearchBox)
+						.HintText(LOCTEXT("AssetSearchHint", "搜索资产..."))
+						.OnTextChanged(this, &FMetaplotScenarioAssetEditorToolkit::OnAssetSearchTextChanged)
+					]
+				]
+			]
+		]
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.Padding(2.0f, 0.0f, 2.0f, 4.0f)
+		[
+			SNew(SBorder)
+			.BorderImage(FAppStyle::GetBrush("ToolPanel.GroupBorder"))
+			.Padding(FMargin(6.0f))
 			[
 				SNew(SHorizontalBox)
 				+ SHorizontalBox::Slot()
@@ -182,7 +303,6 @@ TSharedRef<SDockTab> FMetaplotScenarioAssetEditorToolkit::SpawnTab_NodeList(cons
 				]
 				+ SHorizontalBox::Slot()
 				.AutoWidth()
-				.Padding(0.0f, 0.0f, 8.0f, 0.0f)
 				[
 					SNew(SButton)
 					.ButtonStyle(FAppStyle::Get(), "SimpleButton")
@@ -192,24 +312,24 @@ TSharedRef<SDockTab> FMetaplotScenarioAssetEditorToolkit::SpawnTab_NodeList(cons
 						.Text(LOCTEXT("AutoLayoutButtonLabel", "自动布局"))
 					]
 				]
-				+ SHorizontalBox::Slot()
-				.FillWidth(1.0f)
-				.VAlign(VAlign_Center)
-				[
-					SNew(STextBlock)
-					.Text(this, &FMetaplotScenarioAssetEditorToolkit::GetStartNodeText)
-				]
 			]
 		]
 		+ SVerticalBox::Slot()
 		.AutoHeight()
-		.Padding(2.0f, 6.0f, 2.0f, 2.0f)
+		.Padding(4.0f, 0.0f, 4.0f, 4.0f)
+		[
+			SNew(STextBlock)
+			.Text(this, &FMetaplotScenarioAssetEditorToolkit::GetStartNodeText)
+		]
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.Padding(4.0f, 2.0f, 4.0f, 2.0f)
 		[
 			SNew(STextBlock)
 			.Text(LOCTEXT("NodeSectionTitle", "节点"))
 		]
 		+ SVerticalBox::Slot()
-		.FillHeight(0.55f)
+		.FillHeight(0.56f)
 		.Padding(2.0f)
 		[
 			SAssignNew(NodeListView, SListView<TSharedPtr<FGuid>>)
@@ -220,13 +340,13 @@ TSharedRef<SDockTab> FMetaplotScenarioAssetEditorToolkit::SpawnTab_NodeList(cons
 		]
 		+ SVerticalBox::Slot()
 		.AutoHeight()
-		.Padding(2.0f, 8.0f, 2.0f, 2.0f)
+		.Padding(4.0f, 4.0f, 4.0f, 2.0f)
 		[
 			SNew(STextBlock)
 			.Text(LOCTEXT("TransitionSectionTitle", "连线"))
 		]
 		+ SVerticalBox::Slot()
-		.FillHeight(0.45f)
+		.FillHeight(0.44f)
 		.Padding(2.0f)
 		[
 			SAssignNew(TransitionListView, SListView<TSharedPtr<int32>>)
@@ -234,67 +354,6 @@ TSharedRef<SDockTab> FMetaplotScenarioAssetEditorToolkit::SpawnTab_NodeList(cons
 			.OnGenerateRow(this, &FMetaplotScenarioAssetEditorToolkit::GenerateTransitionRow)
 			.OnSelectionChanged(this, &FMetaplotScenarioAssetEditorToolkit::OnTransitionSelectionChanged)
 			.SelectionMode(ESelectionMode::Single)
-		]
-	];
-}
-
-TSharedRef<SDockTab> FMetaplotScenarioAssetEditorToolkit::SpawnTab_AssetList(const FSpawnTabArgs& Args)
-{
-	return SNew(SDockTab)
-	[
-		SNew(SVerticalBox)
-		+ SVerticalBox::Slot()
-		.AutoHeight()
-		[
-			SNew(SBorder)
-			.BorderImage(FAppStyle::GetBrush("ToolPanel.GroupBorder"))
-			.Padding(FMargin(4.0f))
-			[
-				SNew(SHorizontalBox)
-				+ SHorizontalBox::Slot()
-				.AutoWidth()
-				.Padding(0.0f, 0.0f, 4.0f, 0.0f)
-				[
-					SNew(SButton)
-					.ButtonStyle(FAppStyle::Get(), "SimpleButton")
-					.OnClicked(this, &FMetaplotScenarioAssetEditorToolkit::OnAddAssetClicked)
-					[
-						SNew(STextBlock)
-						.Text(LOCTEXT("AddAssetButtonLabel", "+ 添加"))
-					]
-				]
-				+ SHorizontalBox::Slot()
-				.AutoWidth()
-				.Padding(0.0f, 0.0f, 4.0f, 0.0f)
-				[
-					SNew(SComboButton)
-					.ButtonStyle(FAppStyle::Get(), "SimpleButton")
-					.OnGetMenuContent(this, &FMetaplotScenarioAssetEditorToolkit::BuildAssetFilterMenu)
-					.ButtonContent()
-					[
-						SNew(STextBlock)
-						.Text(this, &FMetaplotScenarioAssetEditorToolkit::GetActiveFilterLabel)
-					]
-				]
-				+ SHorizontalBox::Slot()
-				.FillWidth(1.0f)
-				[
-					SNew(SSearchBox)
-					.HintText(LOCTEXT("AssetSearchHint", "搜索资产..."))
-					.OnTextChanged(this, &FMetaplotScenarioAssetEditorToolkit::OnAssetSearchTextChanged)
-				]
-			]
-		]
-		+ SVerticalBox::Slot()
-		.FillHeight(1.0f)
-		.Padding(2.0f, 4.0f, 2.0f, 2.0f)
-		[
-			SNew(SBorder)
-			.Padding(8.0f)
-			[
-				SNew(STextBlock)
-				.Text(LOCTEXT("AssetListBodyPlaceholder", "资产列表内容区域（后续接入 SListView）"))
-			]
 		]
 	];
 }
@@ -311,11 +370,28 @@ TSharedRef<SDockTab> FMetaplotScenarioAssetEditorToolkit::SpawnTab_Main(const FS
 {
 	TSharedRef<SDockTab> Tab = SNew(SDockTab)
 	[
-		SAssignNew(FlowGraphWidget, SMetaplotFlowGraphWidget)
-		.FlowAsset(TWeakObjectPtr<UMetaplotFlow>(EditingFlowAsset))
-		.OnNodeSelected(FOnMetaplotGraphNodeSelected::CreateSP(this, &FMetaplotScenarioAssetEditorToolkit::OnMainGraphNodeSelected))
+		SNew(SVerticalBox)
+		+ SVerticalBox::Slot()
+		.FillHeight(1.0f)
+		[
+			SAssignNew(FlowGraphWidget, SMetaplotFlowGraphWidget)
+			.FlowAsset(TWeakObjectPtr<UMetaplotFlow>(EditingFlowAsset))
+			.OnNodeSelected(FOnMetaplotGraphNodeSelected::CreateSP(this, &FMetaplotScenarioAssetEditorToolkit::OnMainGraphNodeSelected))
+			.OnCreateTransition(FOnMetaplotGraphCreateTransition::CreateSP(this, &FMetaplotScenarioAssetEditorToolkit::OnMainGraphCreateTransition))
+			.OnMoveNode(FOnMetaplotGraphMoveNode::CreateSP(this, &FMetaplotScenarioAssetEditorToolkit::OnMainGraphMoveNode))
+			.OnHorizontalPanChanged(FOnMetaplotGraphHorizontalPanChanged::CreateSP(this, &FMetaplotScenarioAssetEditorToolkit::OnMainGraphHorizontalPanChanged))
+		]
+		+ SVerticalBox::Slot()
+		.AutoHeight()
+		.Padding(4.0f, 2.0f, 4.0f, 4.0f)
+		[
+			SAssignNew(MainHorizontalScrollBar, SScrollBar)
+			.Orientation(Orient_Horizontal)
+			.OnUserScrolled(this, &FMetaplotScenarioAssetEditorToolkit::OnMainGraphHorizontalScroll)
+		]
 	];
 	RefreshFlowLists();
+	RefreshMainHorizontalScrollBar();
 	return Tab;
 }
 
@@ -446,7 +522,7 @@ FReply FMetaplotScenarioAssetEditorToolkit::OnAddTransitionClicked()
 	{
 		return Transition.SourceNodeId == SourceNodeId && Transition.TargetNodeId == TargetNodeId;
 	});
-	if (bAlreadyExists)
+	if (bAlreadyExists || !MetaplotScenarioEditorPrivate::IsTransitionRuleValid(EditingFlowAsset, SourceNodeId, TargetNodeId))
 	{
 		return FReply::Handled();
 	}
@@ -727,6 +803,8 @@ void FMetaplotScenarioAssetEditorToolkit::RefreshFlowLists()
 		FlowGraphWidget->SetFlowAsset(EditingFlowAsset);
 		FlowGraphWidget->SetSelectedNodeId(SelectedNodeId);
 	}
+
+	RefreshMainHorizontalScrollBar();
 }
 
 TSharedRef<ITableRow> FMetaplotScenarioAssetEditorToolkit::GenerateNodeRow(TSharedPtr<FGuid> Item, const TSharedRef<STableViewBase>& OwnerTable)
@@ -825,9 +903,170 @@ void FMetaplotScenarioAssetEditorToolkit::OnMainGraphNodeSelected(FGuid NodeId)
 	}
 }
 
+void FMetaplotScenarioAssetEditorToolkit::OnMainGraphMoveNode(FGuid NodeId, int32 NewStage, int32 NewLayer)
+{
+	if (!EditingFlowAsset || !NodeId.IsValid())
+	{
+		return;
+	}
+
+	if (!MetaplotFlowPlacement::IsValidCellForNodeMove(EditingFlowAsset, NodeId, NewStage, NewLayer))
+	{
+		return;
+	}
+
+	const int32 NodeIndex = EditingFlowAsset->Nodes.IndexOfByPredicate([NodeId](const FMetaplotNode& N)
+	{
+		return N.NodeId == NodeId;
+	});
+	if (!EditingFlowAsset->Nodes.IsValidIndex(NodeIndex))
+	{
+		return;
+	}
+
+	FMetaplotNode& Node = EditingFlowAsset->Nodes[NodeIndex];
+	if (Node.StageIndex == NewStage && Node.LayerIndex == NewLayer)
+	{
+		return;
+	}
+
+	const FScopedTransaction Transaction(LOCTEXT("MoveMetaplotNodeTransaction", "Move Metaplot Node"));
+	EditingFlowAsset->Modify();
+
+	Node.StageIndex = NewStage;
+	Node.LayerIndex = NewLayer;
+
+	EditingFlowAsset->MarkPackageDirty();
+	RefreshFlowLists();
+	if (FlowGraphWidget.IsValid() && EditingFlowAsset)
+	{
+		FlowGraphWidget->SetFlowAsset(EditingFlowAsset);
+	}
+	if (DetailsView.IsValid())
+	{
+		DetailsView->ForceRefresh();
+	}
+}
+
+void FMetaplotScenarioAssetEditorToolkit::OnMainGraphCreateTransition(FGuid SourceNodeId, FGuid TargetNodeId)
+{
+	if (!EditingFlowAsset || !SourceNodeId.IsValid() || !TargetNodeId.IsValid() || SourceNodeId == TargetNodeId)
+	{
+		return;
+	}
+
+	const bool bSourceExists = EditingFlowAsset->Nodes.ContainsByPredicate([SourceNodeId](const FMetaplotNode& Node)
+	{
+		return Node.NodeId == SourceNodeId;
+	});
+	const bool bTargetExists = EditingFlowAsset->Nodes.ContainsByPredicate([TargetNodeId](const FMetaplotNode& Node)
+	{
+		return Node.NodeId == TargetNodeId;
+	});
+	if (!bSourceExists || !bTargetExists)
+	{
+		return;
+	}
+
+	const bool bAlreadyExists = EditingFlowAsset->Transitions.ContainsByPredicate([SourceNodeId, TargetNodeId](const FMetaplotTransition& Transition)
+	{
+		return Transition.SourceNodeId == SourceNodeId && Transition.TargetNodeId == TargetNodeId;
+	});
+	if (bAlreadyExists ||
+		!MetaplotScenarioEditorPrivate::IsTransitionRuleValid(EditingFlowAsset, SourceNodeId, TargetNodeId) ||
+		MetaplotScenarioEditorPrivate::WouldCreateCycle(EditingFlowAsset, SourceNodeId, TargetNodeId))
+	{
+		return;
+	}
+
+	const FScopedTransaction Transaction(LOCTEXT("CreateTransitionByPinTransaction", "Create Metaplot Transition By Pin"));
+	EditingFlowAsset->Modify();
+
+	FMetaplotTransition NewTransition;
+	NewTransition.SourceNodeId = SourceNodeId;
+	NewTransition.TargetNodeId = TargetNodeId;
+	EditingFlowAsset->Transitions.Add(NewTransition);
+
+	EditingFlowAsset->MarkPackageDirty();
+	RefreshFlowLists();
+	DetailsView->ForceRefresh();
+}
+
+void FMetaplotScenarioAssetEditorToolkit::OnMainGraphHorizontalPanChanged(float InPanScreenX)
+{
+	(void)InPanScreenX;
+	RefreshMainHorizontalScrollBar();
+}
+
 void FMetaplotScenarioAssetEditorToolkit::OnTransitionSelectionChanged(TSharedPtr<int32> Item, ESelectInfo::Type /*SelectInfo*/)
 {
 	SelectedTransitionIndex = (Item.IsValid() ? *Item : INDEX_NONE);
+}
+
+void FMetaplotScenarioAssetEditorToolkit::OnMainGraphHorizontalScroll(float ScrollOffsetFraction)
+{
+	if (bSyncingHorizontalScrollBar || !FlowGraphWidget.IsValid())
+	{
+		return;
+	}
+
+	float BoundMinX = 0.0f;
+	float BoundMaxX = 0.0f;
+	float OffsetFraction = 0.0f;
+	float ThumbFraction = 1.0f;
+
+	const bool bCanScroll = FlowGraphWidget->GetHorizontalScrollbarState(OffsetFraction, ThumbFraction);
+	if (!bCanScroll)
+	{
+		return;
+	}
+
+	// 将滚动条归一化位置映射回画布 PanScreen.X。
+	UMetaplotFlow* Flow = EditingFlowAsset.Get();
+	if (!Flow)
+	{
+		return;
+	}
+
+	// 与 SMetaplotFlowGraphWidget::GetContentBounds 的默认范围保持一致。
+	BoundMinX = 0.0f;
+	BoundMaxX = 3.0f * 220.0f;
+	if (!Flow->Nodes.IsEmpty())
+	{
+		int32 MinStage = Flow->Nodes[0].StageIndex;
+		int32 MaxStage = Flow->Nodes[0].StageIndex;
+		for (const FMetaplotNode& Node : Flow->Nodes)
+		{
+			MinStage = FMath::Min(MinStage, Node.StageIndex);
+			MaxStage = FMath::Max(MaxStage, Node.StageIndex);
+		}
+		MinStage = FMath::Min(MinStage, 0);
+		MaxStage = FMath::Max(MaxStage, MinStage + 2);
+		BoundMinX = MinStage * 220.0f;
+		BoundMaxX = (MaxStage + 1) * 220.0f;
+	}
+
+	const float ContentWidth = FMath::Max(1.0f, BoundMaxX - BoundMinX);
+	const float ViewWidth = ContentWidth * FMath::Clamp(ThumbFraction, 0.0f, 1.0f);
+	const float MaxOffset = FMath::Max(0.0f, ContentWidth - ViewWidth);
+	const float TargetOffset = FMath::Clamp(ScrollOffsetFraction, 0.0f, 1.0f) * MaxOffset;
+	const float TargetPanX = -BoundMinX - TargetOffset;
+	FlowGraphWidget->SetHorizontalPanScreen(TargetPanX);
+}
+
+void FMetaplotScenarioAssetEditorToolkit::RefreshMainHorizontalScrollBar()
+{
+	if (!MainHorizontalScrollBar.IsValid() || !FlowGraphWidget.IsValid())
+	{
+		return;
+	}
+
+	float OffsetFraction = 0.0f;
+	float ThumbFraction = 1.0f;
+	FlowGraphWidget->GetHorizontalScrollbarState(OffsetFraction, ThumbFraction);
+
+	TGuardValue<bool> SyncGuard(bSyncingHorizontalScrollBar, true);
+	MainHorizontalScrollBar->SetState(OffsetFraction, ThumbFraction);
 }
 
 #undef LOCTEXT_NAMESPACE

@@ -10,6 +10,7 @@ template <typename ItemType> class SListView;
 class ITableRow;
 class UMetaplotFlow;
 class SMetaplotFlowGraphWidget;
+class SScrollBar;
 
 enum class EMetaplotAssetFilter : uint8
 {
@@ -34,7 +35,6 @@ public:
 	virtual void UnregisterTabSpawners(const TSharedRef<class FTabManager>& InTabManager) override;
 
 private:
-	TSharedRef<SDockTab> SpawnTab_NodeList(const class FSpawnTabArgs& Args);
 	TSharedRef<SDockTab> SpawnTab_AssetList(const class FSpawnTabArgs& Args);
 	TSharedRef<SDockTab> SpawnTab_Details(const class FSpawnTabArgs& Args);
 	TSharedRef<SDockTab> SpawnTab_Main(const class FSpawnTabArgs& Args);
@@ -56,6 +56,11 @@ private:
 	void OnNodeSelectionChanged(TSharedPtr<FGuid> Item, ESelectInfo::Type SelectInfo);
 	void OnTransitionSelectionChanged(TSharedPtr<int32> Item, ESelectInfo::Type SelectInfo);
 	void OnMainGraphNodeSelected(FGuid NodeId);
+	void OnMainGraphCreateTransition(FGuid SourceNodeId, FGuid TargetNodeId);
+	void OnMainGraphMoveNode(FGuid NodeId, int32 NewStage, int32 NewLayer);
+	void OnMainGraphHorizontalPanChanged(float InPanScreenX);
+	void OnMainGraphHorizontalScroll(float ScrollOffsetFraction);
+	void RefreshMainHorizontalScrollBar();
 
 private:
 	TObjectPtr<UMetaplotFlow> EditingFlowAsset = nullptr;
@@ -65,12 +70,13 @@ private:
 	TSharedPtr<SListView<TSharedPtr<FGuid>>> NodeListView;
 	TSharedPtr<SListView<TSharedPtr<int32>>> TransitionListView;
 	TSharedPtr<SMetaplotFlowGraphWidget> FlowGraphWidget;
+	TSharedPtr<SScrollBar> MainHorizontalScrollBar;
 	FGuid SelectedNodeId;
 	int32 SelectedTransitionIndex = INDEX_NONE;
 	EMetaplotAssetFilter ActiveAssetFilter = EMetaplotAssetFilter::All;
 	FText AssetSearchText;
+	bool bSyncingHorizontalScrollBar = false;
 
-	static const FName NodeListTabId;
 	static const FName AssetListTabId;
 	static const FName MainTabId;
 	static const FName DetailsTabId;
