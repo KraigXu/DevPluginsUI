@@ -4,6 +4,10 @@
 
 本项目主要用于开发 **[Metaplot](Plugins/Metaplot)** 插件的功能验证与示例工程。
 
+## 实施计划文档
+
+- [Metaplot 细节面板 UE 原生化改造计划](Docs/MetaplotDetailsPanelMigrationPlan.md)
+
 ---
 
 ## Metaplot 事件流程编辑器 — 设计文档

@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Toolkits/AssetEditorToolkit.h"
+#include "UObject/StrongObjectPtr.h"
 #include "Widgets/Views/STableViewBase.h"
 
 class IDetailsView;
@@ -9,9 +10,12 @@ class SDockTab;
 template <typename ItemType> class SListView;
 class ITableRow;
 class UMetaplotFlow;
+class UMetaplotNodeDetailsProxy;
+class UMetaplotTransitionDetailsProxy;
 class SMetaplotFlowGraphWidget;
 class SScrollBar;
 class FWorkspaceItem;
+struct FPropertyChangedEvent;
 enum class EMetaplotNodeType : uint8;
 
 enum class EMetaplotAssetFilter : uint8
@@ -70,11 +74,8 @@ private:
 	void OnMainGraphHorizontalPanChanged(float InPanScreenX);
 	void OnMainGraphHorizontalScroll(float ScrollOffsetFraction);
 	void RefreshMainHorizontalScrollBar();
-	FText GetNodeDetailsSummaryText() const;
-	FText GetNodeDetailsNameText() const;
-	FText GetNodeDetailsTypeText() const;
-	FText GetNodeDetailsStageLayerText() const;
-	FText GetNodeDetailsDescriptionText() const;
+	void UpdateDetailsSelectionContext();
+	void OnDetailsFinishedChangingProperties(const FPropertyChangedEvent& PropertyChangedEvent);
 	FText GetNodeDetailsTaskSetHintText() const;
 	FReply OnFocusSelectedNodeTaskSetClicked();
 
@@ -89,6 +90,8 @@ private:
 	TSharedPtr<SScrollBar> MainHorizontalScrollBar;
 	FGuid SelectedNodeId;
 	int32 SelectedTransitionIndex = INDEX_NONE;
+	TStrongObjectPtr<UMetaplotNodeDetailsProxy> NodeDetailsProxy;
+	TStrongObjectPtr<UMetaplotTransitionDetailsProxy> TransitionDetailsProxy;
 	EMetaplotAssetFilter ActiveAssetFilter = EMetaplotAssetFilter::All;
 	FText AssetSearchText;
 	bool bSyncingHorizontalScrollBar = false;

@@ -11,5 +11,8 @@ public:
 	virtual void ShutdownModule() override;
 
 private:
+	void RegisterDetailsCustomizations();
+	void UnregisterDetailsCustomizations();
+
 	TSharedPtr<FAssetTypeActions_MetaplotScenarioAsset> ScenarioAssetTypeActions;
 };

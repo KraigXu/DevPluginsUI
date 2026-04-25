@@ -1,5 +1,6 @@
 #include "Scenario/MetaplotScenarioAssetEditorToolkit.h"
 
+#include "Scenario/MetaplotDetailsProxy.h"
 #include "Scenario/MetaplotFlowGraphWidget.h"
 #include "Scenario/MetaplotFlowPlacement.h"
 #include "IDetailsView.h"
@@ -119,6 +120,7 @@ void FMetaplotScenarioAssetEditorToolkit::InitMetaplotScenarioAssetEditor(
 	DetailsViewArgs.bHideSelectionTip = true;
 	DetailsView = PropertyEditorModule.CreateDetailView(DetailsViewArgs);
 	DetailsView->SetObject(EditingFlowAsset);
+	DetailsView->OnFinishedChangingProperties().AddRaw(this, &FMetaplotScenarioAssetEditorToolkit::OnDetailsFinishedChangingProperties);
 	RefreshFlowLists();
 
 	const TSharedRef<FTabManager::FLayout> Layout = FTabManager::NewLayout(TEXT("MetaplotScenarioEditorLayout_v2"))
@@ -134,11 +136,11 @@ void FMetaplotScenarioAssetEditorToolkit::InitMetaplotScenarioAssetEditor(
 				->SetOrientation(Orient_Vertical)
 				->Split(
 					FTabManager::NewStack()
-					->SetSizeCoefficient(0.5f)
+					->SetSizeCoefficient(0.78f)
 					->AddTab(DetailsTabId, ETabState::OpenedTab))
 				->Split(
 					FTabManager::NewStack()
-					->SetSizeCoefficient(0.5f)
+					->SetSizeCoefficient(0.22f)
 					->AddTab(NodeDetailsTabId, ETabState::OpenedTab))));
 
 	InitAssetEditor(Mode, InitToolkitHost, FName(TEXT("MetaplotScenarioEditorApp")), Layout, true, true, InFlowAsset);
@@ -185,7 +187,7 @@ void FMetaplotScenarioAssetEditorToolkit::RegisterTabSpawners(const TSharedRef<F
 		.SetGroup(WorkspaceCategoryRef);
 
 	InTabManager->RegisterTabSpawner(NodeDetailsTabId, FOnSpawnTab::CreateRaw(this, &FMetaplotScenarioAssetEditorToolkit::SpawnTab_NodeDetails))
-		.SetDisplayName(LOCTEXT("NodeDetailsTabLabel", "节点详情"))
+		.SetDisplayName(LOCTEXT("NodeDetailsTabLabel", "辅助操作"))
 		.SetGroup(WorkspaceCategoryRef);
 }
 
@@ -397,37 +399,17 @@ TSharedRef<SDockTab> FMetaplotScenarioAssetEditorToolkit::SpawnTab_NodeDetails(c
 			.AutoHeight()
 			[
 				SNew(STextBlock)
-				.Text(this, &FMetaplotScenarioAssetEditorToolkit::GetNodeDetailsSummaryText)
+				.Text(LOCTEXT("NodeDetailsGuideTitle", "编辑入口已统一到 Details 面板"))
 				.ColorAndOpacity(FSlateColor(FLinearColor(0.85f, 0.88f, 0.93f, 1.0f)))
 			]
 			+ SVerticalBox::Slot()
 			.AutoHeight()
-			.Padding(0.0f, 10.0f, 0.0f, 0.0f)
+			.Padding(0.0f, 8.0f, 0.0f, 0.0f)
 			[
 				SNew(STextBlock)
-				.Text(this, &FMetaplotScenarioAssetEditorToolkit::GetNodeDetailsNameText)
-			]
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.Padding(0.0f, 6.0f, 0.0f, 0.0f)
-			[
-				SNew(STextBlock)
-				.Text(this, &FMetaplotScenarioAssetEditorToolkit::GetNodeDetailsTypeText)
-			]
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.Padding(0.0f, 6.0f, 0.0f, 0.0f)
-			[
-				SNew(STextBlock)
-				.Text(this, &FMetaplotScenarioAssetEditorToolkit::GetNodeDetailsStageLayerText)
-			]
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.Padding(0.0f, 6.0f, 0.0f, 0.0f)
-			[
-				SNew(STextBlock)
-				.Text(this, &FMetaplotScenarioAssetEditorToolkit::GetNodeDetailsDescriptionText)
+				.Text(LOCTEXT("NodeDetailsGuideBody", "选择节点或连线后，请在右侧 Details 直接编辑属性。\n\n该面板仅保留辅助操作，避免与 Details 信息重复。"))
 				.AutoWrapText(true)
+				.ColorAndOpacity(FSlateColor(FLinearColor(0.72f, 0.75f, 0.80f, 1.0f)))
 			]
 			+ SVerticalBox::Slot()
 			.AutoHeight()
@@ -700,7 +682,7 @@ FReply FMetaplotScenarioAssetEditorToolkit::OnAddNodeClicked()
 
 	EditingFlowAsset->MarkPackageDirty();
 	RefreshFlowLists();
-	DetailsView->ForceRefresh();
+	UpdateDetailsSelectionContext();
 
 	return FReply::Handled();
 }
@@ -740,7 +722,7 @@ FReply FMetaplotScenarioAssetEditorToolkit::OnDeleteNodeClicked()
 	SelectedNodeId.Invalidate();
 	EditingFlowAsset->MarkPackageDirty();
 	RefreshFlowLists();
-	DetailsView->ForceRefresh();
+	UpdateDetailsSelectionContext();
 
 	return FReply::Handled();
 }
@@ -786,7 +768,7 @@ FReply FMetaplotScenarioAssetEditorToolkit::OnAddTransitionClicked()
 
 	EditingFlowAsset->MarkPackageDirty();
 	RefreshFlowLists();
-	DetailsView->ForceRefresh();
+	UpdateDetailsSelectionContext();
 
 	return FReply::Handled();
 }
@@ -805,7 +787,7 @@ FReply FMetaplotScenarioAssetEditorToolkit::OnDeleteTransitionClicked()
 	SelectedTransitionIndex = INDEX_NONE;
 	EditingFlowAsset->MarkPackageDirty();
 	RefreshFlowLists();
-	DetailsView->ForceRefresh();
+	UpdateDetailsSelectionContext();
 
 	return FReply::Handled();
 }
@@ -823,7 +805,7 @@ FReply FMetaplotScenarioAssetEditorToolkit::OnAutoLayoutClicked()
 	EditingFlowAsset->MarkPackageDirty();
 
 	RefreshFlowLists();
-	DetailsView->ForceRefresh();
+	UpdateDetailsSelectionContext();
 	return FReply::Handled();
 }
 
@@ -1061,6 +1043,7 @@ void FMetaplotScenarioAssetEditorToolkit::RefreshFlowLists()
 	}
 
 	RefreshMainHorizontalScrollBar();
+	UpdateDetailsSelectionContext();
 }
 
 TSharedRef<ITableRow> FMetaplotScenarioAssetEditorToolkit::GenerateNodeRow(TSharedPtr<FGuid> Item, const TSharedRef<STableViewBase>& OwnerTable)
@@ -1130,19 +1113,18 @@ TSharedRef<ITableRow> FMetaplotScenarioAssetEditorToolkit::GenerateTransitionRow
 void FMetaplotScenarioAssetEditorToolkit::OnNodeSelectionChanged(TSharedPtr<FGuid> Item, ESelectInfo::Type /*SelectInfo*/)
 {
 	SelectedNodeId = (Item.IsValid() ? *Item : FGuid());
+	SelectedTransitionIndex = INDEX_NONE;
 	if (FlowGraphWidget.IsValid())
 	{
 		FlowGraphWidget->SetSelectedNodeId(SelectedNodeId);
 	}
-	if (DetailsView.IsValid())
-	{
-		DetailsView->ForceRefresh();
-	}
+	UpdateDetailsSelectionContext();
 }
 
 void FMetaplotScenarioAssetEditorToolkit::OnMainGraphNodeSelected(FGuid NodeId)
 {
 	SelectedNodeId = NodeId;
+	SelectedTransitionIndex = INDEX_NONE;
 	if (NodeListView.IsValid())
 	{
 		if (!NodeId.IsValid())
@@ -1161,6 +1143,7 @@ void FMetaplotScenarioAssetEditorToolkit::OnMainGraphNodeSelected(FGuid NodeId)
 			}
 		}
 	}
+	UpdateDetailsSelectionContext();
 }
 
 void FMetaplotScenarioAssetEditorToolkit::OnMainGraphMoveNode(FGuid NodeId, int32 NewStage, int32 NewLayer)
@@ -1204,7 +1187,7 @@ void FMetaplotScenarioAssetEditorToolkit::OnMainGraphMoveNode(FGuid NodeId, int3
 	}
 	if (DetailsView.IsValid())
 	{
-		DetailsView->ForceRefresh();
+		UpdateDetailsSelectionContext();
 	}
 }
 
@@ -1251,7 +1234,7 @@ void FMetaplotScenarioAssetEditorToolkit::OnMainGraphCreateNodeRequested(EMetapl
 	RefreshFlowLists();
 	if (DetailsView.IsValid())
 	{
-		DetailsView->ForceRefresh();
+		UpdateDetailsSelectionContext();
 	}
 }
 
@@ -1327,7 +1310,7 @@ void FMetaplotScenarioAssetEditorToolkit::OnMainGraphCreateTransition(FGuid Sour
 
 	EditingFlowAsset->MarkPackageDirty();
 	RefreshFlowLists();
-	DetailsView->ForceRefresh();
+	UpdateDetailsSelectionContext();
 }
 
 void FMetaplotScenarioAssetEditorToolkit::OnMainGraphHorizontalPanChanged(float InPanScreenX)
@@ -1339,6 +1322,59 @@ void FMetaplotScenarioAssetEditorToolkit::OnMainGraphHorizontalPanChanged(float 
 void FMetaplotScenarioAssetEditorToolkit::OnTransitionSelectionChanged(TSharedPtr<int32> Item, ESelectInfo::Type /*SelectInfo*/)
 {
 	SelectedTransitionIndex = (Item.IsValid() ? *Item : INDEX_NONE);
+	if (SelectedTransitionIndex != INDEX_NONE)
+	{
+		SelectedNodeId.Invalidate();
+		if (FlowGraphWidget.IsValid())
+		{
+			FlowGraphWidget->SetSelectedNodeId(FGuid());
+		}
+		if (NodeListView.IsValid())
+		{
+			NodeListView->ClearSelection();
+		}
+	}
+	UpdateDetailsSelectionContext();
+}
+
+void FMetaplotScenarioAssetEditorToolkit::UpdateDetailsSelectionContext()
+{
+	if (!DetailsView.IsValid())
+	{
+		return;
+	}
+
+	if (EditingFlowAsset && SelectedNodeId.IsValid())
+	{
+		if (!NodeDetailsProxy.IsValid())
+		{
+			NodeDetailsProxy.Reset(NewObject<UMetaplotNodeDetailsProxy>(GetTransientPackage()));
+		}
+		NodeDetailsProxy->Initialize(EditingFlowAsset, SelectedNodeId);
+		DetailsView->SetObject(NodeDetailsProxy.Get());
+		return;
+	}
+
+	if (EditingFlowAsset && SelectedTransitionIndex != INDEX_NONE && EditingFlowAsset->Transitions.IsValidIndex(SelectedTransitionIndex))
+	{
+		const FMetaplotTransition& Transition = EditingFlowAsset->Transitions[SelectedTransitionIndex];
+		if (!TransitionDetailsProxy.IsValid())
+		{
+			TransitionDetailsProxy.Reset(NewObject<UMetaplotTransitionDetailsProxy>(GetTransientPackage()));
+		}
+		TransitionDetailsProxy->Initialize(EditingFlowAsset, Transition.SourceNodeId, Transition.TargetNodeId);
+		DetailsView->SetObject(TransitionDetailsProxy.Get());
+		return;
+	}
+
+	DetailsView->SetObject(EditingFlowAsset);
+}
+
+void FMetaplotScenarioAssetEditorToolkit::OnDetailsFinishedChangingProperties(const FPropertyChangedEvent& PropertyChangedEvent)
+{
+	(void)PropertyChangedEvent;
+	RefreshFlowLists();
+	UpdateDetailsSelectionContext();
 }
 
 void FMetaplotScenarioAssetEditorToolkit::OnMainGraphHorizontalScroll(float ScrollOffsetFraction)
@@ -1407,101 +1443,6 @@ void FMetaplotScenarioAssetEditorToolkit::RefreshMainHorizontalScrollBar()
 	MainHorizontalScrollBar->SetState(OffsetFraction, ThumbFraction);
 }
 
-FText FMetaplotScenarioAssetEditorToolkit::GetNodeDetailsSummaryText() const
-{
-	if (!SelectedNodeId.IsValid())
-	{
-		return LOCTEXT("NodeDetailsNoSelection", "未选择节点");
-	}
-	return LOCTEXT("NodeDetailsSelection", "已选择节点");
-}
-
-FText FMetaplotScenarioAssetEditorToolkit::GetNodeDetailsNameText() const
-{
-	if (!EditingFlowAsset || !SelectedNodeId.IsValid())
-	{
-		return LOCTEXT("NodeDetailsNameEmpty", "名称: -");
-	}
-
-	const FMetaplotNode* Node = EditingFlowAsset->Nodes.FindByPredicate([this](const FMetaplotNode& Candidate)
-	{
-		return Candidate.NodeId == SelectedNodeId;
-	});
-	if (!Node)
-	{
-		return LOCTEXT("NodeDetailsNameMissing", "名称: 无效节点");
-	}
-	return FText::Format(LOCTEXT("NodeDetailsNameFmt", "名称: {0}"), Node->NodeName.IsEmpty() ? LOCTEXT("NodeDetailsUnnamed", "Unnamed") : Node->NodeName);
-}
-
-FText FMetaplotScenarioAssetEditorToolkit::GetNodeDetailsTypeText() const
-{
-	if (!EditingFlowAsset || !SelectedNodeId.IsValid())
-	{
-		return LOCTEXT("NodeDetailsTypeEmpty", "类型: -");
-	}
-
-	const FMetaplotNode* Node = EditingFlowAsset->Nodes.FindByPredicate([this](const FMetaplotNode& Candidate)
-	{
-		return Candidate.NodeId == SelectedNodeId;
-	});
-	if (!Node)
-	{
-		return LOCTEXT("NodeDetailsTypeMissing", "类型: -");
-	}
-
-	const UEnum* NodeTypeEnum = StaticEnum<EMetaplotNodeType>();
-	const FText TypeText = NodeTypeEnum
-		? NodeTypeEnum->GetDisplayNameTextByValue(static_cast<int64>(Node->NodeType))
-		: LOCTEXT("NodeDetailsTypeFallback", "Unknown");
-	return FText::Format(
-		LOCTEXT("NodeDetailsTypeFmt", "类型: {0}  ·  任务数: {1}"),
-		TypeText,
-		FText::AsNumber(GetTaskCountForNode(SelectedNodeId)));
-}
-
-FText FMetaplotScenarioAssetEditorToolkit::GetNodeDetailsStageLayerText() const
-{
-	if (!EditingFlowAsset || !SelectedNodeId.IsValid())
-	{
-		return LOCTEXT("NodeDetailsStageLayerEmpty", "位置: -");
-	}
-
-	const FMetaplotNode* Node = EditingFlowAsset->Nodes.FindByPredicate([this](const FMetaplotNode& Candidate)
-	{
-		return Candidate.NodeId == SelectedNodeId;
-	});
-	if (!Node)
-	{
-		return LOCTEXT("NodeDetailsStageLayerMissing", "位置: -");
-	}
-
-	return FText::Format(
-		LOCTEXT("NodeDetailsStageLayerFmt", "位置: Stage {0}, Layer {1}"),
-		FText::AsNumber(Node->StageIndex),
-		FText::AsNumber(Node->LayerIndex));
-}
-
-FText FMetaplotScenarioAssetEditorToolkit::GetNodeDetailsDescriptionText() const
-{
-	if (!EditingFlowAsset || !SelectedNodeId.IsValid())
-	{
-		return LOCTEXT("NodeDetailsDescEmpty", "描述: -");
-	}
-
-	const FMetaplotNode* Node = EditingFlowAsset->Nodes.FindByPredicate([this](const FMetaplotNode& Candidate)
-	{
-		return Candidate.NodeId == SelectedNodeId;
-	});
-	if (!Node)
-	{
-		return LOCTEXT("NodeDetailsDescMissing", "描述: -");
-	}
-
-	const FText DescText = Node->Description.IsEmpty() ? LOCTEXT("NodeDetailsDescNone", "无") : Node->Description;
-	return FText::Format(LOCTEXT("NodeDetailsDescFmt", "描述: {0}"), DescText);
-}
-
 FText FMetaplotScenarioAssetEditorToolkit::GetNodeDetailsTaskSetHintText() const
 {
 	if (!EditingFlowAsset || !SelectedNodeId.IsValid())
@@ -1548,7 +1489,7 @@ FReply FMetaplotScenarioAssetEditorToolkit::OnFocusSelectedNodeTaskSetClicked()
 	EditingFlowAsset->MarkPackageDirty();
 	if (DetailsView.IsValid())
 	{
-		DetailsView->ForceRefresh();
+		UpdateDetailsSelectionContext();
 	}
 	return FReply::Handled();
 }
