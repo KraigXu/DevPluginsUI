@@ -42,12 +42,18 @@ public:
 	UPROPERTY(VisibleAnywhere, Category = "Metaplot|Node")
 	EMetaplotNodeResult RuntimeResult = EMetaplotNodeResult::None;
 
+	UPROPERTY(EditAnywhere, Category = "Metaplot|Tasks")
+	TArray<FMetaplotStoryTaskSpec> StoryTasks;
+
 protected:
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 
 private:
 	FMetaplotNode* FindNodeMutable() const;
 	const FMetaplotNode* FindNode() const;
+	FMetaplotNodeStoryTasks* FindTaskSetMutable() const;
+	const FMetaplotNodeStoryTasks* FindTaskSet() const;
+	FMetaplotNodeStoryTasks& FindOrAddTaskSetMutable() const;
 	void PullFromFlow();
 	void PushToFlow();
 

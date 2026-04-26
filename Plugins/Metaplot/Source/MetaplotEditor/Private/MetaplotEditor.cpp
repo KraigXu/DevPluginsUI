@@ -1,4 +1,5 @@
 #include "MetaplotEditor.h"
+#include "MetaplotEditorStyle.h"
 
 #include "AssetToolsModule.h"
 #include "Modules/ModuleManager.h"
@@ -10,6 +11,8 @@ IMPLEMENT_MODULE(FMetaplotEditorModule, MetaplotEditor)
 
 void FMetaplotEditorModule::StartupModule()
 {
+	FMetaplotEditorStyle::Register();
+
 	IAssetTools& AssetTools = FModuleManager::LoadModuleChecked<FAssetToolsModule>("AssetTools").Get();
 
 	const EAssetTypeCategories::Type MetaplotCategory = AssetTools.RegisterAdvancedAssetCategory(
@@ -30,6 +33,8 @@ void FMetaplotEditorModule::ShutdownModule()
 		IAssetTools& AssetTools = FModuleManager::GetModuleChecked<FAssetToolsModule>("AssetTools").Get();
 		AssetTools.UnregisterAssetTypeActions(ScenarioAssetTypeActions.ToSharedRef());
 	}
+
+	FMetaplotEditorStyle::Unregister();
 }
 
 void FMetaplotEditorModule::RegisterDetailsCustomizations()

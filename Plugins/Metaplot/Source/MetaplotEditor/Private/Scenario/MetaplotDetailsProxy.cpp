@@ -1,6 +1,7 @@
 #include "Scenario/MetaplotDetailsProxy.h"
 
 #include "Flow/MetaplotFlow.h"
+#include "Runtime/MetaplotStoryTask.h"
 
 void UMetaplotNodeDetailsProxy::Initialize(UMetaplotFlow* InFlowAsset, const FGuid& InNodeId)
 {
@@ -31,6 +32,35 @@ const FMetaplotNode* UMetaplotNodeDetailsProxy::FindNode() const
 	}) : nullptr;
 }
 
+FMetaplotNodeStoryTasks* UMetaplotNodeDetailsProxy::FindTaskSetMutable() const
+{
+	return FlowAsset ? FlowAsset->NodeTaskSets.FindByPredicate([this](const FMetaplotNodeStoryTasks& Entry)
+	{
+		return Entry.NodeId == NodeId;
+	}) : nullptr;
+}
+
+const FMetaplotNodeStoryTasks* UMetaplotNodeDetailsProxy::FindTaskSet() const
+{
+	return FlowAsset ? FlowAsset->NodeTaskSets.FindByPredicate([this](const FMetaplotNodeStoryTasks& Entry)
+	{
+		return Entry.NodeId == NodeId;
+	}) : nullptr;
+}
+
+FMetaplotNodeStoryTasks& UMetaplotNodeDetailsProxy::FindOrAddTaskSetMutable() const
+{
+	FMetaplotNodeStoryTasks* Existing = FindTaskSetMutable();
+	if (Existing)
+	{
+		return *Existing;
+	}
+
+	FMetaplotNodeStoryTasks& NewEntry = FlowAsset->NodeTaskSets.AddDefaulted_GetRef();
+	NewEntry.NodeId = NodeId;
+	return NewEntry;
+}
+
 void UMetaplotNodeDetailsProxy::PullFromFlow()
 {
 	const FMetaplotNode* Node = FindNode();
@@ -47,6 +77,9 @@ void UMetaplotNodeDetailsProxy::PullFromFlow()
 	CompletionPolicy = Node->CompletionPolicy;
 	ResultPolicy = Node->ResultPolicy;
 	RuntimeResult = Node->RuntimeResult;
+
+	const FMetaplotNodeStoryTasks* TaskSet = FindTaskSet();
+	StoryTasks = TaskSet ? TaskSet->StoryTasks : TArray<FMetaplotStoryTaskSpec>();
 }
 
 void UMetaplotNodeDetailsProxy::PushToFlow()
@@ -69,6 +102,36 @@ void UMetaplotNodeDetailsProxy::PushToFlow()
 	LayerIndex = ClampedLayer;
 	Node->CompletionPolicy = CompletionPolicy;
 	Node->ResultPolicy = ResultPolicy;
+
+	FMetaplotNodeStoryTasks& TaskSet = FindOrAddTaskSetMutable();
+	TaskSet.NodeId = NodeId;
+	TaskSet.StoryTasks = StoryTasks;
+	for (FMetaplotStoryTaskSpec& TaskSpec : TaskSet.StoryTasks)
+	{
+		if (TaskSpec.Task && TaskSpec.Task->GetOuter() != FlowAsset)
+		{
+			TaskSpec.Task = DuplicateObject<UMetaplotStoryTask>(TaskSpec.Task, FlowAsset);
+		}
+
+		if (!TaskSpec.Task && !TaskSpec.TaskClass.IsNull())
+		{
+			UClass* TaskClass = TaskSpec.TaskClass.Get();
+			if (!TaskClass)
+			{
+				TaskClass = TaskSpec.TaskClass.LoadSynchronous();
+			}
+			if (TaskClass && TaskClass->IsChildOf(UMetaplotStoryTask::StaticClass()))
+			{
+				TaskSpec.Task = NewObject<UMetaplotStoryTask>(FlowAsset, TaskClass, NAME_None, RF_Transactional);
+			}
+		}
+
+		if (TaskSpec.Task)
+		{
+			TaskSpec.TaskClass = TaskSpec.Task->GetClass();
+		}
+	}
+
 	FlowAsset->MarkPackageDirty();
 }
 

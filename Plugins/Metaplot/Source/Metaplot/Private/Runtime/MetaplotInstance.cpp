@@ -164,13 +164,20 @@ void UMetaplotInstance::BuildNodeTasks(const FGuid& NodeId, FMetaplotRuntimeNode
 
 	for (const FMetaplotStoryTaskSpec& TaskSpec : *TaskSpecs)
 	{
-		UClass* TaskClass = TaskSpec.TaskClass.LoadSynchronous();
-		if (!TaskClass || !TaskClass->IsChildOf(UMetaplotStoryTask::StaticClass()))
+		UMetaplotStoryTask* TaskInstance = nullptr;
+		if (TaskSpec.Task)
 		{
-			continue;
+			TaskInstance = DuplicateObject<UMetaplotStoryTask>(TaskSpec.Task, this);
 		}
-
-		UMetaplotStoryTask* TaskInstance = NewObject<UMetaplotStoryTask>(this, TaskClass);
+		else
+		{
+			// Backward compatibility for old assets that only store TaskClass.
+			UClass* TaskClass = TaskSpec.TaskClass.LoadSynchronous();
+			if (TaskClass && TaskClass->IsChildOf(UMetaplotStoryTask::StaticClass()))
+			{
+				TaskInstance = NewObject<UMetaplotStoryTask>(this, TaskClass);
+			}
+		}
 		if (!TaskInstance)
 		{
 			continue;

@@ -7,7 +7,16 @@
 #include "IDetailPropertyRow.h"
 #include "IPropertyUtilities.h"
 #include "PropertyHandle.h"
+#include "PropertyCustomizationHelpers.h"
+#include "ScopedTransaction.h"
+#include "Framework/MultiBox/MultiBoxBuilder.h"
+#include "MetaplotEditorStyle.h"
+#include "Styling/AppStyle.h"
+#include "Runtime/MetaplotStoryTask.h"
 #include "Scenario/MetaplotDetailsProxy.h"
+#include "Widgets/Input/SButton.h"
+#include "Widgets/Input/SComboButton.h"
+#include "Widgets/SBoxPanel.h"
 #include "Widgets/Text/STextBlock.h"
 
 namespace MetaplotDetailsCustomizationPrivate
@@ -91,6 +100,186 @@ namespace MetaplotDetailsCustomizationPrivate
 			? EVisibility::Visible
 			: EVisibility::Collapsed;
 	}
+
+	static void AddTaskWithClass(
+		const TSharedPtr<IPropertyHandle>& StoryTasksHandle,
+		const TSharedPtr<IPropertyUtilities>& PropertyUtils,
+		UClass* SelectedTaskClass)
+	{
+		if (!StoryTasksHandle.IsValid() || !StoryTasksHandle->IsValidHandle() || !SelectedTaskClass)
+		{
+			return;
+		}
+
+		const TSharedPtr<IPropertyHandleArray> StoryTasksArray = StoryTasksHandle->AsArray();
+		if (!StoryTasksArray.IsValid())
+		{
+			return;
+		}
+
+		uint32 OldNum = 0;
+		if (StoryTasksArray->GetNumElements(OldNum) != FPropertyAccess::Success)
+		{
+			return;
+		}
+
+		const FScopedTransaction ScopedTransaction(FText::FromString(TEXT("Add Metaplot Task")));
+		StoryTasksHandle->NotifyPreChange();
+
+		if (StoryTasksArray->AddItem() != FPropertyAccess::Success)
+		{
+			StoryTasksHandle->NotifyPostChange(EPropertyChangeType::Unspecified);
+			StoryTasksHandle->NotifyFinishedChangingProperties();
+			return;
+		}
+
+		uint32 NewNum = 0;
+		if (StoryTasksArray->GetNumElements(NewNum) != FPropertyAccess::Success || NewNum == 0)
+		{
+			return;
+		}
+
+		const uint32 NewIndex = (NewNum > OldNum) ? (NewNum - 1) : OldNum;
+		const TSharedPtr<IPropertyHandle> NewItemHandle = StoryTasksArray->GetElement(NewIndex);
+		if (!NewItemHandle.IsValid() || !NewItemHandle->IsValidHandle())
+		{
+			return;
+		}
+
+		const TSharedPtr<IPropertyHandle> TaskHandle = NewItemHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotStoryTaskSpec, Task));
+		const TSharedPtr<IPropertyHandle> TaskClassHandle = NewItemHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotStoryTaskSpec, TaskClass));
+		if ((!TaskHandle.IsValid() || !TaskHandle->IsValidHandle())
+			&& (!TaskClassHandle.IsValid() || !TaskClassHandle->IsValidHandle()))
+		{
+			StoryTasksHandle->NotifyPostChange(EPropertyChangeType::Unspecified);
+			StoryTasksHandle->NotifyFinishedChangingProperties();
+			return;
+		}
+
+		if (TaskHandle.IsValid() && TaskHandle->IsValidHandle())
+		{
+			TaskHandle->SetValue(static_cast<UObject*>(nullptr));
+		}
+		if (TaskClassHandle.IsValid() && TaskClassHandle->IsValidHandle())
+		{
+			// Task instance will be created in proxy PushToFlow with FlowAsset as Outer.
+			const FSoftObjectPath ClassPath(SelectedTaskClass);
+			TaskClassHandle->SetValueFromFormattedString(ClassPath.ToString());
+		}
+		NewItemHandle->SetExpanded(true);
+
+		StoryTasksHandle->NotifyPostChange(EPropertyChangeType::ValueSet);
+		StoryTasksHandle->NotifyFinishedChangingProperties();
+
+		if (PropertyUtils.IsValid())
+		{
+			PropertyUtils->ForceRefresh();
+		}
+	}
+
+	static TSharedRef<SWidget> BuildAddTaskMenu(
+		const TSharedPtr<IPropertyHandle>& StoryTasksHandle,
+		const TSharedPtr<IPropertyUtilities>& PropertyUtils)
+	{
+		FMenuBuilder MenuBuilder(true, nullptr);
+
+		TArray<UClass*> TaskClasses;
+		for (TObjectIterator<UClass> It; It; ++It)
+		{
+			UClass* CandidateClass = *It;
+			if (!CandidateClass
+				|| !CandidateClass->IsChildOf(UMetaplotStoryTask::StaticClass())
+				|| CandidateClass->HasAnyClassFlags(CLASS_Abstract | CLASS_Deprecated | CLASS_NewerVersionExists))
+			{
+				continue;
+			}
+			TaskClasses.Add(CandidateClass);
+		}
+
+		TaskClasses.Sort([](const UClass& A, const UClass& B)
+		{
+			return A.GetName() < B.GetName();
+		});
+
+		if (TaskClasses.IsEmpty())
+		{
+			MenuBuilder.AddMenuEntry(
+				FText::FromString(TEXT("No Task Classes Found")),
+				FText::FromString(TEXT("未找到可用的 UMetaplotStoryTask 子类。")),
+				FSlateIcon(),
+				FUIAction());
+			return MenuBuilder.MakeWidget();
+		}
+
+		for (UClass* TaskClass : TaskClasses)
+		{
+			const FString ClassName = TaskClass ? TaskClass->GetName() : TEXT("UnknownTask");
+			MenuBuilder.AddMenuEntry(
+				FText::FromString(ClassName),
+				FText::FromString(TEXT("添加该任务到当前节点。")),
+				FSlateIcon(),
+				FUIAction(FExecuteAction::CreateLambda([StoryTasksHandle, PropertyUtils, TaskClass]()
+				{
+					AddTaskWithClass(StoryTasksHandle, PropertyUtils, TaskClass);
+				})));
+		}
+
+		return MenuBuilder.MakeWidget();
+	}
+
+	static TSharedRef<SComboButton> CreateAddTaskPickerComboButton(
+		const TSharedPtr<IPropertyHandle>& StoryTasksHandle,
+		const TSharedPtr<IPropertyUtilities>& PropertyUtils)
+	{
+		const FSlateColor AccentColor(FMetaplotEditorStyle::Get().GetColor("Metaplot.Category.IconColor"));
+		return SNew(SComboButton)
+			.ComboButtonStyle(&FAppStyle::Get().GetWidgetStyle<FComboButtonStyle>(TEXT("SimpleComboButton")))
+			.HasDownArrow(false)
+			.ToolTipText(FText::FromString(TEXT("Add new Task")))
+			.ButtonContent()
+			[
+				SNew(SImage)
+				.Image(FMetaplotEditorStyle::Get().GetBrush(TEXT("MetaplotEditor.Add")))
+				.ColorAndOpacity(AccentColor)
+			]
+			.MenuContent()
+			[
+				BuildAddTaskMenu(StoryTasksHandle, PropertyUtils)
+			];
+	}
+
+	static void ConfigureTaskCategoryHeader(
+		IDetailCategoryBuilder& TaskCategory,
+		const TSharedPtr<IPropertyHandle>& StoryTasksHandle,
+		const TSharedPtr<IPropertyUtilities>& PropertyUtils)
+	{
+		const FSlateColor AccentColor(FMetaplotEditorStyle::Get().GetColor("Metaplot.Category.IconColor"));
+		TaskCategory.HeaderContent(
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.VAlign(VAlign_Center)
+			.Padding(0.0f, 0.0f, 6.0f, 0.0f)
+			[
+				SNew(SImage)
+				.Image(FMetaplotEditorStyle::Get().GetBrush(TEXT("MetaplotEditor.Tasks")))
+				.ColorAndOpacity(AccentColor)
+			]
+			+ SHorizontalBox::Slot()
+			.FillWidth(1.0f)
+			.VAlign(VAlign_Center)
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(TEXT("Tasks")))
+				.TextStyle(&FMetaplotEditorStyle::Get().GetWidgetStyle<FTextBlockStyle>(TEXT("Metaplot.Category")))
+			]
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.VAlign(VAlign_Center)
+			[
+				CreateAddTaskPickerComboButton(StoryTasksHandle, PropertyUtils)
+			]);
+	}
 }
 
 TSharedRef<IDetailCustomization> FMetaplotNodeDetailsProxyCustomization::MakeInstance()
@@ -101,6 +290,8 @@ TSharedRef<IDetailCustomization> FMetaplotNodeDetailsProxyCustomization::MakeIns
 void FMetaplotNodeDetailsProxyCustomization::CustomizeDetails(IDetailLayoutBuilder& DetailBuilder)
 {
 	IDetailCategoryBuilder& NodeCategory = DetailBuilder.EditCategory(TEXT("Metaplot|Node"));
+	IDetailCategoryBuilder& TaskCategory = DetailBuilder.EditCategory(TEXT("Metaplot|Tasks"));
+	const TSharedPtr<IPropertyUtilities> PropertyUtils = DetailBuilder.GetPropertyUtilities();
 
 	const TSharedPtr<IPropertyHandle> NodeIdHandle = DetailBuilder.GetProperty(GET_MEMBER_NAME_CHECKED(UMetaplotNodeDetailsProxy, NodeId));
 	const TSharedPtr<IPropertyHandle> NodeNameHandle = DetailBuilder.GetProperty(GET_MEMBER_NAME_CHECKED(UMetaplotNodeDetailsProxy, NodeName));
@@ -111,6 +302,7 @@ void FMetaplotNodeDetailsProxyCustomization::CustomizeDetails(IDetailLayoutBuild
 	const TSharedPtr<IPropertyHandle> CompletionPolicyHandle = DetailBuilder.GetProperty(GET_MEMBER_NAME_CHECKED(UMetaplotNodeDetailsProxy, CompletionPolicy));
 	const TSharedPtr<IPropertyHandle> ResultPolicyHandle = DetailBuilder.GetProperty(GET_MEMBER_NAME_CHECKED(UMetaplotNodeDetailsProxy, ResultPolicy));
 	const TSharedPtr<IPropertyHandle> RuntimeResultHandle = DetailBuilder.GetProperty(GET_MEMBER_NAME_CHECKED(UMetaplotNodeDetailsProxy, RuntimeResult));
+	const TSharedPtr<IPropertyHandle> StoryTasksHandle = DetailBuilder.GetProperty(GET_MEMBER_NAME_CHECKED(UMetaplotNodeDetailsProxy, StoryTasks));
 
 	auto AddPropertyOnce = [&DetailBuilder, &NodeCategory](const TSharedPtr<IPropertyHandle>& Handle, const bool bReadOnly)
 	{
@@ -135,6 +327,23 @@ void FMetaplotNodeDetailsProxyCustomization::CustomizeDetails(IDetailLayoutBuild
 	AddPropertyOnce(CompletionPolicyHandle, false);
 	AddPropertyOnce(ResultPolicyHandle, false);
 	AddPropertyOnce(RuntimeResultHandle, true);
+
+	if (StoryTasksHandle.IsValid() && StoryTasksHandle->IsValidHandle())
+	{
+		DetailBuilder.HideProperty(StoryTasksHandle);
+		MetaplotDetailsCustomizationPrivate::ConfigureTaskCategoryHeader(TaskCategory, StoryTasksHandle, PropertyUtils);
+		const TSharedRef<FDetailArrayBuilder> TaskArrayBuilder = MakeShareable(new FDetailArrayBuilder(
+			StoryTasksHandle.ToSharedRef(),
+			/*InGenerateHeader*/ false,
+			/*InDisplayResetToDefault*/ true,
+			/*InDisplayElementNum*/ false));
+		TaskArrayBuilder->OnGenerateArrayElementWidget(
+			FOnGenerateArrayElementWidget::CreateLambda([](TSharedRef<IPropertyHandle> PropertyHandle, int32 /*ArrayIndex*/, IDetailChildrenBuilder& ChildrenBuilder)
+			{
+				ChildrenBuilder.AddProperty(PropertyHandle);
+			}));
+		TaskCategory.AddCustomBuilder(TaskArrayBuilder, /*bForAdvanced*/ false);
+	}
 }
 
 TSharedRef<IDetailCustomization> FMetaplotTransitionDetailsProxyCustomization::MakeInstance()
@@ -316,3 +525,4 @@ void FMetaplotConditionCustomization::CustomizeChildren(
 		}));
 	}
 }
+

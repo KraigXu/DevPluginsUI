@@ -166,7 +166,10 @@ struct FMetaplotStoryTaskSpec
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Task")
+	UPROPERTY(EditAnywhere, Instanced, BlueprintReadWrite, Category = "Metaplot|Task", meta = (ShowOnlyInnerProperties))
+	TObjectPtr<UMetaplotStoryTask> Task = nullptr;
+
+	UPROPERTY()
 	TSoftClassPtr<UMetaplotStoryTask> TaskClass;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Task")

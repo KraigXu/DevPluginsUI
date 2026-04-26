@@ -7,7 +7,7 @@
 
 class UMetaplotInstance;
 
-UCLASS(Abstract, Blueprintable, EditInlineNew, DefaultToInstanced)
+UCLASS(Abstract, Blueprintable, EditInlineNew, DefaultToInstanced, CollapseCategories)
 class METAPLOT_API UMetaplotStoryTask : public UObject
 {
 	GENERATED_BODY()
