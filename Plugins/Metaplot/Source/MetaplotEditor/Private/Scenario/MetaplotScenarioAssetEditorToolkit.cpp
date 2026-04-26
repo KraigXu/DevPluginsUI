@@ -106,7 +106,6 @@ namespace MetaplotScenarioEditorPrivate
 
 const FName FMetaplotScenarioAssetEditorToolkit::MainTabId(TEXT("MetaplotScenarioEditor_Main"));
 const FName FMetaplotScenarioAssetEditorToolkit::DetailsTabId(TEXT("MetaplotScenarioEditor_Details"));
-const FName FMetaplotScenarioAssetEditorToolkit::NodeDetailsTabId(TEXT("MetaplotScenarioEditor_NodeDetails"));
 
 void FMetaplotScenarioAssetEditorToolkit::InitMetaplotScenarioAssetEditor(
 	const EToolkitMode::Type Mode,
@@ -123,7 +122,7 @@ void FMetaplotScenarioAssetEditorToolkit::InitMetaplotScenarioAssetEditor(
 	DetailsView->OnFinishedChangingProperties().AddRaw(this, &FMetaplotScenarioAssetEditorToolkit::OnDetailsFinishedChangingProperties);
 	RefreshFlowLists();
 
-	const TSharedRef<FTabManager::FLayout> Layout = FTabManager::NewLayout(TEXT("MetaplotScenarioEditorLayout_v2"))
+	const TSharedRef<FTabManager::FLayout> Layout = FTabManager::NewLayout(TEXT("MetaplotScenarioEditorLayout_v3"))
 		->AddArea(
 			FTabManager::NewPrimaryArea()
 			->SetOrientation(Orient_Horizontal)
@@ -132,16 +131,9 @@ void FMetaplotScenarioAssetEditorToolkit::InitMetaplotScenarioAssetEditor(
 				->SetSizeCoefficient(0.75f)
 				->AddTab(MainTabId, ETabState::OpenedTab))
 			->Split(
-				FTabManager::NewSplitter()
-				->SetOrientation(Orient_Vertical)
-				->Split(
-					FTabManager::NewStack()
-					->SetSizeCoefficient(0.78f)
-					->AddTab(DetailsTabId, ETabState::OpenedTab))
-				->Split(
-					FTabManager::NewStack()
-					->SetSizeCoefficient(0.22f)
-					->AddTab(NodeDetailsTabId, ETabState::OpenedTab))));
+				FTabManager::NewStack()
+				->SetSizeCoefficient(0.25f)
+				->AddTab(DetailsTabId, ETabState::OpenedTab)));
 
 	InitAssetEditor(Mode, InitToolkitHost, FName(TEXT("MetaplotScenarioEditorApp")), Layout, true, true, InFlowAsset);
 }
@@ -176,7 +168,6 @@ void FMetaplotScenarioAssetEditorToolkit::RegisterTabSpawners(const TSharedRef<F
 	// 维护约定：先反注册再注册，并统一 SetGroup；可避免热重载/重复初始化导致 Window 菜单出现重复项。
 	InTabManager->UnregisterTabSpawner(MainTabId);
 	InTabManager->UnregisterTabSpawner(DetailsTabId);
-	InTabManager->UnregisterTabSpawner(NodeDetailsTabId);
 
 	InTabManager->RegisterTabSpawner(MainTabId, FOnSpawnTab::CreateRaw(this, &FMetaplotScenarioAssetEditorToolkit::SpawnTab_Main))
 		.SetDisplayName(LOCTEXT("FlowChartTabLabel", "流程图表"))
@@ -184,10 +175,6 @@ void FMetaplotScenarioAssetEditorToolkit::RegisterTabSpawners(const TSharedRef<F
 
 	InTabManager->RegisterTabSpawner(DetailsTabId, FOnSpawnTab::CreateRaw(this, &FMetaplotScenarioAssetEditorToolkit::SpawnTab_Details))
 		.SetDisplayName(LOCTEXT("DetailsTabLabel", "Details"))
-		.SetGroup(WorkspaceCategoryRef);
-
-	InTabManager->RegisterTabSpawner(NodeDetailsTabId, FOnSpawnTab::CreateRaw(this, &FMetaplotScenarioAssetEditorToolkit::SpawnTab_NodeDetails))
-		.SetDisplayName(LOCTEXT("NodeDetailsTabLabel", "辅助操作"))
 		.SetGroup(WorkspaceCategoryRef);
 }
 
@@ -197,7 +184,6 @@ void FMetaplotScenarioAssetEditorToolkit::UnregisterTabSpawners(const TSharedRef
 	// 与 RegisterTabSpawners 成对清理，避免编辑器生命周期切换后残留菜单分组/Tab 注册状态。
 	InTabManager->UnregisterTabSpawner(MainTabId);
 	InTabManager->UnregisterTabSpawner(DetailsTabId);
-	InTabManager->UnregisterTabSpawner(NodeDetailsTabId);
 	WorkspaceMenuCategory.Reset();
 }
 
@@ -383,56 +369,6 @@ TSharedRef<SDockTab> FMetaplotScenarioAssetEditorToolkit::SpawnTab_Details(const
 	return SNew(SDockTab)
 	[
 		DetailsView.ToSharedRef()
-	];
-}
-
-TSharedRef<SDockTab> FMetaplotScenarioAssetEditorToolkit::SpawnTab_NodeDetails(const FSpawnTabArgs& Args)
-{
-	return SNew(SDockTab)
-	[
-		SNew(SBorder)
-		.BorderImage(FAppStyle::GetBrush("ToolPanel.GroupBorder"))
-		.Padding(8.0f)
-		[
-			SNew(SVerticalBox)
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			[
-				SNew(STextBlock)
-				.Text(LOCTEXT("NodeDetailsGuideTitle", "编辑入口已统一到 Details 面板"))
-				.ColorAndOpacity(FSlateColor(FLinearColor(0.85f, 0.88f, 0.93f, 1.0f)))
-			]
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.Padding(0.0f, 8.0f, 0.0f, 0.0f)
-			[
-				SNew(STextBlock)
-				.Text(LOCTEXT("NodeDetailsGuideBody", "选择节点或连线后，请在右侧 Details 直接编辑属性。\n\n该面板仅保留辅助操作，避免与 Details 信息重复。"))
-				.AutoWrapText(true)
-				.ColorAndOpacity(FSlateColor(FLinearColor(0.72f, 0.75f, 0.80f, 1.0f)))
-			]
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.Padding(0.0f, 10.0f, 0.0f, 0.0f)
-			[
-				SNew(SButton)
-				.ButtonStyle(FAppStyle::Get(), "SimpleButton")
-				.OnClicked(this, &FMetaplotScenarioAssetEditorToolkit::OnFocusSelectedNodeTaskSetClicked)
-				[
-					SNew(STextBlock)
-					.Text(LOCTEXT("FocusNodeTaskSetButton", "聚焦当前节点任务配置"))
-				]
-			]
-			+ SVerticalBox::Slot()
-			.AutoHeight()
-			.Padding(0.0f, 6.0f, 0.0f, 0.0f)
-			[
-				SNew(STextBlock)
-				.Text(this, &FMetaplotScenarioAssetEditorToolkit::GetNodeDetailsTaskSetHintText)
-				.AutoWrapText(true)
-				.ColorAndOpacity(FSlateColor(FLinearColor(0.72f, 0.75f, 0.80f, 1.0f)))
-			]
-		]
 	];
 }
 
@@ -1441,57 +1377,6 @@ void FMetaplotScenarioAssetEditorToolkit::RefreshMainHorizontalScrollBar()
 
 	TGuardValue<bool> SyncGuard(bSyncingHorizontalScrollBar, true);
 	MainHorizontalScrollBar->SetState(OffsetFraction, ThumbFraction);
-}
-
-FText FMetaplotScenarioAssetEditorToolkit::GetNodeDetailsTaskSetHintText() const
-{
-	if (!EditingFlowAsset || !SelectedNodeId.IsValid())
-	{
-		return LOCTEXT("NodeTaskSetHintNoSelection", "提示: 先选择一个节点，再聚焦其任务配置。");
-	}
-
-	const int32 TaskSetIndex = EditingFlowAsset->NodeTaskSets.IndexOfByPredicate([this](const FMetaplotNodeStoryTasks& Entry)
-	{
-		return Entry.NodeId == SelectedNodeId;
-	});
-	if (TaskSetIndex == INDEX_NONE)
-	{
-		return LOCTEXT("NodeTaskSetHintMissing", "提示: 当前节点暂无任务集合。点击按钮会自动创建并置顶。");
-	}
-
-	return FText::Format(
-		LOCTEXT("NodeTaskSetHintIndex", "提示: 当前节点任务集合位于 NodeTaskSets[{0}]。点击按钮可将其置顶到 [0]，便于在 Details 中快速编辑。"),
-		FText::AsNumber(TaskSetIndex));
-}
-
-FReply FMetaplotScenarioAssetEditorToolkit::OnFocusSelectedNodeTaskSetClicked()
-{
-	if (!EditingFlowAsset || !SelectedNodeId.IsValid())
-	{
-		return FReply::Handled();
-	}
-
-	const FScopedTransaction Transaction(LOCTEXT("FocusNodeTaskSetTransaction", "Focus Selected Node Task Set"));
-	EditingFlowAsset->Modify();
-	EnsureTaskSetForNode(SelectedNodeId);
-
-	const int32 TaskSetIndex = EditingFlowAsset->NodeTaskSets.IndexOfByPredicate([this](const FMetaplotNodeStoryTasks& Entry)
-	{
-		return Entry.NodeId == SelectedNodeId;
-	});
-	if (TaskSetIndex != INDEX_NONE && TaskSetIndex > 0)
-	{
-		FMetaplotNodeStoryTasks FocusEntry = EditingFlowAsset->NodeTaskSets[TaskSetIndex];
-		EditingFlowAsset->NodeTaskSets.RemoveAt(TaskSetIndex, 1, EAllowShrinking::No);
-		EditingFlowAsset->NodeTaskSets.Insert(MoveTemp(FocusEntry), 0);
-	}
-
-	EditingFlowAsset->MarkPackageDirty();
-	if (DetailsView.IsValid())
-	{
-		UpdateDetailsSelectionContext();
-	}
-	return FReply::Handled();
 }
 
 void FMetaplotScenarioAssetEditorToolkit::EnsureTaskSetForNode(const FGuid& NodeId)

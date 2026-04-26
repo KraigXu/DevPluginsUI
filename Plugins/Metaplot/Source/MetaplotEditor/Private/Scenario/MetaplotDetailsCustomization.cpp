@@ -103,17 +103,38 @@ void FMetaplotNodeDetailsProxyCustomization::CustomizeDetails(IDetailLayoutBuild
 	IDetailCategoryBuilder& NodeCategory = DetailBuilder.EditCategory(TEXT("Metaplot|Node"));
 
 	const TSharedPtr<IPropertyHandle> NodeIdHandle = DetailBuilder.GetProperty(GET_MEMBER_NAME_CHECKED(UMetaplotNodeDetailsProxy, NodeId));
+	const TSharedPtr<IPropertyHandle> NodeNameHandle = DetailBuilder.GetProperty(GET_MEMBER_NAME_CHECKED(UMetaplotNodeDetailsProxy, NodeName));
+	const TSharedPtr<IPropertyHandle> DescriptionHandle = DetailBuilder.GetProperty(GET_MEMBER_NAME_CHECKED(UMetaplotNodeDetailsProxy, Description));
+	const TSharedPtr<IPropertyHandle> NodeTypeHandle = DetailBuilder.GetProperty(GET_MEMBER_NAME_CHECKED(UMetaplotNodeDetailsProxy, NodeType));
+	const TSharedPtr<IPropertyHandle> StageIndexHandle = DetailBuilder.GetProperty(GET_MEMBER_NAME_CHECKED(UMetaplotNodeDetailsProxy, StageIndex));
+	const TSharedPtr<IPropertyHandle> LayerIndexHandle = DetailBuilder.GetProperty(GET_MEMBER_NAME_CHECKED(UMetaplotNodeDetailsProxy, LayerIndex));
+	const TSharedPtr<IPropertyHandle> CompletionPolicyHandle = DetailBuilder.GetProperty(GET_MEMBER_NAME_CHECKED(UMetaplotNodeDetailsProxy, CompletionPolicy));
+	const TSharedPtr<IPropertyHandle> ResultPolicyHandle = DetailBuilder.GetProperty(GET_MEMBER_NAME_CHECKED(UMetaplotNodeDetailsProxy, ResultPolicy));
 	const TSharedPtr<IPropertyHandle> RuntimeResultHandle = DetailBuilder.GetProperty(GET_MEMBER_NAME_CHECKED(UMetaplotNodeDetailsProxy, RuntimeResult));
 
-	if (NodeIdHandle.IsValid() && NodeIdHandle->IsValidHandle())
+	auto AddPropertyOnce = [&DetailBuilder, &NodeCategory](const TSharedPtr<IPropertyHandle>& Handle, const bool bReadOnly)
 	{
-		NodeCategory.AddProperty(NodeIdHandle).IsEnabled(false);
-	}
+		if (!Handle.IsValid() || !Handle->IsValidHandle())
+		{
+			return;
+		}
+		DetailBuilder.HideProperty(Handle);
+		IDetailPropertyRow& Row = NodeCategory.AddProperty(Handle);
+		if (bReadOnly)
+		{
+			Row.IsEnabled(false);
+		}
+	};
 
-	if (RuntimeResultHandle.IsValid() && RuntimeResultHandle->IsValidHandle())
-	{
-		NodeCategory.AddProperty(RuntimeResultHandle).IsEnabled(false);
-	}
+	AddPropertyOnce(NodeIdHandle, true);
+	AddPropertyOnce(NodeNameHandle, false);
+	AddPropertyOnce(DescriptionHandle, false);
+	AddPropertyOnce(NodeTypeHandle, false);
+	AddPropertyOnce(StageIndexHandle, false);
+	AddPropertyOnce(LayerIndexHandle, false);
+	AddPropertyOnce(CompletionPolicyHandle, false);
+	AddPropertyOnce(ResultPolicyHandle, false);
+	AddPropertyOnce(RuntimeResultHandle, true);
 }
 
 TSharedRef<IDetailCustomization> FMetaplotTransitionDetailsProxyCustomization::MakeInstance()
@@ -127,16 +148,25 @@ void FMetaplotTransitionDetailsProxyCustomization::CustomizeDetails(IDetailLayou
 
 	const TSharedPtr<IPropertyHandle> SourceHandle = DetailBuilder.GetProperty(GET_MEMBER_NAME_CHECKED(UMetaplotTransitionDetailsProxy, SourceNodeId));
 	const TSharedPtr<IPropertyHandle> TargetHandle = DetailBuilder.GetProperty(GET_MEMBER_NAME_CHECKED(UMetaplotTransitionDetailsProxy, TargetNodeId));
+	const TSharedPtr<IPropertyHandle> ConditionsHandle = DetailBuilder.GetProperty(GET_MEMBER_NAME_CHECKED(UMetaplotTransitionDetailsProxy, Conditions));
 
-	if (SourceHandle.IsValid() && SourceHandle->IsValidHandle())
+	auto AddPropertyOnce = [&DetailBuilder, &TransitionCategory](const TSharedPtr<IPropertyHandle>& Handle, const bool bReadOnly)
 	{
-		TransitionCategory.AddProperty(SourceHandle).IsEnabled(false);
-	}
+		if (!Handle.IsValid() || !Handle->IsValidHandle())
+		{
+			return;
+		}
+		DetailBuilder.HideProperty(Handle);
+		IDetailPropertyRow& Row = TransitionCategory.AddProperty(Handle);
+		if (bReadOnly)
+		{
+			Row.IsEnabled(false);
+		}
+	};
 
-	if (TargetHandle.IsValid() && TargetHandle->IsValidHandle())
-	{
-		TransitionCategory.AddProperty(TargetHandle).IsEnabled(false);
-	}
+	AddPropertyOnce(SourceHandle, true);
+	AddPropertyOnce(TargetHandle, true);
+	AddPropertyOnce(ConditionsHandle, false);
 }
 
 TSharedRef<IPropertyTypeCustomization> FMetaplotConditionCustomization::MakeInstance()

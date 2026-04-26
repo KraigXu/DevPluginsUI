@@ -43,7 +43,6 @@ public:
 private:
 	TSharedRef<SDockTab> SpawnTab_AssetList(const class FSpawnTabArgs& Args);
 	TSharedRef<SDockTab> SpawnTab_Details(const class FSpawnTabArgs& Args);
-	TSharedRef<SDockTab> SpawnTab_NodeDetails(const class FSpawnTabArgs& Args);
 	TSharedRef<SDockTab> SpawnTab_Main(const class FSpawnTabArgs& Args);
 	TSharedRef<class SWidget> BuildAssetFilterMenu();
 	FReply OnAddAssetClicked();
@@ -76,8 +75,6 @@ private:
 	void RefreshMainHorizontalScrollBar();
 	void UpdateDetailsSelectionContext();
 	void OnDetailsFinishedChangingProperties(const FPropertyChangedEvent& PropertyChangedEvent);
-	FText GetNodeDetailsTaskSetHintText() const;
-	FReply OnFocusSelectedNodeTaskSetClicked();
 
 private:
 	TObjectPtr<UMetaplotFlow> EditingFlowAsset = nullptr;
@@ -99,5 +96,4 @@ private:
 
 	static const FName MainTabId;
 	static const FName DetailsTabId;
-	static const FName NodeDetailsTabId;
 };
