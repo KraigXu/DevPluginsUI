@@ -27,10 +27,10 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Metaplot|Node")
 	EMetaplotNodeType NodeType = EMetaplotNodeType::Normal;
 
-	UPROPERTY(EditAnywhere, Category = "Metaplot|Node")
+	UPROPERTY(EditAnywhere, Category = "Metaplot|Node", meta = (ClampMin = "0"))
 	int32 StageIndex = 0;
 
-	UPROPERTY(EditAnywhere, Category = "Metaplot|Node")
+	UPROPERTY(EditAnywhere, Category = "Metaplot|Node", meta = (ClampMin = "0"))
 	int32 LayerIndex = 0;
 
 	UPROPERTY(EditAnywhere, Category = "Metaplot|Node")

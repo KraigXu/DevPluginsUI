@@ -61,8 +61,12 @@ void UMetaplotNodeDetailsProxy::PushToFlow()
 	Node->NodeName = NodeName;
 	Node->Description = Description;
 	Node->NodeType = NodeType;
-	Node->StageIndex = StageIndex;
-	Node->LayerIndex = LayerIndex;
+	const int32 ClampedStage = FMath::Max(0, StageIndex);
+	const int32 ClampedLayer = FMath::Max(0, LayerIndex);
+	Node->StageIndex = ClampedStage;
+	Node->LayerIndex = ClampedLayer;
+	StageIndex = ClampedStage;
+	LayerIndex = ClampedLayer;
 	Node->CompletionPolicy = CompletionPolicy;
 	Node->ResultPolicy = ResultPolicy;
 	FlowAsset->MarkPackageDirty();

@@ -182,6 +182,14 @@ namespace MetaplotGraphWidgetPrivate
 	static constexpr float GridHeaderTop = -36.0f;
 	static constexpr float GridHeaderHeight = 16.0f;
 	static constexpr float TimelineY = -18.0f;
+	static constexpr float StageGridStep = 220.0f;
+	static constexpr float LayerGridStep = 140.0f;
+	static constexpr float FitPaddingX = 28.0f;
+	static constexpr float FitPaddingY = 20.0f;
+	static constexpr float ViewInsetLeft = 20.0f;
+	static constexpr float ViewInsetTop = 28.0f;
+	static constexpr float ViewInsetRight = 12.0f;
+	static constexpr float ViewInsetBottom = 12.0f;
 
 	struct FGridRange
 	{
@@ -286,6 +294,15 @@ namespace MetaplotGraphWidgetPrivate
 		}
 	}
 
+	static float SnapToGridStep(const float Value, const float Step, const float GridOrigin)
+	{
+		if (Step <= KINDA_SMALL_NUMBER)
+		{
+			return Value;
+		}
+		return FMath::RoundToFloat((Value - GridOrigin) / Step) * Step + GridOrigin;
+	}
+
 	static void BuildRoundedPolyline(const TArray<FVector2D>& RawPoints, TArray<FVector2D>& OutPoints)
 	{
 		OutPoints.Reset();
@@ -294,60 +311,29 @@ namespace MetaplotGraphWidgetPrivate
 			return;
 		}
 
-		AppendUniquePoint(OutPoints, RawPoints[0]);
-
-		for (int32 Index = 1; Index < RawPoints.Num() - 1; ++Index)
-		{
-			const FVector2D Prev = RawPoints[Index - 1];
-			const FVector2D Corner = RawPoints[Index];
-			const FVector2D Next = RawPoints[Index + 1];
-			const float DistIn = FVector2D::Distance(Prev, Corner);
-			const float DistOut = FVector2D::Distance(Corner, Next);
-			const float Radius = FMath::Min3(14.0f, DistIn * 0.45f, DistOut * 0.45f);
-			if (Radius < 1.0f)
-			{
-				AppendUniquePoint(OutPoints, Corner);
-				continue;
-			}
-
-			const FVector2D D1 = (Prev - Corner).GetSafeNormal();
-			const FVector2D D2 = (Next - Corner).GetSafeNormal();
-			const FVector2D T1 = Corner + D1 * Radius;
-			const FVector2D T2 = Corner + D2 * Radius;
-			const FVector2D Center = Corner + (D1 + D2) * Radius;
-
-			AppendUniquePoint(OutPoints, T1);
-
-			const FVector2D V1 = T1 - Center;
-			const FVector2D V2 = T2 - Center;
-			float A1 = FMath::Atan2(V1.Y, V1.X);
-			float A2 = FMath::Atan2(V2.Y, V2.X);
-			const float Cross = V1.X * V2.Y - V1.Y * V2.X;
-			if (Cross > 0.0f && A2 < A1)
-			{
-				A2 += 2.0f * PI;
-			}
-			else if (Cross < 0.0f && A2 > A1)
-			{
-				A2 -= 2.0f * PI;
-			}
-
-			const int32 ArcSegments = 5;
-			for (int32 ArcIndex = 1; ArcIndex < ArcSegments; ++ArcIndex)
-			{
-				const float T = static_cast<float>(ArcIndex) / static_cast<float>(ArcSegments);
-				const float Angle = FMath::Lerp(A1, A2, T);
-				AppendUniquePoint(OutPoints, Center + FVector2D(FMath::Cos(Angle), FMath::Sin(Angle)) * Radius);
-			}
-			AppendUniquePoint(OutPoints, T2);
-		}
-
-		AppendUniquePoint(OutPoints, RawPoints.Last());
+	// Keep pure orthogonal polyline corners (no arc smoothing),
+	// so the transition is rendered as right-angle segments.
+	for (const FVector2D& Point : RawPoints)
+	{
+		AppendUniquePoint(OutPoints, Point);
+	}
 	}
 
-	static void BuildRoundedOrthogonalPathViaX(const FVector2D& Start, const FVector2D& End, const float MidX, TArray<FVector2D>& OutPoints)
+	static void BuildRoundedOrthogonalPathViaX(
+		const FVector2D& Start,
+		const FVector2D& End,
+		const float MidX,
+		const FVector2D& GridOrigin,
+		TArray<FVector2D>& OutPoints)
 	{
-		const TArray<FVector2D> RawPoints = { Start, FVector2D(MidX, Start.Y), FVector2D(MidX, End.Y), End };
+		const float GridMidX = SnapToGridStep(MidX, StageGridStep, GridOrigin.X);
+		const TArray<FVector2D> RawPoints =
+		{
+			Start,
+			FVector2D(GridMidX, Start.Y),
+			FVector2D(GridMidX, End.Y),
+			End
+		};
 		BuildRoundedPolyline(RawPoints, OutPoints);
 	}
 
@@ -357,23 +343,31 @@ namespace MetaplotGraphWidgetPrivate
 		const float EntryX,
 		const float ExitX,
 		const float BridgeY,
+		const FVector2D& GridOrigin,
 		TArray<FVector2D>& OutPoints)
 	{
+		const float GridEntryX = SnapToGridStep(EntryX, StageGridStep, GridOrigin.X);
+		const float GridExitX = SnapToGridStep(ExitX, StageGridStep, GridOrigin.X);
+		const float GridBridgeY = SnapToGridStep(BridgeY, LayerGridStep, GridOrigin.Y);
 		const TArray<FVector2D> RawPoints =
 		{
 			Start,
-			FVector2D(EntryX, Start.Y),
-			FVector2D(EntryX, BridgeY),
-			FVector2D(ExitX, BridgeY),
-			FVector2D(ExitX, End.Y),
+			FVector2D(GridEntryX, Start.Y),
+			FVector2D(GridEntryX, GridBridgeY),
+			FVector2D(GridExitX, GridBridgeY),
+			FVector2D(GridExitX, End.Y),
 			End
 		};
 		BuildRoundedPolyline(RawPoints, OutPoints);
 	}
 
-	static void BuildRoundedOrthogonalPath(const FVector2D& Start, const FVector2D& End, TArray<FVector2D>& OutPoints)
+	static void BuildRoundedOrthogonalPath(
+		const FVector2D& Start,
+		const FVector2D& End,
+		const FVector2D& GridOrigin,
+		TArray<FVector2D>& OutPoints)
 	{
-		BuildRoundedOrthogonalPathViaX(Start, End, (Start.X + End.X) * 0.5f, OutPoints);
+		BuildRoundedOrthogonalPathViaX(Start, End, (Start.X + End.X) * 0.5f, GridOrigin, OutPoints);
 	}
 
 	static float DistanceSquaredToSegment(const FVector2D& Point, const FVector2D& SegmentStart, const FVector2D& SegmentEnd)
@@ -407,6 +401,8 @@ void SMetaplotFlowGraphWidget::Construct(const FArguments& InArgs)
 void SMetaplotFlowGraphWidget::SetFlowAsset(UMetaplotFlow* InFlow)
 {
 	WeakFlow = InFlow;
+	PanScreen = FVector2D::ZeroVector;
+	ClampPanToContent(CachedLocalSize);
 	Invalidate(EInvalidateWidgetReason::Paint);
 }
 
@@ -482,6 +478,20 @@ FVector2D SMetaplotFlowGraphWidget::GetPinGraphPosition(const FMetaplotNode& Nod
 	return TL + Sz * 0.5f;
 }
 
+FVector2D SMetaplotFlowGraphWidget::GetPinStubGraphPosition(const FMetaplotNode& Node, const EPinSide Side) const
+{
+	const FVector2D Pin = GetPinGraphPosition(Node, Side);
+	if (Side == EPinSide::Left)
+	{
+		return Pin + FVector2D(-PinStubLength, 0.0f);
+	}
+	if (Side == EPinSide::Right)
+	{
+		return Pin + FVector2D(PinStubLength, 0.0f);
+	}
+	return Pin;
+}
+
 FVector2D SMetaplotFlowGraphWidget::GraphToLocal(const FVector2D& GraphPos, const FVector2D& LocalSize) const
 {
 	(void)LocalSize;
@@ -501,25 +511,22 @@ void SMetaplotFlowGraphWidget::ClampPanToContent(const FVector2D& LocalSize)
 	float BoundMinX, BoundMinY, BoundMaxX, BoundMaxY;
 	GetContentBounds(BoundMinX, BoundMinY, BoundMaxX, BoundMaxY);
 
-	const float ClampPadX = 0.0f;
-	const float ClampPadY = 0.0f;
-
-	const float MinPanX = LocalSize.X - (BoundMaxX + ClampPadX);
-	const float MaxPanX = -(BoundMinX - ClampPadX);
+	const float MinPanX = (LocalSize.X - MetaplotGraphWidgetPrivate::ViewInsetRight) - BoundMaxX;
+	const float MaxPanX = MetaplotGraphWidgetPrivate::ViewInsetLeft - BoundMinX;
 	if (MinPanX > MaxPanX)
 	{
-		PanScreen.X = (MinPanX + MaxPanX) * 0.5f;
+		PanScreen.X = MaxPanX;
 	}
 	else
 	{
 		PanScreen.X = FMath::Clamp(PanScreen.X, MinPanX, MaxPanX);
 	}
 
-	const float MinPanY = LocalSize.Y - (BoundMaxY + ClampPadY);
-	const float MaxPanY = -(BoundMinY - ClampPadY);
+	const float MinPanY = (LocalSize.Y - MetaplotGraphWidgetPrivate::ViewInsetBottom) - BoundMaxY;
+	const float MaxPanY = MetaplotGraphWidgetPrivate::ViewInsetTop - BoundMinY;
 	if (MinPanY > MaxPanY)
 	{
-		PanScreen.Y = (MinPanY + MaxPanY) * 0.5f;
+		PanScreen.Y = MaxPanY;
 	}
 	else
 	{
@@ -535,11 +542,38 @@ void SMetaplotFlowGraphWidget::ClampPanToContent(const FVector2D& LocalSize)
 void SMetaplotFlowGraphWidget::GetContentBounds(float& OutMinX, float& OutMinY, float& OutMaxX, float& OutMaxY) const
 {
 	UMetaplotFlow* Flow = WeakFlow.Get();
-	const MetaplotGraphWidgetPrivate::FGridRange GridRange = MetaplotGraphWidgetPrivate::BuildGridRange(Flow);
-	OutMinX = GridRange.MinStage * StageCellWidth;
-	OutMaxX = (GridRange.MaxStage + 1) * StageCellWidth;
-	OutMinY = MetaplotGraphWidgetPrivate::GridHeaderTop;
-	OutMaxY = (GridRange.MaxLayer + 1) * LayerCellHeight;
+	if (!Flow || Flow->Nodes.IsEmpty())
+	{
+		const MetaplotGraphWidgetPrivate::FGridRange GridRange = MetaplotGraphWidgetPrivate::BuildGridRange(Flow);
+		OutMinX = GridRange.MinStage * StageCellWidth;
+		OutMaxX = (GridRange.MaxStage + 1) * StageCellWidth;
+		OutMinY = MetaplotGraphWidgetPrivate::GridHeaderTop;
+		OutMaxY = (GridRange.MaxLayer + 1) * LayerCellHeight;
+		return;
+	}
+
+	float MinX = TNumericLimits<float>::Max();
+	float MinY = TNumericLimits<float>::Max();
+	float MaxX = TNumericLimits<float>::Lowest();
+	float MaxY = TNumericLimits<float>::Lowest();
+	int32 MaxLayer = 0;
+
+	for (const FMetaplotNode& Node : Flow->Nodes)
+	{
+		const FVector2D TopLeft = GetNodeTopLeftGraph(Node);
+		const FVector2D Size = GetNodeSize(Node);
+		MinX = FMath::Min(MinX, TopLeft.X - PinStubLength);
+		MinY = FMath::Min(MinY, TopLeft.Y);
+		MaxX = FMath::Max(MaxX, TopLeft.X + Size.X + PinStubLength);
+		MaxY = FMath::Max(MaxY, TopLeft.Y + Size.Y);
+		MaxLayer = FMath::Max(MaxLayer, Node.LayerIndex);
+	}
+
+	OutMinX = MinX - MetaplotGraphWidgetPrivate::FitPaddingX;
+	OutMaxX = MaxX + MetaplotGraphWidgetPrivate::FitPaddingX;
+	OutMinY = FMath::Min(MinY - MetaplotGraphWidgetPrivate::FitPaddingY, MetaplotGraphWidgetPrivate::GridHeaderTop);
+	const float GridBottomY = (MaxLayer + 1) * LayerCellHeight;
+	OutMaxY = FMath::Max(MaxY + MetaplotGraphWidgetPrivate::FitPaddingY, GridBottomY);
 }
 
 bool SMetaplotFlowGraphWidget::HitTestNode(const FGeometry& MyGeometry, const FVector2D& LocalPos, FGuid& OutNodeId) const
@@ -639,10 +673,10 @@ bool SMetaplotFlowGraphWidget::HitTestTransition(
 			continue;
 		}
 
-		const FVector2D StartLocal = GraphToLocal(GetPinGraphPosition(*SourceNode, EPinSide::Right), LocalSize);
-		const FVector2D EndLocal = GraphToLocal(GetPinGraphPosition(*TargetNode, EPinSide::Left), LocalSize);
+		const FVector2D StartLocal = GraphToLocal(GetPinStubGraphPosition(*SourceNode, EPinSide::Right), LocalSize);
+		const FVector2D EndLocal = GraphToLocal(GetPinStubGraphPosition(*TargetNode, EPinSide::Left), LocalSize);
 		TArray<FVector2D> PathPoints;
-		MetaplotGraphWidgetPrivate::BuildRoundedOrthogonalPath(StartLocal, EndLocal, PathPoints);
+		MetaplotGraphWidgetPrivate::BuildRoundedOrthogonalPath(StartLocal, EndLocal, PanScreen, PathPoints);
 		if (PathPoints.Num() < 2)
 		{
 			continue;
@@ -900,8 +934,8 @@ void SMetaplotFlowGraphWidget::UpdateDragNodePlacementPreview(const FVector2D& L
 	const FVector2D TLGraph = LocalToGraph(LocalPos, LocalSize) - DragGrabOffsetGraph;
 	const FVector2D Sz = GetNodeSize(*Node);
 	const FVector2D Center = TLGraph + Sz * 0.5f;
-	DragPreviewStage = FMath::FloorToInt(Center.X / StageCellWidth);
-	DragPreviewLayer = FMath::FloorToInt(Center.Y / LayerCellHeight);
+	DragPreviewStage = FMath::Max(0, FMath::FloorToInt(Center.X / StageCellWidth));
+	DragPreviewLayer = FMath::Max(0, FMath::FloorToInt(Center.Y / LayerCellHeight));
 	bDragNodePlacementValid = MetaplotFlowPlacement::IsValidCellForNodeMove(Flow, DragNodeId, DragPreviewStage, DragPreviewLayer);
 }
 
@@ -1171,6 +1205,19 @@ FCursorReply SMetaplotFlowGraphWidget::OnCursorQuery(const FGeometry& MyGeometry
 	return FCursorReply::Unhandled();
 }
 
+void SMetaplotFlowGraphWidget::Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime)
+{
+	(void)InCurrentTime;
+	(void)InDeltaTime;
+
+	const FVector2D NewLocalSize = AllottedGeometry.GetLocalSize();
+	if (!CachedLocalSize.Equals(NewLocalSize, 0.1f))
+	{
+		CachedLocalSize = NewLocalSize;
+		ClampPanToContent(CachedLocalSize);
+	}
+}
+
 int32 SMetaplotFlowGraphWidget::OnPaint(
 	const FPaintArgs& Args,
 	const FGeometry& AllottedGeometry,
@@ -1339,15 +1386,6 @@ int32 SMetaplotFlowGraphWidget::OnPaint(
 			FLinearColor(0.40f, 0.72f, 0.98f, 0.95f),
 			true,
 			2.0f);
-
-		FSlateDrawElement::MakeText(
-			OutDrawElements,
-			LayerId + 2,
-			MakeGeo(TimelineStart + FVector2D(4.0f, -14.0f), FVector2D(120.0f, 14.0f)),
-			FString(TEXT("时间轴")),
-			SmallFont,
-			ESlateDrawEffect::None,
-			FLinearColor(0.80f, 0.90f, 1.0f, 0.95f));
 	}
 
 	++LayerId;
@@ -1492,8 +1530,8 @@ int32 SMetaplotFlowGraphWidget::OnPaint(
 			const int32 LaneIndex = GroupNextIndex.FindOrAdd(Key);
 			GroupNextIndex[Key] = LaneIndex + 1;
 
-			const FVector2D P0 = GraphToLocal(GetPinGraphPosition(Lane.Src, EPinSide::Right), LocalSize);
-			const FVector2D P3 = GraphToLocal(GetPinGraphPosition(Lane.Dst, EPinSide::Left), LocalSize);
+			const FVector2D P0 = GraphToLocal(GetPinStubGraphPosition(Lane.Src, EPinSide::Right), LocalSize);
+			const FVector2D P3 = GraphToLocal(GetPinStubGraphPosition(Lane.Dst, EPinSide::Left), LocalSize);
 			const float LaneOffset = (static_cast<float>(LaneIndex) - (static_cast<float>(LaneCount - 1) * 0.5f));
 			const float MidXOffset = LaneOffset * 14.0f;
 			const int32 StageSpan = FMath::Max(0, Lane.DstStage - Lane.SrcStage);
@@ -1511,13 +1549,14 @@ int32 SMetaplotFlowGraphWidget::OnPaint(
 					FMath::Clamp(EntryX, P0.X + 22.0f, P3.X - 40.0f),
 					FMath::Clamp(ExitX, P0.X + 40.0f, P3.X - 22.0f),
 					BridgeY,
+					PanScreen,
 					PathPoints);
 			}
 			else
 			{
 				const float MidBase = (P0.X + P3.X) * 0.5f;
 				const float MidX = FMath::Clamp(MidBase + MidXOffset, P0.X + 24.0f, P3.X - 24.0f);
-				MetaplotGraphWidgetPrivate::BuildRoundedOrthogonalPathViaX(P0, P3, MidX, PathPoints);
+				MetaplotGraphWidgetPrivate::BuildRoundedOrthogonalPathViaX(P0, P3, MidX, PanScreen, PathPoints);
 			}
 			if (PathPoints.Num() >= 2)
 			{
@@ -1528,7 +1567,7 @@ int32 SMetaplotFlowGraphWidget::OnPaint(
 				const FLinearColor LineColor = bEmphasized
 					? FLinearColor(0.38f, 0.78f, 1.0f, 0.96f)
 					: FLinearColor(0.68f, 0.70f, 0.74f, 0.52f);
-				const float LineThickness = bEmphasized ? 2.4f : 1.55f;
+				const float LineThickness = bEmphasized ? 3.4f : 2.5f;
 
 				FSlateDrawElement::MakeLines(
 					OutDrawElements,
@@ -1539,26 +1578,6 @@ int32 SMetaplotFlowGraphWidget::OnPaint(
 					LineColor,
 					true,
 					LineThickness);
-
-				const FVector2D EndDir = (PathPoints.Last() - PathPoints[PathPoints.Num() - 2]).GetSafeNormal();
-				const FVector2D Ortho(-EndDir.Y, EndDir.X);
-				const FVector2D A = PathPoints.Last();
-				const FVector2D B = A - EndDir * 10.0f + Ortho * 5.0f;
-				const FVector2D C = A - EndDir * 10.0f - Ortho * 5.0f;
-				TArray<FVector2D> Arrow;
-				Arrow.Add(A);
-				Arrow.Add(B);
-				Arrow.Add(C);
-				Arrow.Add(A);
-				FSlateDrawElement::MakeLines(
-					OutDrawElements,
-					LayerId,
-					RootGeo,
-					Arrow,
-					ESlateDrawEffect::None,
-					LineColor.CopyWithNewOpacity(bEmphasized ? 0.98f : 0.70f),
-					true,
-					bEmphasized ? 1.8f : 1.25f);
 			}
 		}
 	}
@@ -1569,10 +1588,10 @@ int32 SMetaplotFlowGraphWidget::OnPaint(
 		if (DragNode)
 		{
 			const FMetaplotNode DragLayout = LayoutForDraw(*DragNode);
-			const FVector2D P0 = GraphToLocal(GetPinGraphPosition(DragLayout, DragPinSide), LocalSize);
+			const FVector2D P0 = GraphToLocal(GetPinStubGraphPosition(DragLayout, DragPinSide), LocalSize);
 			const FVector2D P3 = DragCurrentLocal;
 			TArray<FVector2D> PreviewPath;
-			MetaplotGraphWidgetPrivate::BuildRoundedOrthogonalPath(P0, P3, PreviewPath);
+			MetaplotGraphWidgetPrivate::BuildRoundedOrthogonalPath(P0, P3, PanScreen, PreviewPath);
 			FLinearColor InvalidPreviewColor(1.0f, 0.45f, 0.35f, 0.92f);
 			switch (HoveredPinInvalidReason)
 			{
@@ -1603,7 +1622,7 @@ int32 SMetaplotFlowGraphWidget::OnPaint(
 					ESlateDrawEffect::None,
 					PreviewColor,
 					true,
-					2.0f);
+					2.8f);
 			}
 		}
 	}
@@ -1723,8 +1742,8 @@ int32 SMetaplotFlowGraphWidget::OnPaint(
 			const bool bLeftDrag = (bDraggingConnection && DragPinNodeId == Node.NodeId && DragPinSide == EPinSide::Left);
 			const bool bRightDrag = (bDraggingConnection && DragPinNodeId == Node.NodeId && DragPinSide == EPinSide::Right);
 
-			const float LeftRadius = PinRadius + (bLeftHover || bLeftDrag ? 2.0f : 0.0f);
-			const float RightRadius = PinRadius + (bRightHover || bRightDrag ? 2.0f : 0.0f);
+			const float LeftRadius = PinRadius + (bLeftHover || bLeftDrag ? 1.5f : 0.0f);
+			const float RightRadius = PinRadius + (bRightHover || bRightDrag ? 1.5f : 0.0f);
 			const FLinearColor PinFill(0.11f, 0.13f, 0.16f, 1.0f);
 			const FLinearColor ActiveValidColor(0.35f, 0.75f, 1.0f, 1.0f);
 			FLinearColor ActiveInvalidColor(1.0f, 0.35f, 0.35f, 1.0f);
@@ -1753,6 +1772,34 @@ int32 SMetaplotFlowGraphWidget::OnPaint(
 			const bool bRightInvalid = bRightHover && bDraggingConnection && !bHoveredPinAcceptsConnection;
 			const FLinearColor LeftOutline = bLeftDrag ? ActiveValidColor : (bLeftInvalid ? ActiveInvalidColor : ((bLeftHover || bLeftDrag) ? ActiveValidColor : FLinearColor(0.70f, 0.74f, 0.80f, 0.95f)));
 			const FLinearColor RightOutline = bRightDrag ? ActiveValidColor : (bRightInvalid ? ActiveInvalidColor : ((bRightHover || bRightDrag) ? ActiveValidColor : FLinearColor(0.70f, 0.74f, 0.80f, 0.95f)));
+			const FVector2D LeftStubLocal = GraphToLocal(GetPinStubGraphPosition(DrawLayout, EPinSide::Left), LocalSize);
+			const FVector2D RightStubLocal = GraphToLocal(GetPinStubGraphPosition(DrawLayout, EPinSide::Right), LocalSize);
+
+			TArray<FVector2D> LeftStubLine;
+			LeftStubLine.Add(LeftPinLocal);
+			LeftStubLine.Add(LeftStubLocal);
+			FSlateDrawElement::MakeLines(
+				OutDrawElements,
+				LayerId + 1,
+				RootGeo,
+				LeftStubLine,
+				ESlateDrawEffect::None,
+				LeftOutline.CopyWithNewOpacity(0.9f),
+				true,
+				2.2f);
+
+			TArray<FVector2D> RightStubLine;
+			RightStubLine.Add(RightPinLocal);
+			RightStubLine.Add(RightStubLocal);
+			FSlateDrawElement::MakeLines(
+				OutDrawElements,
+				LayerId + 1,
+				RootGeo,
+				RightStubLine,
+				ESlateDrawEffect::None,
+				RightOutline.CopyWithNewOpacity(0.9f),
+				true,
+				2.2f);
 
 			FSlateDrawElement::MakeBox(
 				OutDrawElements,
@@ -1764,14 +1811,28 @@ int32 SMetaplotFlowGraphWidget::OnPaint(
 			FSlateDrawElement::MakeBox(
 				OutDrawElements,
 				LayerId + 2,
-				MakeGeo(LeftPinLocal - FVector2D(LeftRadius + 1.0f, 1.0f), FVector2D((LeftRadius + 1.0f) * 2.0f, 2.0f)),
+				MakeGeo(LeftPinLocal - FVector2D(LeftRadius + 1.0f, LeftRadius + 1.0f), FVector2D((LeftRadius + 1.0f) * 2.0f, 2.0f)),
 				WhiteBox,
 				ESlateDrawEffect::None,
 				LeftOutline);
 			FSlateDrawElement::MakeBox(
 				OutDrawElements,
 				LayerId + 2,
-				MakeGeo(LeftPinLocal - FVector2D(1.0f, LeftRadius + 1.0f), FVector2D(2.0f, (LeftRadius + 1.0f) * 2.0f)),
+				MakeGeo(LeftPinLocal - FVector2D(LeftRadius + 1.0f, -LeftRadius - 1.0f), FVector2D((LeftRadius + 1.0f) * 2.0f, 2.0f)),
+				WhiteBox,
+				ESlateDrawEffect::None,
+				LeftOutline);
+			FSlateDrawElement::MakeBox(
+				OutDrawElements,
+				LayerId + 2,
+				MakeGeo(LeftPinLocal - FVector2D(LeftRadius + 1.0f, LeftRadius + 1.0f), FVector2D(2.0f, (LeftRadius + 1.0f) * 2.0f)),
+				WhiteBox,
+				ESlateDrawEffect::None,
+				LeftOutline);
+			FSlateDrawElement::MakeBox(
+				OutDrawElements,
+				LayerId + 2,
+				MakeGeo(LeftPinLocal + FVector2D(LeftRadius - 1.0f, -LeftRadius - 1.0f), FVector2D(2.0f, (LeftRadius + 1.0f) * 2.0f)),
 				WhiteBox,
 				ESlateDrawEffect::None,
 				LeftOutline);
@@ -1786,14 +1847,28 @@ int32 SMetaplotFlowGraphWidget::OnPaint(
 			FSlateDrawElement::MakeBox(
 				OutDrawElements,
 				LayerId + 2,
-				MakeGeo(RightPinLocal - FVector2D(RightRadius + 1.0f, 1.0f), FVector2D((RightRadius + 1.0f) * 2.0f, 2.0f)),
+				MakeGeo(RightPinLocal - FVector2D(RightRadius + 1.0f, RightRadius + 1.0f), FVector2D((RightRadius + 1.0f) * 2.0f, 2.0f)),
 				WhiteBox,
 				ESlateDrawEffect::None,
 				RightOutline);
 			FSlateDrawElement::MakeBox(
 				OutDrawElements,
 				LayerId + 2,
-				MakeGeo(RightPinLocal - FVector2D(1.0f, RightRadius + 1.0f), FVector2D(2.0f, (RightRadius + 1.0f) * 2.0f)),
+				MakeGeo(RightPinLocal - FVector2D(RightRadius + 1.0f, -RightRadius - 1.0f), FVector2D((RightRadius + 1.0f) * 2.0f, 2.0f)),
+				WhiteBox,
+				ESlateDrawEffect::None,
+				RightOutline);
+			FSlateDrawElement::MakeBox(
+				OutDrawElements,
+				LayerId + 2,
+				MakeGeo(RightPinLocal - FVector2D(RightRadius + 1.0f, RightRadius + 1.0f), FVector2D(2.0f, (RightRadius + 1.0f) * 2.0f)),
+				WhiteBox,
+				ESlateDrawEffect::None,
+				RightOutline);
+			FSlateDrawElement::MakeBox(
+				OutDrawElements,
+				LayerId + 2,
+				MakeGeo(RightPinLocal + FVector2D(RightRadius - 1.0f, -RightRadius - 1.0f), FVector2D(2.0f, (RightRadius + 1.0f) * 2.0f)),
 				WhiteBox,
 				ESlateDrawEffect::None,
 				RightOutline);

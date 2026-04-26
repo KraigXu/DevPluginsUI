@@ -145,10 +145,10 @@ struct FMetaplotNode
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Node")
 	EMetaplotNodeType NodeType = EMetaplotNodeType::Normal;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Node")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Node", meta = (ClampMin = "0"))
 	int32 StageIndex = 0;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Node")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Node", meta = (ClampMin = "0"))
 	int32 LayerIndex = 0;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Node")

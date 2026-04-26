@@ -9,6 +9,11 @@ bool MetaplotFlowPlacement::IsValidCellForNodeMove(const UMetaplotFlow* Flow, co
 		return false;
 	}
 
+	if (NewStage < 0 || NewLayer < 0)
+	{
+		return false;
+	}
+
 	for (const FMetaplotNode& Node : Flow->Nodes)
 	{
 		if (Node.NodeId == MovingNodeId)

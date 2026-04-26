@@ -1089,6 +1089,9 @@ void FMetaplotScenarioAssetEditorToolkit::OnMainGraphMoveNode(FGuid NodeId, int3
 		return;
 	}
 
+	NewStage = FMath::Max(0, NewStage);
+	NewLayer = FMath::Max(0, NewLayer);
+
 	if (!MetaplotFlowPlacement::IsValidCellForNodeMove(EditingFlowAsset, NodeId, NewStage, NewLayer))
 	{
 		return;

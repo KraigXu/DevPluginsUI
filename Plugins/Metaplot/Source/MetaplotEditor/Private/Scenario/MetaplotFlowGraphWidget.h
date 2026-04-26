@@ -15,7 +15,7 @@ DECLARE_DELEGATE_ThreeParams(FOnMetaplotGraphCreateNodeRequested, EMetaplotNodeT
 DECLARE_DELEGATE_OneParam(FOnMetaplotGraphDeleteNodeRequested, FGuid);
 DECLARE_DELEGATE_TwoParams(FOnMetaplotGraphDeleteTransitionRequested, FGuid, FGuid);
 
-/** 主视图：科技树风格网格画布（Stage 水平、Layer 垂直）、贝塞尔连线与中键平移。 */
+/** 主视图：科技树风格网格画布（Stage 水平、Layer 垂直）、正交连线与中键平移。 */
 class SMetaplotFlowGraphWidget : public SLeafWidget
 {
 public:
@@ -53,6 +53,7 @@ private:
 	virtual FReply OnMouseButtonUp(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override;
 	virtual FReply OnMouseMove(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override;
 	virtual FCursorReply OnCursorQuery(const FGeometry& MyGeometry, const FPointerEvent& CursorEvent) const override;
+	virtual void Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime) override;
 
 private:
 	enum class EPinSide : uint8
@@ -76,6 +77,7 @@ private:
 	static FVector2D GetNodeSize(const struct FMetaplotNode& Node);
 	FVector2D GetNodeTopLeftGraph(const struct FMetaplotNode& Node) const;
 	FVector2D GetPinGraphPosition(const struct FMetaplotNode& Node, EPinSide Side) const;
+	FVector2D GetPinStubGraphPosition(const struct FMetaplotNode& Node, EPinSide Side) const;
 	FVector2D GraphToLocal(const FVector2D& GraphPos, const FVector2D& LocalSize) const;
 	FVector2D LocalToGraph(const FVector2D& LocalPos, const FVector2D& LocalSize) const;
 	bool HitTestNode(const FGeometry& MyGeometry, const FVector2D& LocalPos, FGuid& OutNodeId) const;
@@ -132,5 +134,6 @@ private:
 	static constexpr float StageCellWidth = 220.0f;
 	static constexpr float LayerCellHeight = 140.0f;
 	static constexpr float NodeWidth = 160.0f;
-	static constexpr float PinRadius = 5.0f;
+	static constexpr float PinRadius = 4.0f;
+	static constexpr float PinStubLength = 10.0f;
 };
