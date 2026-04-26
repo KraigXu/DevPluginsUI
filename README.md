@@ -47,7 +47,7 @@
 
 #### C. 运行时目标功能（第 4/7/8 章）
 
-- [~] `UMetaplotSubsystem`、`UMetaplotInstance` 已具备最小骨架（初始化、启动、Tick 推进、按连线条件流转）；网络复制与完整生命周期事件未实现。
+- [~] `UMetaplotSubsystem`（`UTickableWorldSubsystem`）与 `UMetaplotInstance` 已具备最小骨架（初始化、启动、自动 Tick 推进、按连线条件流转）；网络复制与完整生命周期事件未实现。
 - [~] `FMetaplotNode`、`FMetaplotTransition`、`FMetaplotCondition`、黑板结构已存在基础声明，并已引入 StoryTask 相关字段与节点结果策略；编辑器配置面板尚未对齐。
 - [~] 故事任务接口（StateTree 风格生命周期）已提供 `UMetaplotStoryTask` 基类，含 `EnterTask/TickTask/ExitTask`；任务注册/发现机制未实现。
 - [~] 蓝图运行时 API 已有最小入口（`StartMetaplotInstance`、黑板读写 API），`MetaplotAdvanceNode` 与更多调试 API 未实现。
@@ -110,7 +110,7 @@
 #### 2.1 插件组成
 
 - **Editor Module：** 提供自定义资产类型 `UMetaplotFlow`、独立编辑器窗口（`FMetaplotEditor`）、图表绘制逻辑。
-- **Runtime Module：** 轻量级运行时，包含 `UMetaplotSubsystem`（管理全局实例）、`UMetaplotInstance`（单个流程实例）、节点行为接口。
+- **Runtime Module：** 轻量级运行时，包含 `UMetaplotSubsystem`（World 级实例管理与 Tick 驱动）、`UMetaplotInstance`（单个流程实例）、节点行为接口。
 
 #### 2.2 自定义资产类型
 
@@ -312,9 +312,14 @@
 #### 7.2 蓝图 API（示例）
 
 ```cpp
-// 启动流程实例（服务器调用）
-UFUNCTION(BlueprintCallable, NetMulticast, Reliable)
-UMetaplotInstance* StartMetaplotInstance(UObject* WorldContext, UMetaplotFlow* FlowAsset, AActor* Owner);
+// 启动流程实例（服务器世界调用；Tick 由 UTickableWorldSubsystem 自动驱动）
+UMetaplotInstance* StartMetaplotInstance(UMetaplotFlow* FlowAsset);
+
+// C++ 调用示例（蓝图同理先拿 World Subsystem）
+UMetaplotSubsystem* MetaplotSubsystem = World->GetSubsystem<UMetaplotSubsystem>();
+UMetaplotInstance* Instance = MetaplotSubsystem
+    ? MetaplotSubsystem->StartMetaplotInstance(FlowAsset)
+    : nullptr;
 
 // 在行为中调用：当前节点完成，流程可继续
 UFUNCTION(BlueprintCallable, Server, Reliable)

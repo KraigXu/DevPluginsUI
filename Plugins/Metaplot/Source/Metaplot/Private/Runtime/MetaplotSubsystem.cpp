@@ -1,6 +1,29 @@
 #include "Runtime/MetaplotSubsystem.h"
 
 #include "Runtime/MetaplotInstance.h"
+#include "Engine/World.h"
+
+void UMetaplotSubsystem::Tick(float DeltaTime)
+{
+	UWorld* World = GetWorld();
+	if (!World || !World->IsGameWorld())
+	{
+		return;
+	}
+
+	TickAll(DeltaTime);
+}
+
+TStatId UMetaplotSubsystem::GetStatId() const
+{
+	RETURN_QUICK_DECLARE_CYCLE_STAT(UMetaplotSubsystem, STATGROUP_Tickables);
+}
+
+bool UMetaplotSubsystem::IsTickable() const
+{
+	const UWorld* World = GetWorld();
+	return World != nullptr && World->IsGameWorld();
+}
 
 UMetaplotInstance* UMetaplotSubsystem::StartMetaplotInstance(UMetaplotFlow* FlowAsset)
 {
