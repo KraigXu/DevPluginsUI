@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "UObject/Object.h"
 #include "UObject/SoftObjectPtr.h"
+#include "../Scenario/MetaplotEditorTaskNode.h"
 #include "MetaplotFlow.generated.h"
 
 class AActor;
@@ -221,18 +222,25 @@ class METAPLOT_API UMetaplotFlow : public UObject
 	GENERATED_BODY()
 
 public:
+	virtual void PostLoad() override;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Flow")
 	TArray<FMetaplotNode> Nodes;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Flow")
 	TArray<FMetaplotTransition> Transitions;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Flow")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Flow", meta = (DeprecatedProperty, DeprecationMessage = "Use NodeEditorTaskSets.Tasks as the primary task editing source."))
 	TArray<FMetaplotNodeStoryTasks> NodeTaskSets;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Flow")
+	TArray<FMetaplotNodeEditorTasks> NodeEditorTaskSets;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Flow")
 	TArray<FMetaplotBlackboardEntry> DefaultBlackboard;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Flow")
 	FGuid StartNodeId;
+
+	bool MigrateStoryTaskSpecsToEditorTaskNodes();
 };

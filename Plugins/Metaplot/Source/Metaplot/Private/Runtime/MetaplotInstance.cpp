@@ -156,13 +156,51 @@ bool UMetaplotInstance::ActivateNode(const FGuid& NodeId)
 
 void UMetaplotInstance::BuildNodeTasks(const FGuid& NodeId, FMetaplotRuntimeNodeState& OutNodeState)
 {
-	const TArray<FMetaplotStoryTaskSpec>* TaskSpecs = FindTaskSet(NodeId);
-	if (!TaskSpecs)
+	if (const FMetaplotNodeEditorTasks* EditorTaskSet = FindEditorTaskSet(NodeId))
+	{
+		for (const FMetaplotEditorTaskNode& TaskNode : EditorTaskSet->Tasks)
+		{
+			if (!TaskNode.bEnabled)
+			{
+				continue;
+			}
+
+			UMetaplotStoryTask* TaskInstance = nullptr;
+			if (TaskNode.InstanceObject)
+			{
+				TaskInstance = DuplicateObject<UMetaplotStoryTask>(TaskNode.InstanceObject, this);
+			}
+			else
+			{
+				UClass* TaskClass = TaskNode.TaskClass.LoadSynchronous();
+				if (TaskClass && TaskClass->IsChildOf(UMetaplotStoryTask::StaticClass()))
+				{
+					TaskInstance = NewObject<UMetaplotStoryTask>(this, TaskClass);
+				}
+			}
+			if (!TaskInstance)
+			{
+				continue;
+			}
+
+			TaskInstance->EnterTask(this, NodeId);
+
+			FMetaplotRuntimeTaskState RuntimeTask;
+			RuntimeTask.TaskInstance = TaskInstance;
+			RuntimeTask.bRequired = TaskNode.bConsideredForCompletion;
+			RuntimeTask.RunState = EMetaplotTaskRunState::Running;
+			OutNodeState.Tasks.Add(RuntimeTask);
+		}
+		return;
+	}
+
+	const FMetaplotNodeStoryTasks* LegacyTaskSet = FindLegacyTaskSet(NodeId);
+	if (!LegacyTaskSet)
 	{
 		return;
 	}
 
-	for (const FMetaplotStoryTaskSpec& TaskSpec : *TaskSpecs)
+	for (const FMetaplotStoryTaskSpec& TaskSpec : LegacyTaskSet->StoryTasks)
 	{
 		UMetaplotStoryTask* TaskInstance = nullptr;
 		if (TaskSpec.Task)
@@ -365,7 +403,25 @@ const FMetaplotNode* UMetaplotInstance::FindNode(const FGuid& NodeId) const
 	return nullptr;
 }
 
-const TArray<FMetaplotStoryTaskSpec>* UMetaplotInstance::FindTaskSet(const FGuid& NodeId) const
+const FMetaplotNodeEditorTasks* UMetaplotInstance::FindEditorTaskSet(const FGuid& NodeId) const
+{
+	if (!FlowAsset)
+	{
+		return nullptr;
+	}
+
+	for (const FMetaplotNodeEditorTasks& NodeTasks : FlowAsset->NodeEditorTaskSets)
+	{
+		if (NodeTasks.NodeId == NodeId)
+		{
+			return &NodeTasks;
+		}
+	}
+
+	return nullptr;
+}
+
+const FMetaplotNodeStoryTasks* UMetaplotInstance::FindLegacyTaskSet(const FGuid& NodeId) const
 {
 	if (!FlowAsset)
 	{
@@ -376,7 +432,7 @@ const TArray<FMetaplotStoryTaskSpec>* UMetaplotInstance::FindTaskSet(const FGuid
 	{
 		if (NodeTasks.NodeId == NodeId)
 		{
-			return &NodeTasks.StoryTasks;
+			return &NodeTasks;
 		}
 	}
 

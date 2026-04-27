@@ -4,7 +4,7 @@
 #include "IDetailCustomization.h"
 #include "IPropertyTypeCustomization.h"
 
-class FMetaplotNodeDetailsProxyCustomization : public IDetailCustomization
+class FMetaplotFlowDetailsCustomization : public IDetailCustomization
 {
 public:
 	static TSharedRef<IDetailCustomization> MakeInstance();

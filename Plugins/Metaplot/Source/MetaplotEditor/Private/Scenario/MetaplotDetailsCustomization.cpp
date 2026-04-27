@@ -8,15 +8,16 @@
 #include "IPropertyUtilities.h"
 #include "PropertyHandle.h"
 #include "PropertyCustomizationHelpers.h"
-#include "ScopedTransaction.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "MetaplotEditorStyle.h"
+#include "Customizations/Widgets/SMetaplotNodeTypePicker.h"
+#include "Scenario/MetaplotEditorNodeUtils.h"
 #include "Styling/AppStyle.h"
+#include "Flow/MetaplotFlow.h"
 #include "Runtime/MetaplotStoryTask.h"
-#include "Scenario/MetaplotDetailsProxy.h"
-#include "Widgets/Input/SButton.h"
+#include "Scenario/MetaplotDetailsContext.h"
+#include "Scenario/MetaplotTransitionDetailsProxy.h"
 #include "Widgets/Input/SComboButton.h"
-#include "Widgets/SBoxPanel.h"
 #include "Widgets/Text/STextBlock.h"
 
 namespace MetaplotDetailsCustomizationPrivate
@@ -78,6 +79,127 @@ namespace MetaplotDetailsCustomizationPrivate
 		return false;
 	}
 
+	static UMetaplotDetailsContext* ResolveDetailsContext(const TSharedPtr<IPropertyUtilities>& PropertyUtils)
+	{
+		if (!PropertyUtils.IsValid())
+		{
+			return UMetaplotDetailsContext::GetActiveContext();
+		}
+
+		const TArray<TWeakObjectPtr<UObject>>& SelectedObjects = PropertyUtils->GetSelectedObjects();
+		for (const TWeakObjectPtr<UObject>& WeakObj : SelectedObjects)
+		{
+			if (UMetaplotDetailsContext* DetailsContext = Cast<UMetaplotDetailsContext>(WeakObj.Get()))
+			{
+				return DetailsContext;
+			}
+			if (const UMetaplotTransitionDetailsProxy* TransitionProxy = Cast<UMetaplotTransitionDetailsProxy>(WeakObj.Get()))
+			{
+				return TransitionProxy->GetDetailsContext();
+			}
+		}
+		return UMetaplotDetailsContext::GetActiveContext();
+	}
+
+	static TSharedPtr<IPropertyHandle> ResolveSelectedNodeHandleFromFlow(
+		IDetailLayoutBuilder& DetailBuilder,
+		const UMetaplotDetailsContext* DetailsContext)
+	{
+		if (!DetailsContext || !DetailsContext->EditingFlowAsset || !DetailsContext->SelectedNodeId.IsValid())
+		{
+			return nullptr;
+		}
+
+		TArray<UObject*> FlowObjects;
+		FlowObjects.Add(DetailsContext->EditingFlowAsset);
+		const TSharedPtr<IPropertyHandle> NodesHandle = DetailBuilder.AddObjectPropertyData(
+			FlowObjects,
+			GET_MEMBER_NAME_CHECKED(UMetaplotFlow, Nodes));
+		if (!NodesHandle.IsValid() || !NodesHandle->IsValidHandle())
+		{
+			return nullptr;
+		}
+
+		const TSharedPtr<IPropertyHandleArray> NodesArray = NodesHandle->AsArray();
+		if (!NodesArray.IsValid())
+		{
+			return nullptr;
+		}
+
+		const int32 NodeIndex = DetailsContext->EditingFlowAsset->Nodes.IndexOfByPredicate([DetailsContext](const FMetaplotNode& Node)
+		{
+			return Node.NodeId == DetailsContext->SelectedNodeId;
+		});
+		if (NodeIndex == INDEX_NONE)
+		{
+			return nullptr;
+		}
+
+		uint32 NumElements = 0;
+		if (NodesArray->GetNumElements(NumElements) != FPropertyAccess::Success || NodeIndex < 0 || static_cast<uint32>(NodeIndex) >= NumElements)
+		{
+			return nullptr;
+		}
+
+		const TSharedPtr<IPropertyHandle> NodeHandle = NodesArray->GetElement(NodeIndex);
+		return (NodeHandle.IsValid() && NodeHandle->IsValidHandle()) ? NodeHandle : nullptr;
+	}
+
+	static TSharedPtr<IPropertyHandle> ResolveStoryTasksHandleFromFlow(
+		IDetailLayoutBuilder& DetailBuilder,
+		const UMetaplotDetailsContext* DetailsContext)
+	{
+		if (!DetailsContext || !DetailsContext->EditingFlowAsset || !DetailsContext->SelectedNodeId.IsValid())
+		{
+			return nullptr;
+		}
+
+		TArray<UObject*> FlowObjects;
+		FlowObjects.Add(DetailsContext->EditingFlowAsset);
+		const TSharedPtr<IPropertyHandle> NodeTaskSetsHandle = DetailBuilder.AddObjectPropertyData(
+			FlowObjects,
+			GET_MEMBER_NAME_CHECKED(UMetaplotFlow, NodeEditorTaskSets));
+		if (!NodeTaskSetsHandle.IsValid() || !NodeTaskSetsHandle->IsValidHandle())
+		{
+			return nullptr;
+		}
+
+		const TSharedPtr<IPropertyHandleArray> NodeTaskSetsArray = NodeTaskSetsHandle->AsArray();
+		if (!NodeTaskSetsArray.IsValid())
+		{
+			return nullptr;
+		}
+
+		const int32 TaskSetIndex = DetailsContext->EditingFlowAsset->NodeEditorTaskSets.IndexOfByPredicate([DetailsContext](const FMetaplotNodeEditorTasks& Entry)
+		{
+			return Entry.NodeId == DetailsContext->SelectedNodeId;
+		});
+		if (TaskSetIndex == INDEX_NONE)
+		{
+			return nullptr;
+		}
+
+		uint32 NumElements = 0;
+		if (NodeTaskSetsArray->GetNumElements(NumElements) != FPropertyAccess::Success || TaskSetIndex < 0 || static_cast<uint32>(TaskSetIndex) >= NumElements)
+		{
+			return nullptr;
+		}
+
+		const TSharedPtr<IPropertyHandle> TaskSetHandle = NodeTaskSetsArray->GetElement(TaskSetIndex);
+		if (!TaskSetHandle.IsValid() || !TaskSetHandle->IsValidHandle())
+		{
+			return nullptr;
+		}
+
+		const TSharedPtr<IPropertyHandle> StoryTasksHandle = TaskSetHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotNodeEditorTasks, Tasks));
+		if (StoryTasksHandle.IsValid() && StoryTasksHandle->IsValidHandle())
+		{
+			return StoryTasksHandle;
+		}
+
+		return nullptr;
+	}
+
 	static EVisibility GetBlackboardValueVisibility(
 		const TSharedPtr<IPropertyHandle>& TypeHandle,
 		const TSharedPtr<IPropertyHandle>& BlackboardKeyHandle,
@@ -101,208 +223,101 @@ namespace MetaplotDetailsCustomizationPrivate
 			: EVisibility::Collapsed;
 	}
 
-	static void AddTaskWithClass(
-		const TSharedPtr<IPropertyHandle>& StoryTasksHandle,
-		const TSharedPtr<IPropertyUtilities>& PropertyUtils,
-		UClass* SelectedTaskClass)
-	{
-		if (!StoryTasksHandle.IsValid() || !StoryTasksHandle->IsValidHandle() || !SelectedTaskClass)
-		{
-			return;
-		}
-
-		const TSharedPtr<IPropertyHandleArray> StoryTasksArray = StoryTasksHandle->AsArray();
-		if (!StoryTasksArray.IsValid())
-		{
-			return;
-		}
-
-		uint32 OldNum = 0;
-		if (StoryTasksArray->GetNumElements(OldNum) != FPropertyAccess::Success)
-		{
-			return;
-		}
-
-		const FScopedTransaction ScopedTransaction(FText::FromString(TEXT("Add Metaplot Task")));
-		StoryTasksHandle->NotifyPreChange();
-
-		if (StoryTasksArray->AddItem() != FPropertyAccess::Success)
-		{
-			StoryTasksHandle->NotifyPostChange(EPropertyChangeType::Unspecified);
-			StoryTasksHandle->NotifyFinishedChangingProperties();
-			return;
-		}
-
-		uint32 NewNum = 0;
-		if (StoryTasksArray->GetNumElements(NewNum) != FPropertyAccess::Success || NewNum == 0)
-		{
-			return;
-		}
-
-		const uint32 NewIndex = (NewNum > OldNum) ? (NewNum - 1) : OldNum;
-		const TSharedPtr<IPropertyHandle> NewItemHandle = StoryTasksArray->GetElement(NewIndex);
-		if (!NewItemHandle.IsValid() || !NewItemHandle->IsValidHandle())
-		{
-			return;
-		}
-
-		const TSharedPtr<IPropertyHandle> TaskHandle = NewItemHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotStoryTaskSpec, Task));
-		const TSharedPtr<IPropertyHandle> TaskClassHandle = NewItemHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotStoryTaskSpec, TaskClass));
-		if ((!TaskHandle.IsValid() || !TaskHandle->IsValidHandle())
-			&& (!TaskClassHandle.IsValid() || !TaskClassHandle->IsValidHandle()))
-		{
-			StoryTasksHandle->NotifyPostChange(EPropertyChangeType::Unspecified);
-			StoryTasksHandle->NotifyFinishedChangingProperties();
-			return;
-		}
-
-		if (TaskHandle.IsValid() && TaskHandle->IsValidHandle())
-		{
-			TaskHandle->SetValue(static_cast<UObject*>(nullptr));
-		}
-		if (TaskClassHandle.IsValid() && TaskClassHandle->IsValidHandle())
-		{
-			// Task instance will be created in proxy PushToFlow with FlowAsset as Outer.
-			const FSoftObjectPath ClassPath(SelectedTaskClass);
-			TaskClassHandle->SetValueFromFormattedString(ClassPath.ToString());
-		}
-		NewItemHandle->SetExpanded(true);
-
-		StoryTasksHandle->NotifyPostChange(EPropertyChangeType::ValueSet);
-		StoryTasksHandle->NotifyFinishedChangingProperties();
-
-		if (PropertyUtils.IsValid())
-		{
-			PropertyUtils->ForceRefresh();
-		}
-	}
-
 	static TSharedRef<SWidget> BuildAddTaskMenu(
 		const TSharedPtr<IPropertyHandle>& StoryTasksHandle,
 		const TSharedPtr<IPropertyUtilities>& PropertyUtils)
 	{
-		FMenuBuilder MenuBuilder(true, nullptr);
-
-		TArray<UClass*> TaskClasses;
-		for (TObjectIterator<UClass> It; It; ++It)
-		{
-			UClass* CandidateClass = *It;
-			if (!CandidateClass
-				|| !CandidateClass->IsChildOf(UMetaplotStoryTask::StaticClass())
-				|| CandidateClass->HasAnyClassFlags(CLASS_Abstract | CLASS_Deprecated | CLASS_NewerVersionExists))
+		return SNew(SMetaplotNodeTypePicker)
+			.BaseClass(UMetaplotStoryTask::StaticClass())
+			.BaseStruct(UMetaplotStoryTask::StaticClass())
+			.OnNodeTypePicked(FOnMetaplotNodeTypePicked::CreateLambda([StoryTasksHandle, PropertyUtils](UClass* PickedClass)
 			{
-				continue;
-			}
-			TaskClasses.Add(CandidateClass);
-		}
-
-		TaskClasses.Sort([](const UClass& A, const UClass& B)
-		{
-			return A.GetName() < B.GetName();
-		});
-
-		if (TaskClasses.IsEmpty())
-		{
-			MenuBuilder.AddMenuEntry(
-				FText::FromString(TEXT("No Task Classes Found")),
-				FText::FromString(TEXT("未找到可用的 UMetaplotStoryTask 子类。")),
-				FSlateIcon(),
-				FUIAction());
-			return MenuBuilder.MakeWidget();
-		}
-
-		for (UClass* TaskClass : TaskClasses)
-		{
-			const FString ClassName = TaskClass ? TaskClass->GetName() : TEXT("UnknownTask");
-			MenuBuilder.AddMenuEntry(
-				FText::FromString(ClassName),
-				FText::FromString(TEXT("添加该任务到当前节点。")),
-				FSlateIcon(),
-				FUIAction(FExecuteAction::CreateLambda([StoryTasksHandle, PropertyUtils, TaskClass]()
+				const UMetaplotDetailsContext* DetailsContext = ResolveDetailsContext(PropertyUtils);
+				if (!DetailsContext || !DetailsContext->EditingFlowAsset || !PickedClass || !StoryTasksHandle.IsValid() || !StoryTasksHandle->IsValidHandle())
 				{
-					AddTaskWithClass(StoryTasksHandle, PropertyUtils, TaskClass);
-				})));
-		}
+					return;
+				}
 
-		return MenuBuilder.MakeWidget();
+				const TSharedPtr<IPropertyHandleArray> StoryTasksArray = StoryTasksHandle->AsArray();
+				if (!StoryTasksArray.IsValid())
+				{
+					return;
+				}
+
+				FMetaplotEditorNodeUtils::ModifyNodeInTransaction(
+					FText::FromString(TEXT("Add Metaplot Task")),
+					StoryTasksHandle,
+					[&]()
+					{
+						uint32 OldNum = 0;
+						if (StoryTasksArray->GetNumElements(OldNum) != FPropertyAccess::Success)
+						{
+							return false;
+						}
+						if (StoryTasksArray->AddItem() != FPropertyAccess::Success)
+						{
+							return false;
+						}
+
+						uint32 NewNum = 0;
+						if (StoryTasksArray->GetNumElements(NewNum) != FPropertyAccess::Success || NewNum == 0)
+						{
+							return false;
+						}
+						const uint32 NewIndex = (NewNum > OldNum) ? (NewNum - 1) : OldNum;
+						const TSharedPtr<IPropertyHandle> NewItemHandle = StoryTasksArray->GetElement(NewIndex);
+						return FMetaplotEditorNodeUtils::SetNodeType(NewItemHandle, PickedClass, DetailsContext->EditingFlowAsset);
+					});
+
+				if (PropertyUtils.IsValid())
+				{
+					PropertyUtils->ForceRefresh();
+				}
+			}));
 	}
 
-	static TSharedRef<SComboButton> CreateAddTaskPickerComboButton(
-		const TSharedPtr<IPropertyHandle>& StoryTasksHandle,
-		const TSharedPtr<IPropertyUtilities>& PropertyUtils)
-	{
-		const FSlateColor AccentColor(FMetaplotEditorStyle::Get().GetColor("Metaplot.Category.IconColor"));
-		return SNew(SComboButton)
-			.ComboButtonStyle(&FAppStyle::Get().GetWidgetStyle<FComboButtonStyle>(TEXT("SimpleComboButton")))
-			.HasDownArrow(false)
-			.ToolTipText(FText::FromString(TEXT("Add new Task")))
-			.ButtonContent()
-			[
-				SNew(SImage)
-				.Image(FMetaplotEditorStyle::Get().GetBrush(TEXT("MetaplotEditor.Add")))
-				.ColorAndOpacity(AccentColor)
-			]
-			.MenuContent()
-			[
-				BuildAddTaskMenu(StoryTasksHandle, PropertyUtils)
-			];
-	}
-
-	static void ConfigureTaskCategoryHeader(
-		IDetailCategoryBuilder& TaskCategory,
-		const TSharedPtr<IPropertyHandle>& StoryTasksHandle,
-		const TSharedPtr<IPropertyUtilities>& PropertyUtils)
-	{
-		const FSlateColor AccentColor(FMetaplotEditorStyle::Get().GetColor("Metaplot.Category.IconColor"));
-		TaskCategory.HeaderContent(
-			SNew(SHorizontalBox)
-			+ SHorizontalBox::Slot()
-			.AutoWidth()
-			.VAlign(VAlign_Center)
-			.Padding(0.0f, 0.0f, 6.0f, 0.0f)
-			[
-				SNew(SImage)
-				.Image(FMetaplotEditorStyle::Get().GetBrush(TEXT("MetaplotEditor.Tasks")))
-				.ColorAndOpacity(AccentColor)
-			]
-			+ SHorizontalBox::Slot()
-			.FillWidth(1.0f)
-			.VAlign(VAlign_Center)
-			[
-				SNew(STextBlock)
-				.Text(FText::FromString(TEXT("Tasks")))
-				.TextStyle(&FMetaplotEditorStyle::Get().GetWidgetStyle<FTextBlockStyle>(TEXT("Metaplot.Category")))
-			]
-			+ SHorizontalBox::Slot()
-			.AutoWidth()
-			.VAlign(VAlign_Center)
-			[
-				CreateAddTaskPickerComboButton(StoryTasksHandle, PropertyUtils)
-			]);
-	}
 }
 
-TSharedRef<IDetailCustomization> FMetaplotNodeDetailsProxyCustomization::MakeInstance()
+TSharedRef<IDetailCustomization> FMetaplotFlowDetailsCustomization::MakeInstance()
 {
-	return MakeShared<FMetaplotNodeDetailsProxyCustomization>();
+	return MakeShared<FMetaplotFlowDetailsCustomization>();
 }
 
-void FMetaplotNodeDetailsProxyCustomization::CustomizeDetails(IDetailLayoutBuilder& DetailBuilder)
+void FMetaplotFlowDetailsCustomization::CustomizeDetails(IDetailLayoutBuilder& DetailBuilder)
 {
 	IDetailCategoryBuilder& NodeCategory = DetailBuilder.EditCategory(TEXT("Metaplot|Node"));
 	IDetailCategoryBuilder& TaskCategory = DetailBuilder.EditCategory(TEXT("Metaplot|Tasks"));
 	const TSharedPtr<IPropertyUtilities> PropertyUtils = DetailBuilder.GetPropertyUtilities();
-
-	const TSharedPtr<IPropertyHandle> NodeIdHandle = DetailBuilder.GetProperty(GET_MEMBER_NAME_CHECKED(UMetaplotNodeDetailsProxy, NodeId));
-	const TSharedPtr<IPropertyHandle> NodeNameHandle = DetailBuilder.GetProperty(GET_MEMBER_NAME_CHECKED(UMetaplotNodeDetailsProxy, NodeName));
-	const TSharedPtr<IPropertyHandle> DescriptionHandle = DetailBuilder.GetProperty(GET_MEMBER_NAME_CHECKED(UMetaplotNodeDetailsProxy, Description));
-	const TSharedPtr<IPropertyHandle> NodeTypeHandle = DetailBuilder.GetProperty(GET_MEMBER_NAME_CHECKED(UMetaplotNodeDetailsProxy, NodeType));
-	const TSharedPtr<IPropertyHandle> StageIndexHandle = DetailBuilder.GetProperty(GET_MEMBER_NAME_CHECKED(UMetaplotNodeDetailsProxy, StageIndex));
-	const TSharedPtr<IPropertyHandle> LayerIndexHandle = DetailBuilder.GetProperty(GET_MEMBER_NAME_CHECKED(UMetaplotNodeDetailsProxy, LayerIndex));
-	const TSharedPtr<IPropertyHandle> CompletionPolicyHandle = DetailBuilder.GetProperty(GET_MEMBER_NAME_CHECKED(UMetaplotNodeDetailsProxy, CompletionPolicy));
-	const TSharedPtr<IPropertyHandle> ResultPolicyHandle = DetailBuilder.GetProperty(GET_MEMBER_NAME_CHECKED(UMetaplotNodeDetailsProxy, ResultPolicy));
-	const TSharedPtr<IPropertyHandle> RuntimeResultHandle = DetailBuilder.GetProperty(GET_MEMBER_NAME_CHECKED(UMetaplotNodeDetailsProxy, RuntimeResult));
-	const TSharedPtr<IPropertyHandle> StoryTasksHandle = DetailBuilder.GetProperty(GET_MEMBER_NAME_CHECKED(UMetaplotNodeDetailsProxy, StoryTasks));
+	const UMetaplotDetailsContext* DetailsContext = MetaplotDetailsCustomizationPrivate::ResolveDetailsContext(PropertyUtils);
+	const TSharedPtr<IPropertyHandle> NodeHandle = MetaplotDetailsCustomizationPrivate::ResolveSelectedNodeHandleFromFlow(DetailBuilder, DetailsContext);
+	const TSharedPtr<IPropertyHandle> NodeIdHandle = NodeHandle.IsValid()
+		? NodeHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotNode, NodeId))
+		: nullptr;
+	const TSharedPtr<IPropertyHandle> NodeNameHandle = NodeHandle.IsValid()
+		? NodeHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotNode, NodeName))
+		: nullptr;
+	const TSharedPtr<IPropertyHandle> DescriptionHandle = NodeHandle.IsValid()
+		? NodeHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotNode, Description))
+		: nullptr;
+	const TSharedPtr<IPropertyHandle> NodeTypeHandle = NodeHandle.IsValid()
+		? NodeHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotNode, NodeType))
+		: nullptr;
+	const TSharedPtr<IPropertyHandle> StageIndexHandle = NodeHandle.IsValid()
+		? NodeHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotNode, StageIndex))
+		: nullptr;
+	const TSharedPtr<IPropertyHandle> LayerIndexHandle = NodeHandle.IsValid()
+		? NodeHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotNode, LayerIndex))
+		: nullptr;
+	const TSharedPtr<IPropertyHandle> CompletionPolicyHandle = NodeHandle.IsValid()
+		? NodeHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotNode, CompletionPolicy))
+		: nullptr;
+	const TSharedPtr<IPropertyHandle> ResultPolicyHandle = NodeHandle.IsValid()
+		? NodeHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotNode, ResultPolicy))
+		: nullptr;
+	const TSharedPtr<IPropertyHandle> RuntimeResultHandle = NodeHandle.IsValid()
+		? NodeHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotNode, RuntimeResult))
+		: nullptr;
+	const TSharedPtr<IPropertyHandle> StoryTasksHandle = MetaplotDetailsCustomizationPrivate::ResolveStoryTasksHandleFromFlow(DetailBuilder, DetailsContext);
 
 	auto AddPropertyOnce = [&DetailBuilder, &NodeCategory](const TSharedPtr<IPropertyHandle>& Handle, const bool bReadOnly)
 	{
@@ -318,31 +333,48 @@ void FMetaplotNodeDetailsProxyCustomization::CustomizeDetails(IDetailLayoutBuild
 		}
 	};
 
-	AddPropertyOnce(NodeIdHandle, true);
-	AddPropertyOnce(NodeNameHandle, false);
-	AddPropertyOnce(DescriptionHandle, false);
-	AddPropertyOnce(NodeTypeHandle, false);
-	AddPropertyOnce(StageIndexHandle, false);
-	AddPropertyOnce(LayerIndexHandle, false);
-	AddPropertyOnce(CompletionPolicyHandle, false);
-	AddPropertyOnce(ResultPolicyHandle, false);
-	AddPropertyOnce(RuntimeResultHandle, true);
+	if (NodeHandle.IsValid() && NodeHandle->IsValidHandle())
+	{
+		AddPropertyOnce(NodeIdHandle, true);
+		AddPropertyOnce(NodeNameHandle, false);
+		AddPropertyOnce(DescriptionHandle, false);
+		AddPropertyOnce(NodeTypeHandle, false);
+		AddPropertyOnce(StageIndexHandle, false);
+		AddPropertyOnce(LayerIndexHandle, false);
+		AddPropertyOnce(CompletionPolicyHandle, false);
+		AddPropertyOnce(ResultPolicyHandle, false);
+		AddPropertyOnce(RuntimeResultHandle, true);
+	}
+	else
+	{
+		NodeCategory.AddCustomRow(FText::FromString(TEXT("NodeNotAvailable")))
+			.WholeRowContent()
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(TEXT("Node unavailable for current selection context.")))
+			];
+	}
 
 	if (StoryTasksHandle.IsValid() && StoryTasksHandle->IsValidHandle())
 	{
-		DetailBuilder.HideProperty(StoryTasksHandle);
-		MetaplotDetailsCustomizationPrivate::ConfigureTaskCategoryHeader(TaskCategory, StoryTasksHandle, PropertyUtils);
-		const TSharedRef<FDetailArrayBuilder> TaskArrayBuilder = MakeShareable(new FDetailArrayBuilder(
-			StoryTasksHandle.ToSharedRef(),
-			/*InGenerateHeader*/ false,
-			/*InDisplayResetToDefault*/ true,
-			/*InDisplayElementNum*/ false));
-		TaskArrayBuilder->OnGenerateArrayElementWidget(
-			FOnGenerateArrayElementWidget::CreateLambda([](TSharedRef<IPropertyHandle> PropertyHandle, int32 /*ArrayIndex*/, IDetailChildrenBuilder& ChildrenBuilder)
+		FMetaplotEditorNodeUtils::MakeArrayCategoryHeader(
+			TaskCategory,
+			TEXT("MetaplotEditor.Tasks"),
+			FText::FromString(TEXT("Tasks")),
+			[StoryTasksHandle, PropertyUtils]()
 			{
-				ChildrenBuilder.AddProperty(PropertyHandle);
-			}));
-		TaskCategory.AddCustomBuilder(TaskArrayBuilder, /*bForAdvanced*/ false);
+				return MetaplotDetailsCustomizationPrivate::BuildAddTaskMenu(StoryTasksHandle, PropertyUtils);
+			});
+		FMetaplotEditorNodeUtils::MakeArrayItems(TaskCategory, StoryTasksHandle);
+	}
+	else
+	{
+		TaskCategory.AddCustomRow(FText::FromString(TEXT("TasksNotAvailable")))
+			.WholeRowContent()
+			[
+				SNew(STextBlock)
+				.Text(FText::FromString(TEXT("Tasks unavailable for current node context.")))
+			];
 	}
 }
 

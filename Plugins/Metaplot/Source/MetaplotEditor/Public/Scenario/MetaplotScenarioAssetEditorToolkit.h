@@ -10,7 +10,7 @@ class SDockTab;
 template <typename ItemType> class SListView;
 class ITableRow;
 class UMetaplotFlow;
-class UMetaplotNodeDetailsProxy;
+class UMetaplotDetailsContext;
 class UMetaplotTransitionDetailsProxy;
 class SMetaplotFlowGraphWidget;
 class SScrollBar;
@@ -87,8 +87,8 @@ private:
 	TSharedPtr<SScrollBar> MainHorizontalScrollBar;
 	FGuid SelectedNodeId;
 	int32 SelectedTransitionIndex = INDEX_NONE;
-	TStrongObjectPtr<UMetaplotNodeDetailsProxy> NodeDetailsProxy;
 	TStrongObjectPtr<UMetaplotTransitionDetailsProxy> TransitionDetailsProxy;
+	TStrongObjectPtr<UMetaplotDetailsContext> DetailsContext;
 	EMetaplotAssetFilter ActiveAssetFilter = EMetaplotAssetFilter::All;
 	FText AssetSearchText;
 	bool bSyncingHorizontalScrollBar = false;

@@ -41,8 +41,8 @@ void FMetaplotEditorModule::RegisterDetailsCustomizations()
 {
 	FPropertyEditorModule& PropertyModule = FModuleManager::LoadModuleChecked<FPropertyEditorModule>(TEXT("PropertyEditor"));
 	PropertyModule.RegisterCustomClassLayout(
-		TEXT("MetaplotNodeDetailsProxy"),
-		FOnGetDetailCustomizationInstance::CreateStatic(&FMetaplotNodeDetailsProxyCustomization::MakeInstance));
+		TEXT("MetaplotFlow"),
+		FOnGetDetailCustomizationInstance::CreateStatic(&FMetaplotFlowDetailsCustomization::MakeInstance));
 	PropertyModule.RegisterCustomClassLayout(
 		TEXT("MetaplotTransitionDetailsProxy"),
 		FOnGetDetailCustomizationInstance::CreateStatic(&FMetaplotTransitionDetailsProxyCustomization::MakeInstance));
@@ -60,7 +60,7 @@ void FMetaplotEditorModule::UnregisterDetailsCustomizations()
 	}
 
 	FPropertyEditorModule& PropertyModule = FModuleManager::GetModuleChecked<FPropertyEditorModule>(TEXT("PropertyEditor"));
-	PropertyModule.UnregisterCustomClassLayout(TEXT("MetaplotNodeDetailsProxy"));
+	PropertyModule.UnregisterCustomClassLayout(TEXT("MetaplotFlow"));
 	PropertyModule.UnregisterCustomClassLayout(TEXT("MetaplotTransitionDetailsProxy"));
 	PropertyModule.UnregisterCustomPropertyTypeLayout(TEXT("MetaplotCondition"));
 	PropertyModule.NotifyCustomizationModuleChanged();

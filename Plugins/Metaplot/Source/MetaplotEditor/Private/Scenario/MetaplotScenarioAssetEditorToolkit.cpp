@@ -1,6 +1,7 @@
 #include "Scenario/MetaplotScenarioAssetEditorToolkit.h"
 
-#include "Scenario/MetaplotDetailsProxy.h"
+#include "Scenario/MetaplotDetailsContext.h"
+#include "Scenario/MetaplotTransitionDetailsProxy.h"
 #include "Scenario/MetaplotFlowGraphWidget.h"
 #include "Scenario/MetaplotFlowPlacement.h"
 #include "IDetailsView.h"
@@ -952,7 +953,7 @@ void FMetaplotScenarioAssetEditorToolkit::RefreshFlowLists()
 			ValidNodeIds.Add(Node.NodeId);
 			EnsureTaskSetForNode(Node.NodeId);
 		}
-		EditingFlowAsset->NodeTaskSets.RemoveAll([&ValidNodeIds](const FMetaplotNodeStoryTasks& Entry)
+		EditingFlowAsset->NodeEditorTaskSets.RemoveAll([&ValidNodeIds](const FMetaplotNodeEditorTasks& Entry)
 		{
 			return !ValidNodeIds.Contains(Entry.NodeId);
 		});
@@ -1283,14 +1284,18 @@ void FMetaplotScenarioAssetEditorToolkit::UpdateDetailsSelectionContext()
 		return;
 	}
 
+	if (!DetailsContext.IsValid())
+	{
+		DetailsContext.Reset(NewObject<UMetaplotDetailsContext>(GetTransientPackage()));
+	}
+	DetailsContext->Initialize(EditingFlowAsset, SelectedNodeId);
+
 	if (EditingFlowAsset && SelectedNodeId.IsValid())
 	{
-		if (!NodeDetailsProxy.IsValid())
-		{
-			NodeDetailsProxy.Reset(NewObject<UMetaplotNodeDetailsProxy>(GetTransientPackage()));
-		}
-		NodeDetailsProxy->Initialize(EditingFlowAsset, SelectedNodeId);
-		DetailsView->SetObject(NodeDetailsProxy.Get());
+		DetailsView->SetObject(EditingFlowAsset);
+		// 选中节点时主对象仍是同一 Flow，SetObject 可能不会触发重建；必须强制刷新才能让
+		// MetaplotDetailsContext 的 SelectedNodeId 参与 CustomizeDetails 重新计算。
+		DetailsView->ForceRefresh();
 		return;
 	}
 
@@ -1302,11 +1307,13 @@ void FMetaplotScenarioAssetEditorToolkit::UpdateDetailsSelectionContext()
 			TransitionDetailsProxy.Reset(NewObject<UMetaplotTransitionDetailsProxy>(GetTransientPackage()));
 		}
 		TransitionDetailsProxy->Initialize(EditingFlowAsset, Transition.SourceNodeId, Transition.TargetNodeId);
+		TransitionDetailsProxy->SetDetailsContext(DetailsContext.Get());
 		DetailsView->SetObject(TransitionDetailsProxy.Get());
 		return;
 	}
 
 	DetailsView->SetObject(EditingFlowAsset);
+	DetailsView->ForceRefresh();
 }
 
 void FMetaplotScenarioAssetEditorToolkit::OnDetailsFinishedChangingProperties(const FPropertyChangedEvent& PropertyChangedEvent)
@@ -1389,7 +1396,7 @@ void FMetaplotScenarioAssetEditorToolkit::EnsureTaskSetForNode(const FGuid& Node
 		return;
 	}
 
-	const bool bExists = EditingFlowAsset->NodeTaskSets.ContainsByPredicate([NodeId](const FMetaplotNodeStoryTasks& Entry)
+	const bool bExists = EditingFlowAsset->NodeEditorTaskSets.ContainsByPredicate([NodeId](const FMetaplotNodeEditorTasks& Entry)
 	{
 		return Entry.NodeId == NodeId;
 	});
@@ -1398,9 +1405,9 @@ void FMetaplotScenarioAssetEditorToolkit::EnsureTaskSetForNode(const FGuid& Node
 		return;
 	}
 
-	FMetaplotNodeStoryTasks NewTaskSet;
+	FMetaplotNodeEditorTasks NewTaskSet;
 	NewTaskSet.NodeId = NodeId;
-	EditingFlowAsset->NodeTaskSets.Add(NewTaskSet);
+	EditingFlowAsset->NodeEditorTaskSets.Add(NewTaskSet);
 }
 
 void FMetaplotScenarioAssetEditorToolkit::RemoveTaskSetForNode(const FGuid& NodeId)
@@ -1410,7 +1417,7 @@ void FMetaplotScenarioAssetEditorToolkit::RemoveTaskSetForNode(const FGuid& Node
 		return;
 	}
 
-	EditingFlowAsset->NodeTaskSets.RemoveAll([NodeId](const FMetaplotNodeStoryTasks& Entry)
+	EditingFlowAsset->NodeEditorTaskSets.RemoveAll([NodeId](const FMetaplotNodeEditorTasks& Entry)
 	{
 		return Entry.NodeId == NodeId;
 	});
@@ -1423,11 +1430,11 @@ int32 FMetaplotScenarioAssetEditorToolkit::GetTaskCountForNode(const FGuid& Node
 		return 0;
 	}
 
-	const FMetaplotNodeStoryTasks* TaskSet = EditingFlowAsset->NodeTaskSets.FindByPredicate([NodeId](const FMetaplotNodeStoryTasks& Entry)
+	const FMetaplotNodeEditorTasks* TaskSet = EditingFlowAsset->NodeEditorTaskSets.FindByPredicate([NodeId](const FMetaplotNodeEditorTasks& Entry)
 	{
 		return Entry.NodeId == NodeId;
 	});
-	return TaskSet ? TaskSet->StoryTasks.Num() : 0;
+	return TaskSet ? TaskSet->Tasks.Num() : 0;
 }
 
 #undef LOCTEXT_NAMESPACE
