@@ -7,6 +7,8 @@
 ## 实施计划文档
 
 - [Metaplot 细节面板 UE 原生化改造计划](Docs/MetaplotDetailsPanelMigrationPlan.md)
+- [Metaplot Details 对齐 StateTree 方案记录（总览）](Docs/MetaplotDetailsStateTreeAlignmentPlan.md)
+- [Metaplot Details 对齐 StateTree 执行指南（主文档）](Docs/MetaplotDetailsStateTreeAlignmentExecutionGuide.md)
 
 ---
 
@@ -69,6 +71,25 @@
 - 黑板 API：`UMetaplotInstance` 新增 Int/Bool/Float/String 读写接口（BlueprintCallable）。
 - 编辑器：节点增删与 `NodeTaskSets` 自动同步；主图节点显示任务数；节点详情新增“聚焦当前节点任务配置”快捷按钮。
 - 示例任务归属：示例 StoryTask 已放入测试项目模块 `Source/DevPluginsUI`（`MetaplotSampleStoryTasks.*`），插件侧仅保留通用框架能力。
+
+### 进度口径说明（避免混淆）
+
+为避免“专项进度”和“项目总进度”混淆，统一采用两套口径并行展示：
+
+- **口径 A（README 全量目标）**：覆盖本文件第 4~8 章的整体目标（编辑器、运行时、校验调试、网络与扩展）。
+- **口径 B（StateTree 对齐专项）**：仅覆盖 `Docs/MetaplotDetailsStateTreeAlignmentExecutionGuide.md` 的 Details 对齐改造（Phase A~E）。
+
+当前参考值（2026-04-27）：
+
+- **README 全量目标（等权清单法）**：约 `35%`
+  - 计分规则：`[x]=1`，`[~]=0.5`，`[ ]=0`。
+  - 按 A/B/C/D 当前标记汇总：`(3.5 + 1.0 + 2.0 + 0.5) / 20 = 35%`。
+- **README 全量目标（章节加权法）**：约 `31%`
+  - 权重：A 15%、B 35%、C 30%、D 20%（更贴近工作量）。
+- **StateTree 对齐专项（ExecutionGuide）**：约 `90%`
+  - 含义：Phase B/C/D/E 已落地；Phase A 已完成“编辑节点双轨同构骨架 + 迁移归一化 + 运行时优先读取”，剩余为 `FStateTreeEditorNode` 等价深度打磨与体验细节。
+
+> 注意：`90%` 仅代表 **Details 对齐专项**，不代表 README 全项目完成度。
 
 ### 1. 引言
 

@@ -2,6 +2,52 @@
 
 #include "Runtime/MetaplotStoryTask.h"
 
+namespace MetaplotRuntimeTaskPrivate
+{
+	static TSoftClassPtr<UMetaplotStoryTask> ResolveTaskClass(const FMetaplotEditorTaskNode& TaskNode)
+	{
+		if (TaskNode.NodeData.IsValid() && TaskNode.NodeData.GetScriptStruct() == FMetaplotEditorTaskNodeData::StaticStruct())
+		{
+			const FMetaplotEditorTaskNodeData& NodeData = TaskNode.NodeData.Get<FMetaplotEditorTaskNodeData>();
+			if (!NodeData.TaskClass.IsNull())
+			{
+				return NodeData.TaskClass;
+			}
+		}
+		return TaskNode.TaskClass;
+	}
+
+	static bool ResolveTaskEnabled(const FMetaplotEditorTaskNode& TaskNode)
+	{
+		if (TaskNode.NodeData.IsValid() && TaskNode.NodeData.GetScriptStruct() == FMetaplotEditorTaskNodeData::StaticStruct())
+		{
+			return TaskNode.NodeData.Get<FMetaplotEditorTaskNodeData>().bEnabled;
+		}
+		return TaskNode.bEnabled;
+	}
+
+	static bool ResolveTaskRequiredForCompletion(const FMetaplotEditorTaskNode& TaskNode)
+	{
+		if (TaskNode.NodeData.IsValid() && TaskNode.NodeData.GetScriptStruct() == FMetaplotEditorTaskNodeData::StaticStruct())
+		{
+			return TaskNode.NodeData.Get<FMetaplotEditorTaskNodeData>().bConsideredForCompletion;
+		}
+		return TaskNode.bConsideredForCompletion;
+	}
+
+	static UMetaplotStoryTask* ResolveTaskTemplate(const FMetaplotEditorTaskNode& TaskNode)
+	{
+		if (TaskNode.InstanceData.IsValid() && TaskNode.InstanceData.GetScriptStruct() == FMetaplotEditorTaskInstanceData::StaticStruct())
+		{
+			if (UMetaplotStoryTask* InstanceTemplate = TaskNode.InstanceData.Get<FMetaplotEditorTaskInstanceData>().InstanceObject)
+			{
+				return InstanceTemplate;
+			}
+		}
+		return TaskNode.InstanceObject;
+	}
+}
+
 bool UMetaplotInstance::Initialize(UMetaplotFlow* InFlow)
 {
 	FlowAsset = InFlow;
@@ -160,19 +206,19 @@ void UMetaplotInstance::BuildNodeTasks(const FGuid& NodeId, FMetaplotRuntimeNode
 	{
 		for (const FMetaplotEditorTaskNode& TaskNode : EditorTaskSet->Tasks)
 		{
-			if (!TaskNode.bEnabled)
+			if (!MetaplotRuntimeTaskPrivate::ResolveTaskEnabled(TaskNode))
 			{
 				continue;
 			}
 
 			UMetaplotStoryTask* TaskInstance = nullptr;
-			if (TaskNode.InstanceObject)
+			if (UMetaplotStoryTask* TemplateTask = MetaplotRuntimeTaskPrivate::ResolveTaskTemplate(TaskNode))
 			{
-				TaskInstance = DuplicateObject<UMetaplotStoryTask>(TaskNode.InstanceObject, this);
+				TaskInstance = DuplicateObject<UMetaplotStoryTask>(TemplateTask, this);
 			}
 			else
 			{
-				UClass* TaskClass = TaskNode.TaskClass.LoadSynchronous();
+				UClass* TaskClass = MetaplotRuntimeTaskPrivate::ResolveTaskClass(TaskNode).LoadSynchronous();
 				if (TaskClass && TaskClass->IsChildOf(UMetaplotStoryTask::StaticClass()))
 				{
 					TaskInstance = NewObject<UMetaplotStoryTask>(this, TaskClass);
@@ -187,7 +233,7 @@ void UMetaplotInstance::BuildNodeTasks(const FGuid& NodeId, FMetaplotRuntimeNode
 
 			FMetaplotRuntimeTaskState RuntimeTask;
 			RuntimeTask.TaskInstance = TaskInstance;
-			RuntimeTask.bRequired = TaskNode.bConsideredForCompletion;
+			RuntimeTask.bRequired = MetaplotRuntimeTaskPrivate::ResolveTaskRequiredForCompletion(TaskNode);
 			RuntimeTask.RunState = EMetaplotTaskRunState::Running;
 			OutNodeState.Tasks.Add(RuntimeTask);
 		}

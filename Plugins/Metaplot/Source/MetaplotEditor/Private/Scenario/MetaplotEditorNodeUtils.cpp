@@ -1,6 +1,7 @@
 #include "Scenario/MetaplotEditorNodeUtils.h"
 
 #include "DetailCategoryBuilder.h"
+#include "Flow/MetaplotFlow.h"
 #include "IDetailChildrenBuilder.h"
 #include "PropertyCustomizationHelpers.h"
 #include "PropertyHandle.h"
@@ -145,11 +146,22 @@ bool FMetaplotEditorNodeUtils::SetNodeType(
 	{
 		CompletionHandle->SetValue(true);
 	}
+	if (UMetaplotFlow* Flow = Cast<UMetaplotFlow>(InstanceOuter))
+	{
+		Flow->NormalizeEditorTaskNodes();
+	}
 	NodeHandle->SetExpanded(true);
 	return true;
 }
 
 bool FMetaplotEditorNodeUtils::ConditionalUpdateNodeInstanceData(
+	const TSharedPtr<IPropertyHandle>& NodeHandle,
+	UObject* InstanceOuter)
+{
+	return EnsureNodeInstanceMatchesClass(NodeHandle, InstanceOuter);
+}
+
+bool FMetaplotEditorNodeUtils::EnsureNodeInstanceMatchesClass(
 	const TSharedPtr<IPropertyHandle>& NodeHandle,
 	UObject* InstanceOuter)
 {
@@ -165,20 +177,43 @@ bool FMetaplotEditorNodeUtils::ConditionalUpdateNodeInstanceData(
 		return false;
 	}
 
-	UObject* ExistingObject = nullptr;
-	InstanceHandle->GetValue(ExistingObject);
-	const FPropertyAccess::Result InstanceSetResult = InstanceHandle->SetValue(ExistingObject);
-	if (InstanceSetResult != FPropertyAccess::Success)
+	FString ClassPathString;
+	if (TaskClassHandle->GetValueAsFormattedString(ClassPathString) != FPropertyAccess::Success)
 	{
 		return false;
 	}
 
-	if (ExistingObject)
+	const FSoftClassPath TaskClassPath(ClassPathString);
+	UClass* TaskClass = TaskClassPath.TryLoadClass<UMetaplotStoryTask>();
+
+	UObject* ExistingObject = nullptr;
+	InstanceHandle->GetValue(ExistingObject);
+	UMetaplotStoryTask* ExistingTask = Cast<UMetaplotStoryTask>(ExistingObject);
+
+	if (!TaskClass || !TaskClass->IsChildOf(UMetaplotStoryTask::StaticClass()))
 	{
+		return InstanceHandle->SetValue(static_cast<UObject*>(nullptr)) == FPropertyAccess::Success;
+	}
+
+	if (ExistingTask && ExistingTask->GetClass() == TaskClass)
+	{
+		if (ExistingTask->GetOuter() != InstanceOuter)
+		{
+			ExistingTask->Rename(nullptr, InstanceOuter, REN_DontCreateRedirectors | REN_NonTransactional);
+		}
 		return true;
 	}
 
-	return InstantiateStructSubobjects(NodeHandle, InstanceOuter);
+	UMetaplotStoryTask* CreatedTask = NewObject<UMetaplotStoryTask>(InstanceOuter, TaskClass, NAME_None, RF_Transactional);
+	const bool bSetSuccess = InstanceHandle->SetValue(CreatedTask) == FPropertyAccess::Success;
+	if (bSetSuccess)
+	{
+		if (UMetaplotFlow* Flow = Cast<UMetaplotFlow>(InstanceOuter))
+		{
+			Flow->NormalizeEditorTaskNodes();
+		}
+	}
+	return bSetSuccess;
 }
 
 bool FMetaplotEditorNodeUtils::InstantiateStructSubobjects(

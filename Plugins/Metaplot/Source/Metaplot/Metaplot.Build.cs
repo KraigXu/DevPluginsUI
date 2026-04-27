@@ -10,7 +10,8 @@ public class Metaplot : ModuleRules
 		{
 			"Core",
 			"CoreUObject",
-			"Engine"
+			"Engine",
+			"StructUtils"
 		});
 	}
 }

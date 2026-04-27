@@ -946,17 +946,11 @@ void FMetaplotScenarioAssetEditorToolkit::RefreshFlowLists()
 
 	if (EditingFlowAsset)
 	{
-		TSet<FGuid> ValidNodeIds;
+		EditingFlowAsset->SyncNodeEditorTaskSetsWithNodes();
 		for (const FMetaplotNode& Node : EditingFlowAsset->Nodes)
 		{
 			NodeItems.Add(MakeShared<FGuid>(Node.NodeId));
-			ValidNodeIds.Add(Node.NodeId);
-			EnsureTaskSetForNode(Node.NodeId);
 		}
-		EditingFlowAsset->NodeEditorTaskSets.RemoveAll([&ValidNodeIds](const FMetaplotNodeEditorTasks& Entry)
-		{
-			return !ValidNodeIds.Contains(Entry.NodeId);
-		});
 
 		for (int32 TransitionIndex = 0; TransitionIndex < EditingFlowAsset->Transitions.Num(); ++TransitionIndex)
 		{

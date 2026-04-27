@@ -16,6 +16,7 @@
 #include "Flow/MetaplotFlow.h"
 #include "Runtime/MetaplotStoryTask.h"
 #include "Scenario/MetaplotDetailsContext.h"
+#include "Scenario/MetaplotEditorTaskNode.h"
 #include "Scenario/MetaplotTransitionDetailsProxy.h"
 #include "Widgets/Input/SComboButton.h"
 #include "Widgets/Text/STextBlock.h"
@@ -99,6 +100,33 @@ namespace MetaplotDetailsCustomizationPrivate
 			}
 		}
 		return UMetaplotDetailsContext::GetActiveContext();
+	}
+
+	static UMetaplotFlow* ResolveEditingFlowAsset(const TSharedPtr<IPropertyUtilities>& PropertyUtils)
+	{
+		if (const UMetaplotDetailsContext* DetailsContext = ResolveDetailsContext(PropertyUtils))
+		{
+			if (DetailsContext->EditingFlowAsset)
+			{
+				return DetailsContext->EditingFlowAsset;
+			}
+		}
+
+		if (!PropertyUtils.IsValid())
+		{
+			return nullptr;
+		}
+
+		const TArray<TWeakObjectPtr<UObject>>& SelectedObjects = PropertyUtils->GetSelectedObjects();
+		for (const TWeakObjectPtr<UObject>& WeakObj : SelectedObjects)
+		{
+			if (UMetaplotFlow* Flow = Cast<UMetaplotFlow>(WeakObj.Get()))
+			{
+				return Flow;
+			}
+		}
+
+		return nullptr;
 	}
 
 	static TSharedPtr<IPropertyHandle> ResolveSelectedNodeHandleFromFlow(
@@ -555,6 +583,76 @@ void FMetaplotConditionCustomization::CustomizeChildren(
 		{
 			return MetaplotDetailsCustomizationPrivate::GetVisibilityByConditionType(TypeHandle, EMetaplotConditionType::RandomProbability);
 		}));
+	}
+}
+
+TSharedRef<IPropertyTypeCustomization> FMetaplotEditorTaskNodeCustomization::MakeInstance()
+{
+	return MakeShared<FMetaplotEditorTaskNodeCustomization>();
+}
+
+void FMetaplotEditorTaskNodeCustomization::CustomizeHeader(
+	TSharedRef<IPropertyHandle> PropertyHandle,
+	FDetailWidgetRow& HeaderRow,
+	IPropertyTypeCustomizationUtils& CustomizationUtils)
+{
+	(void)CustomizationUtils;
+	HeaderRow
+	.NameContent()
+	[
+		PropertyHandle->CreatePropertyNameWidget()
+	]
+	.ValueContent()
+	.MinDesiredWidth(260.0f)
+	[
+		SNew(STextBlock)
+		.Text(FText::FromString(TEXT("Task Node")))
+	];
+}
+
+void FMetaplotEditorTaskNodeCustomization::CustomizeChildren(
+	TSharedRef<IPropertyHandle> PropertyHandle,
+	IDetailChildrenBuilder& ChildBuilder,
+	IPropertyTypeCustomizationUtils& CustomizationUtils)
+{
+	const TSharedPtr<IPropertyUtilities> PropertyUtils = CustomizationUtils.GetPropertyUtilities();
+	const TSharedPtr<IPropertyHandle> IdHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotEditorTaskNode, ID));
+	const TSharedPtr<IPropertyHandle> TaskClassHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotEditorTaskNode, TaskClass));
+	const TSharedPtr<IPropertyHandle> InstanceHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotEditorTaskNode, InstanceObject));
+	const TSharedPtr<IPropertyHandle> EnabledHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotEditorTaskNode, bEnabled));
+	const TSharedPtr<IPropertyHandle> CompletionHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotEditorTaskNode, bConsideredForCompletion));
+
+	if (IdHandle.IsValid() && IdHandle->IsValidHandle())
+	{
+		ChildBuilder.AddProperty(IdHandle.ToSharedRef());
+	}
+	if (TaskClassHandle.IsValid() && TaskClassHandle->IsValidHandle())
+	{
+		ChildBuilder.AddProperty(TaskClassHandle.ToSharedRef());
+		TaskClassHandle->SetOnPropertyValueChanged(FSimpleDelegate::CreateLambda([PropertyHandle, PropertyUtils]()
+		{
+			if (UMetaplotFlow* Flow = MetaplotDetailsCustomizationPrivate::ResolveEditingFlowAsset(PropertyUtils))
+			{
+				FMetaplotEditorNodeUtils::EnsureNodeInstanceMatchesClass(PropertyHandle, Flow);
+				Flow->NormalizeEditorTaskNodes();
+			}
+			if (PropertyUtils.IsValid())
+			{
+				PropertyUtils->ForceRefresh();
+			}
+		}));
+	}
+	if (InstanceHandle.IsValid() && InstanceHandle->IsValidHandle())
+	{
+		ChildBuilder.AddProperty(InstanceHandle.ToSharedRef());
+	}
+	if (EnabledHandle.IsValid() && EnabledHandle->IsValidHandle())
+	{
+		ChildBuilder.AddProperty(EnabledHandle.ToSharedRef());
+	}
+	if (CompletionHandle.IsValid() && CompletionHandle->IsValidHandle())
+	{
+		ChildBuilder.AddProperty(CompletionHandle.ToSharedRef());
 	}
 }
 

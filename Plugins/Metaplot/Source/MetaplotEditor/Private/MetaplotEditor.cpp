@@ -49,6 +49,9 @@ void FMetaplotEditorModule::RegisterDetailsCustomizations()
 	PropertyModule.RegisterCustomPropertyTypeLayout(
 		TEXT("MetaplotCondition"),
 		FOnGetPropertyTypeCustomizationInstance::CreateStatic(&FMetaplotConditionCustomization::MakeInstance));
+	PropertyModule.RegisterCustomPropertyTypeLayout(
+		TEXT("MetaplotEditorTaskNode"),
+		FOnGetPropertyTypeCustomizationInstance::CreateStatic(&FMetaplotEditorTaskNodeCustomization::MakeInstance));
 	PropertyModule.NotifyCustomizationModuleChanged();
 }
 
@@ -63,5 +66,6 @@ void FMetaplotEditorModule::UnregisterDetailsCustomizations()
 	PropertyModule.UnregisterCustomClassLayout(TEXT("MetaplotFlow"));
 	PropertyModule.UnregisterCustomClassLayout(TEXT("MetaplotTransitionDetailsProxy"));
 	PropertyModule.UnregisterCustomPropertyTypeLayout(TEXT("MetaplotCondition"));
+	PropertyModule.UnregisterCustomPropertyTypeLayout(TEXT("MetaplotEditorTaskNode"));
 	PropertyModule.NotifyCustomizationModuleChanged();
 }

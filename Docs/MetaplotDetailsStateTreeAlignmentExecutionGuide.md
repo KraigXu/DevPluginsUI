@@ -200,22 +200,23 @@
 
 ### 5.1 现有文件要改
 
-- [ ] `Plugins/Metaplot/Source/Metaplot/Public/Flow/MetaplotFlow.h`
-- [ ] `Plugins/Metaplot/Source/Metaplot/Private/Runtime/MetaplotInstance.cpp`
-- [ ] `Plugins/Metaplot/Source/MetaplotEditor/Private/Scenario/MetaplotDetailsCustomization.cpp`
-- [ ] `Plugins/Metaplot/Source/MetaplotEditor/Private/Scenario/MetaplotScenarioAssetEditorToolkit.cpp`
-- [ ] `Plugins/Metaplot/Source/MetaplotEditor/Public/Scenario/MetaplotScenarioAssetEditorToolkit.h`
-- [ ] `Plugins/Metaplot/Source/MetaplotEditor/Private/MetaplotEditor.cpp`
-- [ ] `Plugins/Metaplot/Source/MetaplotEditor/Private/MetaplotEditorStyle.cpp`
+- [x] `Plugins/Metaplot/Source/Metaplot/Public/Flow/MetaplotFlow.h`
+- [x] `Plugins/Metaplot/Source/Metaplot/Private/Runtime/MetaplotInstance.cpp`
+- [x] `Plugins/Metaplot/Source/MetaplotEditor/Private/Scenario/MetaplotDetailsCustomization.cpp`
+- [x] `Plugins/Metaplot/Source/MetaplotEditor/Private/Scenario/MetaplotScenarioAssetEditorToolkit.cpp`
+- [x] `Plugins/Metaplot/Source/MetaplotEditor/Public/Scenario/MetaplotScenarioAssetEditorToolkit.h`
+- [x] `Plugins/Metaplot/Source/MetaplotEditor/Private/MetaplotEditor.cpp`
+- [x] `Plugins/Metaplot/Source/MetaplotEditor/Private/MetaplotEditorStyle.cpp`
 
 ### 5.2 新增文件
 
-- [ ] `.../Scenario/MetaplotEditorTaskNode.h`
-- [ ] `.../Scenario/MetaplotEditorTaskNode.cpp`
-- [ ] `.../Scenario/MetaplotEditorNodeUtils.h`
-- [ ] `.../Scenario/MetaplotEditorNodeUtils.cpp`
-- [ ] `.../Customizations/Widgets/SMetaplotNodeTypePicker.h`
-- [ ] `.../Customizations/Widgets/SMetaplotNodeTypePicker.cpp`
+- [x] `Plugins/Metaplot/Source/Metaplot/Public/Scenario/MetaplotEditorTaskNode.h`（主定义）
+- [x] `Plugins/Metaplot/Source/MetaplotEditor/Public/Scenario/MetaplotEditorTaskNode.h`（编辑器侧桥接头）
+- [x] `Plugins/Metaplot/Source/MetaplotEditor/Private/Scenario/MetaplotEditorTaskNode.cpp`
+- [x] `Plugins/Metaplot/Source/MetaplotEditor/Public/Scenario/MetaplotEditorNodeUtils.h`
+- [x] `Plugins/Metaplot/Source/MetaplotEditor/Private/Scenario/MetaplotEditorNodeUtils.cpp`
+- [x] `Plugins/Metaplot/Source/MetaplotEditor/Private/Customizations/Widgets/SMetaplotNodeTypePicker.h`
+- [x] `Plugins/Metaplot/Source/MetaplotEditor/Private/Customizations/Widgets/SMetaplotNodeTypePicker.cpp`
 
 ---
 
@@ -300,11 +301,20 @@
 - 完成阶段：
 - 回归结果：
 - 遗留问题：
-- 时间：2026-04-27 12:10 (UTC+8)
+- 时间：2026-04-27 13:25 (UTC+8)
 - 提交：未提交（工作区）
-- 完成阶段：Phase A/B/C/D 已完成；Phase E（样式键）已完成
-- 回归结果：lints 通过 + `DevPluginsUIEditor Win64 Development` 编译通过
-- 遗留问题：待执行编辑器内手动回归（Add/删除/切节点/UndoRedo/保存重开）
+- 完成阶段：Phase B/C/D/E 已落地；Phase A（同构深度）部分完成
+- 完成度（按 DoD + 阶段目标）：约 `82%`
+- 回归结果：已有记录显示编译通过，且手动回归 Case 1~6 通过；Case 7/8 口径与路径待补齐
+- 遗留问题：
+  1) UI 细节仍与 StateTree 存在整洁度差异（体验差异）
+  2) Case 7（批量编辑）功能口径需统一（是否纳入本轮范围）
+  3) Case 8（Transition 不回归）需补可执行测试路径
+  4) Phase A 的“完全同构编辑节点模型（`FStateTreeEditorNode` 等价层）”仍需继续推进
+  5) 已补充迁移与归一化链路（`bRequired -> bConsideredForCompletion`、任务实例 Outer 归一、缺失 ID/Class 修复、`NodeEditorTaskSets` 与 `Nodes` 自动对齐）；仍需继续推进更高阶同构（如 `FInstancedStruct` 路线）
+  6) 已接入 `MetaplotEditorTaskNode` 属性定制：`TaskClass` 变化时自动校正/重建 `InstanceObject`，避免“类与实例不匹配”漂移
+  7) 已接入 Phase A 双轨骨架：`FMetaplotEditorTaskNode` 新增 `NodeData/InstanceData(FInstancedStruct)`，并在 `PostLoad/Normalize` 中实现“旧字段 <-> InstancedStruct”同步
+  8) 运行时读取已优先走 `NodeData/InstanceData`（旧字段 fallback），双轨模型已从“仅存储”进入“实际执行”
 
 ---
 
@@ -376,4 +386,15 @@ Case 8（Transition 不回归）：无法测试
 3) Case 7 功能/口径需澄清（无该功能还是入口未暴露）
 4) Case 8 缺少可执行测试路径，需补充可复现步骤后回归
 ```
+
+### 11.5 双轨同构专项手测（Phase A 收尾）
+
+> 目标：验证 `FMetaplotEditorTaskNode` 的“`NodeData/InstanceData` 优先、旧字段 fallback”已进入真实执行路径  
+> 建议资产：`MF_Test2` 或任一含 2+ 节点、每节点 1+ Task 的 Flow
+
+- [ ] **Case A1 新字段优先（TaskClass）**：在任务项中修改 `TaskClass`，确认 `InstanceObject` 自动重建为同类实例，并可正常运行
+- [ ] **Case A2 新字段优先（开关位）**：切换任务启用状态后运行，确认禁用任务不会进入 `EnterTask`
+- [ ] **Case A3 新字段优先（完成参与）**：将任务设为“不参与完成”后运行，确认该任务失败不影响节点聚合结果
+- [ ] **Case A4 旧字段 fallback**：构造缺失 `NodeData/InstanceData` 的旧任务数据，确认运行时仍按兼容字段执行
+- [ ] **Case A5 归一化自修复**：保存重开后检查 `ID`、`TaskClass`、`InstanceObject` Outer、`NodeEditorTaskSets` 对齐状态
 

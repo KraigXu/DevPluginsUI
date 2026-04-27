@@ -35,6 +35,10 @@ struct FMetaplotEditorNodeUtils
 		const TSharedPtr<IPropertyHandle>& NodeHandle,
 		UObject* InstanceOuter);
 
+	static bool EnsureNodeInstanceMatchesClass(
+		const TSharedPtr<IPropertyHandle>& NodeHandle,
+		UObject* InstanceOuter);
+
 	static bool InstantiateStructSubobjects(
 		const TSharedPtr<IPropertyHandle>& NodeHandle,
 		UObject* InstanceOuter);

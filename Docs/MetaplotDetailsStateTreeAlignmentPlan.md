@@ -1,12 +1,30 @@
 # Metaplot Details 对齐 StateTree 方案记录
 
-## 背景
+> 文档定位：总览/决策记录（历史 + 里程碑）。
+>
+> 当前执行请以以下文档为准：  
+> **[MetaplotDetailsStateTreeAlignmentExecutionGuide.md](MetaplotDetailsStateTreeAlignmentExecutionGuide.md)**
+>
+> 说明：本文件保留阶段背景与决策脉络，部分“初始现状”描述已不再代表最新代码状态。
 
-当前 `Metaplot` 的节点详情面板已具备基础任务编辑能力，但与 UE `StateTree` 的任务面板在交互和稳定性上仍有差异，主要体现为：
+## 当前状态摘要（请以此为准）
+
+- 节点详情已切换为 `MetaplotFlow + DetailsContext(SelectedNodeId)` 的资产直编路径。
+- `UMetaplotNodeDetailsProxy` 已从节点详情主链路移除；Transition 仍使用独立 proxy。
+- Tasks 区已采用 `FDetailArrayBuilder` 与事务通知链，稳定性较早期明显提升。
+- `MetaplotEditorNodeUtils`、`SMetaplotNodeTypePicker`、`MetaplotEditorStyle` 已接入主链路。
+- 当前整体完成度约 `90%`（B/C/D/E 已完成，A 已完成“可执行同构骨架”，进入收尾阶段）。
+- 剩余差距集中在：任务模型向 `FStateTreeEditorNode` 等价深度继续收敛与少量体验细节打磨。
+
+---
+
+## 历史背景快照（Proxy 阶段）
+
+以下描述用于记录最初立项时的问题上下文，不代表当前最新实现：
 
 - 任务项显示层级偏深。
 - 任务项偶发不稳定（已通过事务与数组构建方式修复一部分）。
-- 实现架构仍依赖 `UMetaplotNodeDetailsProxy`，与 StateTree 的实现思路不一致。
+- （历史）实现架构曾依赖 `UMetaplotNodeDetailsProxy`，与 StateTree 的实现思路不一致。
 
 本记录用于明确后续重构目标与实施顺序，作为项目内长期追踪文档。
 
@@ -36,12 +54,15 @@
 - 节点详情已切换为 `MetaplotFlow` 资产直编（不再经 `UMetaplotNodeDetailsProxy`）。
 - `MetaplotNodeDetailsProxy` class layout 已移除，节点详情 customization 已改为基于 `SelectedNodeId` 的 direct handle 路径。
 - `MetaplotDetailsProxy.h/.cpp` 已删除；Transition 暂保留为独立 `UMetaplotTransitionDetailsProxy`（后续可继续资产化迁移）。
+- `FMetaplotEditorTaskNode` 已接入 `NodeData/InstanceData (FInstancedStruct)` 双轨骨架，并与兼容字段建立自动同步链路。
+- 迁移与归一化能力已补齐：`bRequired -> bConsideredForCompletion`、实例 Outer 归一、缺失 ID/Class 修复、`NodeEditorTaskSets` 与 `Nodes` 自动对齐。
+- 运行时任务构建已优先读取 `NodeData/InstanceData`，旧字段作为 fallback，双轨模型已进入实际执行路径。
 
 ### 未完成 / 差异点
 
-- 未形成 Metaplot 自己的完整 `EditorNodeUtils` 抽象。
-- 任务项逻辑尚非 StateTree 的 `FStateTreeEditorNode` 模型。
+- 任务项尚未达到 `FStateTreeEditorNode` 完全等价深度（当前为双轨过渡形态）。
 - 样式层已引入 `MetaplotEditorStyle`，但仍需继续细化键与资源映射。
+- 手测口径需补齐“双轨优先级 + fallback”专项用例并完成记录。
 
 ---
 

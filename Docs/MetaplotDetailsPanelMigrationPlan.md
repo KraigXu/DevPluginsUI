@@ -1,5 +1,12 @@
 # Metaplot 细节面板 UE 原生化改造计划
 
+> 文档定位：早期迁移方案（Proxy 时代历史记录）。
+>
+> 当前 StateTree 对齐执行请优先参考：  
+> **[MetaplotDetailsStateTreeAlignmentExecutionGuide.md](MetaplotDetailsStateTreeAlignmentExecutionGuide.md)**
+>
+> 说明：本文件中的 `UMetaplotNodeDetailsProxy` / `UMetaplotTransitionDetailsProxy` 方案主要用于回溯背景，不作为当前主实施路径。
+
 ## 背景与目标
 
 当前编辑器右侧已接入 `IDetailsView`，但主要显示 `UMetaplotFlow` 全局对象；节点与连线选中后仍依赖独立的手写“节点详情”区域。  

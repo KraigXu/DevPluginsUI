@@ -243,4 +243,6 @@ public:
 	FGuid StartNodeId;
 
 	bool MigrateStoryTaskSpecsToEditorTaskNodes();
+	bool NormalizeEditorTaskNodes();
+	bool SyncNodeEditorTaskSetsWithNodes();
 };
