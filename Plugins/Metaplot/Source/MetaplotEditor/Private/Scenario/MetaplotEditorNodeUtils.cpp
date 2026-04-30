@@ -1,8 +1,10 @@
 #include "Scenario/MetaplotEditorNodeUtils.h"
 
 #include "DetailCategoryBuilder.h"
+#include "DetailLayoutBuilder.h"
 #include "Flow/MetaplotFlow.h"
 #include "IDetailChildrenBuilder.h"
+#include "IPropertyUtilities.h"
 #include "PropertyCustomizationHelpers.h"
 #include "PropertyHandle.h"
 #include "Runtime/MetaplotStoryTask.h"
@@ -12,9 +14,125 @@
 #include "ScopedTransaction.h"
 #include "Styling/AppStyle.h"
 #include "Widgets/Images/SImage.h"
+#include "Widgets/Input/SButton.h"
 #include "Widgets/Input/SComboButton.h"
+#include "Widgets/SNullWidget.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Text/STextBlock.h"
+
+namespace UE::MetaplotEditor::EditorNodeUtils
+{
+namespace
+{
+	TSharedRef<SWidget> CreateAddItemButton(
+		const FText& TooltipText,
+		const FLinearColor AddIconColor,
+		const TSharedPtr<IPropertyHandle>& ArrayPropertyHandle,
+		const TSharedRef<IPropertyUtilities>& PropUtils)
+	{
+		return SNew(SButton)
+			.ButtonStyle(FAppStyle::Get(), "SimpleButton")
+			.ToolTipText(TooltipText)
+			.IsEnabled(PropUtils, &IPropertyUtilities::IsPropertyEditingEnabled)
+			.OnClicked_Lambda([ArrayPropertyHandle]()
+			{
+				if (!ArrayPropertyHandle.IsValid() || !ArrayPropertyHandle->IsValidHandle())
+				{
+					return FReply::Handled();
+				}
+
+				if (const TSharedPtr<IPropertyHandleArray> ArrayHandle = ArrayPropertyHandle->AsArray())
+				{
+					ArrayHandle->AddItem();
+				}
+				return FReply::Handled();
+			})
+			[
+				SNew(SImage)
+				.Image(FMetaplotEditorStyle::Get().GetBrush(TEXT("MetaplotEditor.Add")))
+				.ColorAndOpacity(AddIconColor)
+			];
+	}
+}
+
+IDetailCategoryBuilder& MakeArrayCategoryHeader(
+	IDetailLayoutBuilder& DetailBuilder,
+	const TSharedPtr<IPropertyHandle>& ArrayPropertyHandle,
+	const FName CategoryName,
+	const FText& CategoryDisplayName,
+	const FName IconName,
+	const FLinearColor IconColor,
+	const TSharedPtr<SWidget> Extension,
+	const FLinearColor AddIconColor,
+	const FText& AddButtonTooltipText,
+	const int32 SortOrder)
+{
+	IDetailCategoryBuilder& Category = DetailBuilder.EditCategory(CategoryName, CategoryDisplayName);
+	Category.SetSortOrder(SortOrder);
+
+	const TSharedPtr<IPropertyUtilities> PropertyUtils = DetailBuilder.GetPropertyUtilities();
+	check(PropertyUtils.IsValid());
+	const TSharedRef<SWidget> AddWidget = CreateAddItemButton(
+		AddButtonTooltipText,
+		AddIconColor,
+		ArrayPropertyHandle,
+		PropertyUtils.ToSharedRef());
+	
+	const TSharedRef<SHorizontalBox> HeaderContent = SNew(SHorizontalBox);
+
+	if (!IconName.IsNone())
+	{
+		HeaderContent->AddSlot()
+			.VAlign(VAlign_Center)
+			.AutoWidth()
+			.Padding(FMargin(4, 0, 0, 0))
+			[
+				SNew(SImage)
+				.ColorAndOpacity(IconColor)
+				.Image(FMetaplotEditorStyle::Get().GetBrush(IconName))
+			];
+	}
+	
+	HeaderContent->AddSlot()
+		.FillWidth(1.f)
+		.HAlign(HAlign_Left)
+		.VAlign(VAlign_Center)
+		.Padding(FMargin(4, 0, 0, 0))
+		[
+			SNew(STextBlock)
+			.TextStyle(&FMetaplotEditorStyle::Get().GetWidgetStyle<FTextBlockStyle>(TEXT("Metaplot.Category")))
+			.Text(CategoryDisplayName)
+		];
+
+	if (Extension)
+	{
+		HeaderContent->AddSlot()
+			.AutoWidth()
+			.HAlign(HAlign_Right)
+			.VAlign(VAlign_Center)
+			[
+				Extension.ToSharedRef()
+			];
+	}
+
+
+	HeaderContent->AddSlot()
+		.AutoWidth()
+		.HAlign(HAlign_Right)
+		.VAlign(VAlign_Center)
+		[
+			AddWidget
+		];
+	
+	Category.HeaderContent(SNew(SBox)
+		.MinDesiredHeight(30.f)
+		[
+			HeaderContent
+		],
+		/*bWholeRowContent*/true);
+	return Category;
+}
+}
 
 bool FMetaplotEditorNodeUtils::ModifyNodeInTransaction(
 	const FText& TransactionText,
@@ -37,49 +155,37 @@ bool FMetaplotEditorNodeUtils::ModifyNodeInTransaction(
 
 void FMetaplotEditorNodeUtils::MakeArrayCategoryHeader(
 	IDetailCategoryBuilder& CategoryBuilder,
-	const FName& IconBrushName,
-	const FText& CategoryTitle,
 	TFunction<TSharedRef<SWidget>()> BuildAddMenuWidget)
 {
-	const FSlateColor AccentColor(FMetaplotEditorStyle::Get().GetColor("Metaplot.Category.IconColor"));
-	CategoryBuilder.HeaderContent(
-		SNew(SHorizontalBox)
-		+ SHorizontalBox::Slot()
-		.AutoWidth()
-		.VAlign(VAlign_Center)
-		.Padding(0.0f, 0.0f, 6.0f, 0.0f)
+	CategoryBuilder.AddCustomRow(FText::GetEmpty())
+		.WholeRowContent()
 		[
-			SNew(SImage)
-			.Image(FMetaplotEditorStyle::Get().GetBrush(IconBrushName))
-			.ColorAndOpacity(AccentColor)
-		]
-		+ SHorizontalBox::Slot()
-		.FillWidth(1.0f)
-		.VAlign(VAlign_Center)
-		[
-			SNew(STextBlock)
-			.Text(CategoryTitle)
-			.TextStyle(&FMetaplotEditorStyle::Get().GetWidgetStyle<FTextBlockStyle>(TEXT("Metaplot.Category")))
-		]
-		+ SHorizontalBox::Slot()
-		.AutoWidth()
-		.VAlign(VAlign_Center)
-		[
-			SNew(SComboButton)
-			.ComboButtonStyle(&FAppStyle::Get().GetWidgetStyle<FComboButtonStyle>(TEXT("SimpleComboButton")))
-			.HasDownArrow(false)
-			.ToolTipText(FText::FromString(TEXT("Add new Task")))
-			.ButtonContent()
+			SNew(SHorizontalBox)
+			+ SHorizontalBox::Slot()
+			.FillWidth(1.0f)
 			[
-				SNew(SImage)
-				.Image(FMetaplotEditorStyle::Get().GetBrush(TEXT("MetaplotEditor.Add")))
-				.ColorAndOpacity(AccentColor)
+				SNullWidget::NullWidget
 			]
-			.MenuContent()
+			+ SHorizontalBox::Slot()
+			.AutoWidth()
+			.VAlign(VAlign_Center)
 			[
-				BuildAddMenuWidget()
+				SNew(SComboButton)
+				.ComboButtonStyle(&FAppStyle::Get().GetWidgetStyle<FComboButtonStyle>(TEXT("SimpleComboButton")))
+				.HasDownArrow(false)
+				.ToolTipText(FText::FromString(TEXT("Add new Task")))
+				.ButtonContent()
+				[
+					SNew(SImage)
+					.Image(FMetaplotEditorStyle::Get().GetBrush(TEXT("MetaplotEditor.Add")))
+					.ColorAndOpacity(FSlateColor::UseForeground())
+				]
+				.MenuContent()
+				[
+					BuildAddMenuWidget()
+				]
 			]
-		]);
+		];
 }
 
 void FMetaplotEditorNodeUtils::MakeArrayItems(

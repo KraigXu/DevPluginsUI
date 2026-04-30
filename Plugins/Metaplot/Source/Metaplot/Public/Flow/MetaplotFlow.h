@@ -56,18 +56,25 @@ enum class EMetaplotNodeResultPolicy : uint8
 	AnyFailedIsFailed UMETA(DisplayName = "Any Failed Is Failed")
 };
 
+UENUM(BlueprintType)
+enum class EMetaplotTaskCompletionType : uint8
+{
+	Any = 0 UMETA(DisplayName = "Any"),
+	All UMETA(DisplayName = "All")
+};
+
 USTRUCT(BlueprintType)
 struct FMetaplotCondition
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Condition")
+	UPROPERTY()
 	EMetaplotConditionType Type = EMetaplotConditionType::RequiredNodeCompleted;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Condition")
+	UPROPERTY()
 	FGuid RequiredNodeId;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Condition", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	UPROPERTY()
 	float Probability = 1.0f;
 };
 
@@ -76,13 +83,13 @@ struct FMetaplotTransition
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Transition")
+	UPROPERTY()
 	FGuid SourceNodeId;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Transition")
+	UPROPERTY()
 	FGuid TargetNodeId;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Transition")
+	UPROPERTY()
 	TArray<FMetaplotCondition> Conditions;
 };
 
@@ -91,31 +98,31 @@ struct FMetaplotNode
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Node")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Node")
 	FGuid NodeId;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Node")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Node")
 	FText NodeName;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Node", meta = (MultiLine = "true"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Node", meta = (MultiLine = "true"))
 	FText Description;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Node")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Node")
 	EMetaplotNodeType NodeType = EMetaplotNodeType::Normal;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Node", meta = (ClampMin = "0"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Node", meta = (ClampMin = "0"))
 	int32 StageIndex = 0;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Node", meta = (ClampMin = "0"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Node", meta = (ClampMin = "0"))
 	int32 LayerIndex = 0;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Node")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Node")
 	EMetaplotNodeCompletionPolicy CompletionPolicy = EMetaplotNodeCompletionPolicy::AllTasksFinished;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Node")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Node")
 	EMetaplotNodeResultPolicy ResultPolicy = EMetaplotNodeResultPolicy::AnyFailedIsFailed;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Node")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Node")
 	EMetaplotNodeResult RuntimeResult = EMetaplotNodeResult::None;
 };
 
@@ -124,13 +131,13 @@ struct FMetaplotStoryTaskSpec
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere, Instanced, BlueprintReadWrite, Category = "Metaplot|Task", meta = (ShowOnlyInnerProperties))
+	UPROPERTY()
 	TObjectPtr<UMetaplotStoryTask> Task = nullptr;
 
 	UPROPERTY()
 	TSoftClassPtr<UMetaplotStoryTask> TaskClass;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Task")
+	UPROPERTY()
 	bool bRequired = true;
 };
 
@@ -139,11 +146,45 @@ struct FMetaplotNodeStoryTasks
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Node")
+	UPROPERTY()
 	FGuid NodeId;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Node")
+	UPROPERTY()
 	TArray<FMetaplotStoryTaskSpec> StoryTasks;
+};
+
+/**
+ * StateTree-style editor state model for a Metaplot node.
+ * This is introduced to align future Details customization with state semantics.
+ */
+USTRUCT(BlueprintType)
+struct FMetaplotNodeState
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "State")
+	FGuid ID;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "State")
+	FText Name;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "State", meta = (MultiLine = "true"))
+	FText Description;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "State")
+	EMetaplotNodeType Type = EMetaplotNodeType::Normal;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "State")
+	bool bEnabled = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "State")
+	EMetaplotTaskCompletionType TasksCompletion = EMetaplotTaskCompletionType::Any;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Tasks")
+	TArray<FMetaplotEditorTaskNode> Tasks;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Transitions")
+	TArray<FMetaplotTransition> Transitions;
 };
 
 UCLASS(BlueprintType)
@@ -154,19 +195,22 @@ class METAPLOT_API UMetaplotFlow : public UObject
 public:
 	virtual void PostLoad() override;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Flow")
+	UPROPERTY()
 	TArray<FMetaplotNode> Nodes;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Flow")
+	UPROPERTY()
 	TArray<FMetaplotTransition> Transitions;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Flow", meta = (DeprecatedProperty, DeprecationMessage = "Use NodeEditorTaskSets.Tasks as the primary task editing source."))
+	UPROPERTY()
 	TArray<FMetaplotNodeStoryTasks> NodeTaskSets;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Flow")
+	UPROPERTY()
 	TArray<FMetaplotNodeEditorTasks> NodeEditorTaskSets;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Metaplot|Flow")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Flow")
+	TArray<FMetaplotNodeState> NodeStates;
+
+	UPROPERTY()
 	FGuid StartNodeId;
 
 	bool MigrateStoryTaskSpecsToEditorTaskNodes();

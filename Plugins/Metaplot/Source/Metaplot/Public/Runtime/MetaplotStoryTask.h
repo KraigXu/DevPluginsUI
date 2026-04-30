@@ -13,12 +13,12 @@ class METAPLOT_API UMetaplotStoryTask : public UObject
 	GENERATED_BODY()
 
 public:
-	UFUNCTION(BlueprintNativeEvent, Category = "Metaplot|Task")
+	UFUNCTION(BlueprintNativeEvent, Category = "Task")
 	void EnterTask(UMetaplotInstance* Instance, FGuid NodeId);
 
-	UFUNCTION(BlueprintNativeEvent, Category = "Metaplot|Task")
+	UFUNCTION(BlueprintNativeEvent, Category = "Task")
 	EMetaplotTaskRunState TickTask(UMetaplotInstance* Instance, float DeltaTime);
 
-	UFUNCTION(BlueprintNativeEvent, Category = "Metaplot|Task")
+	UFUNCTION(BlueprintNativeEvent, Category = "Task")
 	void ExitTask(UMetaplotInstance* Instance, FGuid NodeId);
 };

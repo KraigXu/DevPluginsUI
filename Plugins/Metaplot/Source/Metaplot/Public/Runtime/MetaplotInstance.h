@@ -43,19 +43,19 @@ class METAPLOT_API UMetaplotInstance : public UObject
 	GENERATED_BODY()
 
 public:
-	UFUNCTION(BlueprintCallable, Category = "Metaplot|Runtime")
+	UFUNCTION(BlueprintCallable, Category = "Runtime")
 	bool Initialize(UMetaplotFlow* InFlow);
 
-	UFUNCTION(BlueprintCallable, Category = "Metaplot|Runtime")
+	UFUNCTION(BlueprintCallable, Category = "Runtime")
 	bool Start();
 
-	UFUNCTION(BlueprintCallable, Category = "Metaplot|Runtime")
+	UFUNCTION(BlueprintCallable, Category = "Runtime")
 	void TickInstance(float DeltaTime);
 
-	UFUNCTION(BlueprintPure, Category = "Metaplot|Runtime")
+	UFUNCTION(BlueprintPure, Category = "Runtime")
 	bool IsRunning() const { return bIsRunning; }
 
-	UFUNCTION(BlueprintPure, Category = "Metaplot|Runtime")
+	UFUNCTION(BlueprintPure, Category = "Runtime")
 	FGuid GetCurrentNodeId() const { return CurrentNodeId; }
 
 protected:

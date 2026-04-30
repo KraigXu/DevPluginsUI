@@ -15,9 +15,9 @@ public:
 	void Initialize(UMetaplotFlow* InEditingFlowAsset, const FGuid& InSelectedNodeId);
 	static UMetaplotDetailsContext* GetActiveContext();
 
-	UPROPERTY(Transient, VisibleAnywhere, Category = "Metaplot|Context")
+	UPROPERTY(Transient, VisibleAnywhere, Category = "Context")
 	TObjectPtr<UMetaplotFlow> EditingFlowAsset = nullptr;
 
-	UPROPERTY(Transient, VisibleAnywhere, Category = "Metaplot|Context")
+	UPROPERTY(Transient, VisibleAnywhere, Category = "Context")
 	FGuid SelectedNodeId;
 };

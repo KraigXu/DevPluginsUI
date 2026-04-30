@@ -18,13 +18,13 @@ public:
 	void SetDetailsContext(UMetaplotDetailsContext* InDetailsContext);
 	UMetaplotDetailsContext* GetDetailsContext() const { return DetailsContext; }
 
-	UPROPERTY(VisibleAnywhere, Category = "Metaplot|Transition")
+	UPROPERTY(VisibleAnywhere, Category = "Transition")
 	FGuid SourceNodeId;
 
-	UPROPERTY(VisibleAnywhere, Category = "Metaplot|Transition")
+	UPROPERTY(VisibleAnywhere, Category = "Transition")
 	FGuid TargetNodeId;
 
-	UPROPERTY(EditAnywhere, Category = "Metaplot|Transition")
+	UPROPERTY(EditAnywhere, Category = "Transition")
 	TArray<FMetaplotCondition> Conditions;
 
 protected:

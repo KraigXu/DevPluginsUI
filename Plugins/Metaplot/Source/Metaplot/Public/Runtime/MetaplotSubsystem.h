@@ -17,10 +17,10 @@ public:
 	virtual TStatId GetStatId() const override;
 	virtual bool IsTickable() const override;
 
-	UFUNCTION(BlueprintCallable, Category = "Metaplot|Runtime")
+	UFUNCTION(BlueprintCallable, Category = "Runtime")
 	UMetaplotInstance* StartMetaplotInstance(UMetaplotFlow* FlowAsset);
 
-	UFUNCTION(BlueprintCallable, Category = "Metaplot|Runtime")
+	UFUNCTION(BlueprintCallable, Category = "Runtime")
 	void TickAll(float DeltaTime);
 
 	const TArray<TObjectPtr<UMetaplotInstance>>& GetInstances() const { return Instances; }
