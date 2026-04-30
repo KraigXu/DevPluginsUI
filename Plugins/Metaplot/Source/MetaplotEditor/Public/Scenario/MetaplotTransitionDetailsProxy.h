@@ -17,7 +17,6 @@ public:
 	void Initialize(UMetaplotFlow* InFlowAsset, const FGuid& InSourceNodeId, const FGuid& InTargetNodeId);
 	void SetDetailsContext(UMetaplotDetailsContext* InDetailsContext);
 	UMetaplotDetailsContext* GetDetailsContext() const { return DetailsContext; }
-	bool ResolveBlackboardType(const FName& KeyName, EMetaplotBlackboardType& OutType) const;
 
 	UPROPERTY(VisibleAnywhere, Category = "Metaplot|Transition")
 	FGuid SourceNodeId;

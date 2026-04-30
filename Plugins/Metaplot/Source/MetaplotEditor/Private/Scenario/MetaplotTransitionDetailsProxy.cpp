@@ -16,26 +16,6 @@ void UMetaplotTransitionDetailsProxy::SetDetailsContext(UMetaplotDetailsContext*
 	DetailsContext = InDetailsContext;
 }
 
-bool UMetaplotTransitionDetailsProxy::ResolveBlackboardType(const FName& KeyName, EMetaplotBlackboardType& OutType) const
-{
-	if (!FlowAsset || KeyName.IsNone())
-	{
-		return false;
-	}
-
-	const FMetaplotBlackboardEntry* Entry = FlowAsset->DefaultBlackboard.FindByPredicate([KeyName](const FMetaplotBlackboardEntry& Candidate)
-	{
-		return Candidate.Name == KeyName;
-	});
-	if (!Entry)
-	{
-		return false;
-	}
-
-	OutType = Entry->Type;
-	return true;
-}
-
 void UMetaplotTransitionDetailsProxy::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
 	Super::PostEditChangeProperty(PropertyChangedEvent);

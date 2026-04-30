@@ -51,7 +51,6 @@ namespace MetaplotRuntimeTaskPrivate
 bool UMetaplotInstance::Initialize(UMetaplotFlow* InFlow)
 {
 	FlowAsset = InFlow;
-	RuntimeBlackboard.Reset();
 	CompletedNodes.Reset();
 	CurrentNodeId.Invalidate();
 	bIsRunning = false;
@@ -62,7 +61,6 @@ bool UMetaplotInstance::Initialize(UMetaplotFlow* InFlow)
 		return false;
 	}
 
-	RuntimeBlackboard = FlowAsset->DefaultBlackboard;
 	return true;
 }
 
@@ -85,102 +83,6 @@ void UMetaplotInstance::TickInstance(float DeltaTime)
 	}
 
 	EvaluateActiveNode(DeltaTime);
-}
-
-bool UMetaplotInstance::SetBlackboardInt(FName Key, int32 Value)
-{
-	const int32 Index = FindBlackboardEntryIndex(Key);
-	if (Index == INDEX_NONE || RuntimeBlackboard[Index].Type != EMetaplotBlackboardType::Int)
-	{
-		return false;
-	}
-
-	RuntimeBlackboard[Index].IntValue = Value;
-	return true;
-}
-
-bool UMetaplotInstance::GetBlackboardInt(FName Key, int32& OutValue) const
-{
-	const int32 Index = FindBlackboardEntryIndex(Key);
-	if (Index == INDEX_NONE || RuntimeBlackboard[Index].Type != EMetaplotBlackboardType::Int)
-	{
-		return false;
-	}
-
-	OutValue = RuntimeBlackboard[Index].IntValue;
-	return true;
-}
-
-bool UMetaplotInstance::SetBlackboardBool(FName Key, bool Value)
-{
-	const int32 Index = FindBlackboardEntryIndex(Key);
-	if (Index == INDEX_NONE || RuntimeBlackboard[Index].Type != EMetaplotBlackboardType::Bool)
-	{
-		return false;
-	}
-
-	RuntimeBlackboard[Index].BoolValue = Value;
-	return true;
-}
-
-bool UMetaplotInstance::GetBlackboardBool(FName Key, bool& OutValue) const
-{
-	const int32 Index = FindBlackboardEntryIndex(Key);
-	if (Index == INDEX_NONE || RuntimeBlackboard[Index].Type != EMetaplotBlackboardType::Bool)
-	{
-		return false;
-	}
-
-	OutValue = RuntimeBlackboard[Index].BoolValue;
-	return true;
-}
-
-bool UMetaplotInstance::SetBlackboardFloat(FName Key, float Value)
-{
-	const int32 Index = FindBlackboardEntryIndex(Key);
-	if (Index == INDEX_NONE || RuntimeBlackboard[Index].Type != EMetaplotBlackboardType::Float)
-	{
-		return false;
-	}
-
-	RuntimeBlackboard[Index].FloatValue = Value;
-	return true;
-}
-
-bool UMetaplotInstance::GetBlackboardFloat(FName Key, float& OutValue) const
-{
-	const int32 Index = FindBlackboardEntryIndex(Key);
-	if (Index == INDEX_NONE || RuntimeBlackboard[Index].Type != EMetaplotBlackboardType::Float)
-	{
-		return false;
-	}
-
-	OutValue = RuntimeBlackboard[Index].FloatValue;
-	return true;
-}
-
-bool UMetaplotInstance::SetBlackboardString(FName Key, const FString& Value)
-{
-	const int32 Index = FindBlackboardEntryIndex(Key);
-	if (Index == INDEX_NONE || RuntimeBlackboard[Index].Type != EMetaplotBlackboardType::String)
-	{
-		return false;
-	}
-
-	RuntimeBlackboard[Index].StringValue = Value;
-	return true;
-}
-
-bool UMetaplotInstance::GetBlackboardString(FName Key, FString& OutValue) const
-{
-	const int32 Index = FindBlackboardEntryIndex(Key);
-	if (Index == INDEX_NONE || RuntimeBlackboard[Index].Type != EMetaplotBlackboardType::String)
-	{
-		return false;
-	}
-
-	OutValue = RuntimeBlackboard[Index].StringValue;
-	return true;
 }
 
 bool UMetaplotInstance::ActivateNode(const FGuid& NodeId)
@@ -385,37 +287,6 @@ bool UMetaplotInstance::EvaluateTransitionConditions(const FMetaplotTransition& 
 				return false;
 			}
 			break;
-		case EMetaplotConditionType::BlackboardCompare:
-		{
-			const int32 BlackboardIndex = FindBlackboardEntryIndex(Condition.BlackboardKey);
-			if (BlackboardIndex == INDEX_NONE)
-			{
-				return false;
-			}
-
-			const FMetaplotBlackboardEntry& Entry = RuntimeBlackboard[BlackboardIndex];
-			if (Entry.Type == EMetaplotBlackboardType::Int)
-			{
-				if (!CompareBlackboardInt(Entry.IntValue, Condition.ComparisonOp, Condition.IntValue))
-				{
-					return false;
-				}
-			}
-			else if (Entry.Type == EMetaplotBlackboardType::Bool)
-			{
-				const bool bMatches = (Condition.ComparisonOp == EMetaplotComparisonOp::Equal && Entry.BoolValue == Condition.BoolValue)
-					|| (Condition.ComparisonOp == EMetaplotComparisonOp::NotEqual && Entry.BoolValue != Condition.BoolValue);
-				if (!bMatches)
-				{
-					return false;
-				}
-			}
-			else
-			{
-				return false;
-			}
-			break;
-		}
 		case EMetaplotConditionType::RandomProbability:
 			if (FMath::FRand() > Condition.Probability)
 			{
@@ -483,38 +354,4 @@ const FMetaplotNodeStoryTasks* UMetaplotInstance::FindLegacyTaskSet(const FGuid&
 	}
 
 	return nullptr;
-}
-
-int32 UMetaplotInstance::FindBlackboardEntryIndex(FName Key) const
-{
-	for (int32 i = 0; i < RuntimeBlackboard.Num(); ++i)
-	{
-		if (RuntimeBlackboard[i].Name == Key)
-		{
-			return i;
-		}
-	}
-
-	return INDEX_NONE;
-}
-
-bool UMetaplotInstance::CompareBlackboardInt(int32 CurrentValue, EMetaplotComparisonOp Op, int32 ExpectedValue) const
-{
-	switch (Op)
-	{
-	case EMetaplotComparisonOp::Equal:
-		return CurrentValue == ExpectedValue;
-	case EMetaplotComparisonOp::NotEqual:
-		return CurrentValue != ExpectedValue;
-	case EMetaplotComparisonOp::Greater:
-		return CurrentValue > ExpectedValue;
-	case EMetaplotComparisonOp::Less:
-		return CurrentValue < ExpectedValue;
-	case EMetaplotComparisonOp::GreaterOrEqual:
-		return CurrentValue >= ExpectedValue;
-	case EMetaplotComparisonOp::LessOrEqual:
-		return CurrentValue <= ExpectedValue;
-	default:
-		return false;
-	}
 }

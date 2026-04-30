@@ -58,30 +58,6 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Metaplot|Runtime")
 	FGuid GetCurrentNodeId() const { return CurrentNodeId; }
 
-	UFUNCTION(BlueprintCallable, Category = "Metaplot|Blackboard")
-	bool SetBlackboardInt(FName Key, int32 Value);
-
-	UFUNCTION(BlueprintCallable, Category = "Metaplot|Blackboard")
-	bool GetBlackboardInt(FName Key, int32& OutValue) const;
-
-	UFUNCTION(BlueprintCallable, Category = "Metaplot|Blackboard")
-	bool SetBlackboardBool(FName Key, bool Value);
-
-	UFUNCTION(BlueprintCallable, Category = "Metaplot|Blackboard")
-	bool GetBlackboardBool(FName Key, bool& OutValue) const;
-
-	UFUNCTION(BlueprintCallable, Category = "Metaplot|Blackboard")
-	bool SetBlackboardFloat(FName Key, float Value);
-
-	UFUNCTION(BlueprintCallable, Category = "Metaplot|Blackboard")
-	bool GetBlackboardFloat(FName Key, float& OutValue) const;
-
-	UFUNCTION(BlueprintCallable, Category = "Metaplot|Blackboard")
-	bool SetBlackboardString(FName Key, const FString& Value);
-
-	UFUNCTION(BlueprintCallable, Category = "Metaplot|Blackboard")
-	bool GetBlackboardString(FName Key, FString& OutValue) const;
-
 protected:
 	bool ActivateNode(const FGuid& NodeId);
 	void BuildNodeTasks(const FGuid& NodeId, FMetaplotRuntimeNodeState& OutNodeState);
@@ -91,15 +67,10 @@ protected:
 	const FMetaplotNode* FindNode(const FGuid& NodeId) const;
 	const FMetaplotNodeEditorTasks* FindEditorTaskSet(const FGuid& NodeId) const;
 	const FMetaplotNodeStoryTasks* FindLegacyTaskSet(const FGuid& NodeId) const;
-	int32 FindBlackboardEntryIndex(FName Key) const;
-	bool CompareBlackboardInt(int32 CurrentValue, EMetaplotComparisonOp Op, int32 ExpectedValue) const;
 
 protected:
 	UPROPERTY()
 	TObjectPtr<UMetaplotFlow> FlowAsset = nullptr;
-
-	UPROPERTY()
-	TArray<FMetaplotBlackboardEntry> RuntimeBlackboard;
 
 	UPROPERTY()
 	FMetaplotRuntimeNodeState ActiveNodeState;

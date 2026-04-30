@@ -41,45 +41,6 @@ namespace MetaplotDetailsCustomizationPrivate
 			: EVisibility::Collapsed;
 	}
 
-	static bool IsBlackboardCompare(const TSharedPtr<IPropertyHandle>& TypeHandle)
-	{
-		return GetVisibilityByConditionType(TypeHandle, EMetaplotConditionType::BlackboardCompare) == EVisibility::Visible;
-	}
-
-	static bool TryResolveBlackboardType(
-		const TSharedPtr<IPropertyHandle>& BlackboardKeyHandle,
-		const TSharedPtr<IPropertyUtilities>& PropertyUtils,
-		EMetaplotBlackboardType& OutType)
-	{
-		if (!BlackboardKeyHandle.IsValid() || !BlackboardKeyHandle->IsValidHandle())
-		{
-			return false;
-		}
-
-		FName KeyName = NAME_None;
-		if (BlackboardKeyHandle->GetValue(KeyName) != FPropertyAccess::Success || KeyName.IsNone())
-		{
-			return false;
-		}
-
-		if (!PropertyUtils.IsValid())
-		{
-			return false;
-		}
-
-		const TArray<TWeakObjectPtr<UObject>>& SelectedObjects = PropertyUtils->GetSelectedObjects();
-		for (const TWeakObjectPtr<UObject>& WeakObj : SelectedObjects)
-		{
-			const UMetaplotTransitionDetailsProxy* Proxy = Cast<UMetaplotTransitionDetailsProxy>(WeakObj.Get());
-			if (Proxy && Proxy->ResolveBlackboardType(KeyName, OutType))
-			{
-				return true;
-			}
-		}
-
-		return false;
-	}
-
 	static UMetaplotDetailsContext* ResolveDetailsContext(const TSharedPtr<IPropertyUtilities>& PropertyUtils)
 	{
 		if (!PropertyUtils.IsValid())
@@ -226,29 +187,6 @@ namespace MetaplotDetailsCustomizationPrivate
 		}
 
 		return nullptr;
-	}
-
-	static EVisibility GetBlackboardValueVisibility(
-		const TSharedPtr<IPropertyHandle>& TypeHandle,
-		const TSharedPtr<IPropertyHandle>& BlackboardKeyHandle,
-		const TSharedPtr<IPropertyUtilities>& PropertyUtils,
-		EMetaplotBlackboardType ExpectedBlackboardType)
-	{
-		if (!IsBlackboardCompare(TypeHandle))
-		{
-			return EVisibility::Collapsed;
-		}
-
-		EMetaplotBlackboardType ResolvedType = EMetaplotBlackboardType::Bool;
-		if (!TryResolveBlackboardType(BlackboardKeyHandle, PropertyUtils, ResolvedType))
-		{
-			// 无法解析类型时先保持可见，避免字段完全消失导致不可编辑。
-			return EVisibility::Visible;
-		}
-
-		return ResolvedType == ExpectedBlackboardType
-			? EVisibility::Visible
-			: EVisibility::Collapsed;
 	}
 
 	static TSharedRef<SWidget> BuildAddTaskMenu(
@@ -467,17 +405,10 @@ void FMetaplotConditionCustomization::CustomizeChildren(
 	IDetailChildrenBuilder& ChildBuilder,
 	IPropertyTypeCustomizationUtils& CustomizationUtils)
 {
+	(void)CustomizationUtils;
 	const TSharedPtr<IPropertyHandle> TypeHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotCondition, Type));
 	const TSharedPtr<IPropertyHandle> RequiredNodeIdHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotCondition, RequiredNodeId));
-	const TSharedPtr<IPropertyHandle> BlackboardKeyHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotCondition, BlackboardKey));
-	const TSharedPtr<IPropertyHandle> ComparisonOpHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotCondition, ComparisonOp));
-	const TSharedPtr<IPropertyHandle> BoolValueHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotCondition, BoolValue));
-	const TSharedPtr<IPropertyHandle> IntValueHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotCondition, IntValue));
-	const TSharedPtr<IPropertyHandle> FloatValueHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotCondition, FloatValue));
-	const TSharedPtr<IPropertyHandle> StringValueHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotCondition, StringValue));
-	const TSharedPtr<IPropertyHandle> ObjectValueHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotCondition, ObjectValue));
 	const TSharedPtr<IPropertyHandle> ProbabilityHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotCondition, Probability));
-	const TSharedPtr<IPropertyUtilities> PropertyUtils = CustomizationUtils.GetPropertyUtilities();
 
 	if (TypeHandle.IsValid() && TypeHandle->IsValidHandle())
 	{
@@ -490,89 +421,6 @@ void FMetaplotConditionCustomization::CustomizeChildren(
 		Row.Visibility(TAttribute<EVisibility>::CreateLambda([TypeHandle]()
 		{
 			return MetaplotDetailsCustomizationPrivate::GetVisibilityByConditionType(TypeHandle, EMetaplotConditionType::RequiredNodeCompleted);
-		}));
-	}
-
-	if (BlackboardKeyHandle.IsValid() && BlackboardKeyHandle->IsValidHandle())
-	{
-		IDetailPropertyRow& Row = ChildBuilder.AddProperty(BlackboardKeyHandle.ToSharedRef());
-		Row.Visibility(TAttribute<EVisibility>::CreateLambda([TypeHandle]()
-		{
-			return MetaplotDetailsCustomizationPrivate::GetVisibilityByConditionType(TypeHandle, EMetaplotConditionType::BlackboardCompare);
-		}));
-	}
-
-	if (ComparisonOpHandle.IsValid() && ComparisonOpHandle->IsValidHandle())
-	{
-		IDetailPropertyRow& Row = ChildBuilder.AddProperty(ComparisonOpHandle.ToSharedRef());
-		Row.Visibility(TAttribute<EVisibility>::CreateLambda([TypeHandle]()
-		{
-			return MetaplotDetailsCustomizationPrivate::GetVisibilityByConditionType(TypeHandle, EMetaplotConditionType::BlackboardCompare);
-		}));
-	}
-
-	if (BoolValueHandle.IsValid() && BoolValueHandle->IsValidHandle())
-	{
-		IDetailPropertyRow& Row = ChildBuilder.AddProperty(BoolValueHandle.ToSharedRef());
-		Row.Visibility(TAttribute<EVisibility>::CreateLambda([TypeHandle, BlackboardKeyHandle, PropertyUtils]()
-		{
-			return MetaplotDetailsCustomizationPrivate::GetBlackboardValueVisibility(
-				TypeHandle,
-				BlackboardKeyHandle,
-				PropertyUtils,
-				EMetaplotBlackboardType::Bool);
-		}));
-	}
-
-	if (IntValueHandle.IsValid() && IntValueHandle->IsValidHandle())
-	{
-		IDetailPropertyRow& Row = ChildBuilder.AddProperty(IntValueHandle.ToSharedRef());
-		Row.Visibility(TAttribute<EVisibility>::CreateLambda([TypeHandle, BlackboardKeyHandle, PropertyUtils]()
-		{
-			return MetaplotDetailsCustomizationPrivate::GetBlackboardValueVisibility(
-				TypeHandle,
-				BlackboardKeyHandle,
-				PropertyUtils,
-				EMetaplotBlackboardType::Int);
-		}));
-	}
-
-	if (FloatValueHandle.IsValid() && FloatValueHandle->IsValidHandle())
-	{
-		IDetailPropertyRow& Row = ChildBuilder.AddProperty(FloatValueHandle.ToSharedRef());
-		Row.Visibility(TAttribute<EVisibility>::CreateLambda([TypeHandle, BlackboardKeyHandle, PropertyUtils]()
-		{
-			return MetaplotDetailsCustomizationPrivate::GetBlackboardValueVisibility(
-				TypeHandle,
-				BlackboardKeyHandle,
-				PropertyUtils,
-				EMetaplotBlackboardType::Float);
-		}));
-	}
-
-	if (StringValueHandle.IsValid() && StringValueHandle->IsValidHandle())
-	{
-		IDetailPropertyRow& Row = ChildBuilder.AddProperty(StringValueHandle.ToSharedRef());
-		Row.Visibility(TAttribute<EVisibility>::CreateLambda([TypeHandle, BlackboardKeyHandle, PropertyUtils]()
-		{
-			return MetaplotDetailsCustomizationPrivate::GetBlackboardValueVisibility(
-				TypeHandle,
-				BlackboardKeyHandle,
-				PropertyUtils,
-				EMetaplotBlackboardType::String);
-		}));
-	}
-
-	if (ObjectValueHandle.IsValid() && ObjectValueHandle->IsValidHandle())
-	{
-		IDetailPropertyRow& Row = ChildBuilder.AddProperty(ObjectValueHandle.ToSharedRef());
-		Row.Visibility(TAttribute<EVisibility>::CreateLambda([TypeHandle, BlackboardKeyHandle, PropertyUtils]()
-		{
-			return MetaplotDetailsCustomizationPrivate::GetBlackboardValueVisibility(
-				TypeHandle,
-				BlackboardKeyHandle,
-				PropertyUtils,
-				EMetaplotBlackboardType::Object);
 		}));
 	}
 
@@ -655,4 +503,3 @@ void FMetaplotEditorTaskNodeCustomization::CustomizeChildren(
 		ChildBuilder.AddProperty(CompletionHandle.ToSharedRef());
 	}
 }
-
