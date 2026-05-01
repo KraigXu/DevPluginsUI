@@ -6,17 +6,10 @@
 #include "UObject/Object.h"
 #include "MetaplotFlowSchema.generated.h"
 
-
 /**
- * Schema describing which inputs, evaluators, and tasks a StateTree can contain.
- * Each StateTree asset saves the schema class name in asset data tags, which can be
- * used to limit which StatTree assets can be selected per use case, i.e.:
- *
- *	UPROPERTY(EditDefaultsOnly, Category = AI, meta=(RequiredAssetDataTags="Schema=StateTreeSchema_SupaDupa"))
- *	UMetaplotFlowSchema* UMetaplotFlowSchema;
- *
+ * Schema describing which Metaplot task types are allowed in an asset.
  */
-UCLASS(MinimalAPI, Abstract)
+UCLASS(Abstract)
 class METAPLOT_API UMetaplotFlowSchema : public UObject
 {
 	GENERATED_BODY()
@@ -46,43 +39,12 @@ public:
 	{
 		return false;
 	}
-
-	/** @return True if the state selection behavior is supported. */
-	virtual bool IsStateSelectionAllowed(EStateTreeStateSelectionBehavior InBehavior) const
-	{
-		return true;
-	}
-
-	/** @return True if the state type is supported. */
-	virtual bool IsStateTypeAllowed(EStateTreeStateType InStateType) const
-	{
-		return true;
-	}
-
+	
 	/**
-	 * Helper function to check if a class is any of the Blueprint extendable item classes (Eval, Task, Condition).
-	 * Can be used to quickly accept all of those classes in IsClassAllowed().
-	 * @return True if the class is a StateTree item Blueprint base class.
+	 * Helper to check whether a class is one of the supported Metaplot Blueprint task bases.
 	 */
 	static bool IsChildOfBlueprintBase(const UClass* InClass);
 
-	/** @return List of context objects (UObjects or UScriptStructs) enforced by the schema. They must be provided at runtime through the execution context. */
-	virtual TConstArrayView<FStateTreeExternalDataDesc> GetContextDataDescs() const
-	{
-		return {};
-	}
-
-	/** @return the global parameter type used by the schema. */
-	virtual EStateTreeParameterDataType GetGlobalParameterDataType() const;
-
-	/** @return the selection rules used by the schema. */
-	virtual EStateTreeStateSelectionRules GetStateSelectionRules() const;
-
-	/** Resolves schema references to other StateTree data. */
-	virtual bool Link(FStateTreeLinker& Linker)
-	{
-		return true;
-	}
 
 #if WITH_EDITOR
 	/** @return True if enter conditions are allowed. */
@@ -108,13 +70,7 @@ public:
 	{
 		return true;
 	}
-
-	/** @return True if global parameters for the State Tree are allowed. */
-	virtual bool AllowGlobalParameters() const
-	{
-		return true;
-	}
-
+	
 	/** @return True if modifying the tasks completion is allowed. If not allowed, "any" will be used.*/
 	virtual bool AllowTasksCompletion() const
 	{

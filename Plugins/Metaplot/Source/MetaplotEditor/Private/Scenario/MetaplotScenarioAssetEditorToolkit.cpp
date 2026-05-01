@@ -611,7 +611,7 @@ FReply FMetaplotScenarioAssetEditorToolkit::OnAddNodeClicked()
 	NewNode.LayerIndex = 0;
 
 	EditingFlowAsset->Nodes.Add(NewNode);
-	EnsureTaskSetForNode(NewNode.NodeId);
+	EditingFlowAsset->SyncNodeStatesWithNodes();
 	if (!EditingFlowAsset->StartNodeId.IsValid())
 	{
 		EditingFlowAsset->StartNodeId = NewNode.NodeId;
@@ -645,7 +645,10 @@ FReply FMetaplotScenarioAssetEditorToolkit::OnDeleteNodeClicked()
 
 	const FGuid NodeIdToDelete = SelectedNodeId;
 	EditingFlowAsset->Nodes.RemoveAt(NodeIndex);
-	RemoveTaskSetForNode(NodeIdToDelete);
+	EditingFlowAsset->NodeStates.RemoveAll([NodeIdToDelete](const FMetaplotNodeState& State)
+	{
+		return State.ID == NodeIdToDelete;
+	});
 	EditingFlowAsset->Transitions.RemoveAll([NodeIdToDelete](const FMetaplotTransition& Transition)
 	{
 		return Transition.SourceNodeId == NodeIdToDelete || Transition.TargetNodeId == NodeIdToDelete;
@@ -946,7 +949,7 @@ void FMetaplotScenarioAssetEditorToolkit::RefreshFlowLists()
 
 	if (EditingFlowAsset)
 	{
-		EditingFlowAsset->SyncNodeEditorTaskSetsWithNodes();
+		EditingFlowAsset->SyncNodeStatesWithNodes();
 		for (const FMetaplotNode& Node : EditingFlowAsset->Nodes)
 		{
 			NodeItems.Add(MakeShared<FGuid>(Node.NodeId));
@@ -1157,7 +1160,7 @@ void FMetaplotScenarioAssetEditorToolkit::OnMainGraphCreateNodeRequested(EMetapl
 	}
 
 	EditingFlowAsset->Nodes.Add(NewNode);
-	EnsureTaskSetForNode(NewNode.NodeId);
+	EditingFlowAsset->SyncNodeStatesWithNodes();
 	if (NodeType == EMetaplotNodeType::Start || !EditingFlowAsset->StartNodeId.IsValid())
 	{
 		EditingFlowAsset->StartNodeId = NewNode.NodeId;
@@ -1383,40 +1386,6 @@ void FMetaplotScenarioAssetEditorToolkit::RefreshMainHorizontalScrollBar()
 	MainHorizontalScrollBar->SetState(OffsetFraction, ThumbFraction);
 }
 
-void FMetaplotScenarioAssetEditorToolkit::EnsureTaskSetForNode(const FGuid& NodeId)
-{
-	if (!EditingFlowAsset || !NodeId.IsValid())
-	{
-		return;
-	}
-
-	const bool bExists = EditingFlowAsset->NodeEditorTaskSets.ContainsByPredicate([NodeId](const FMetaplotNodeEditorTasks& Entry)
-	{
-		return Entry.NodeId == NodeId;
-	});
-	if (bExists)
-	{
-		return;
-	}
-
-	FMetaplotNodeEditorTasks NewTaskSet;
-	NewTaskSet.NodeId = NodeId;
-	EditingFlowAsset->NodeEditorTaskSets.Add(NewTaskSet);
-}
-
-void FMetaplotScenarioAssetEditorToolkit::RemoveTaskSetForNode(const FGuid& NodeId)
-{
-	if (!EditingFlowAsset || !NodeId.IsValid())
-	{
-		return;
-	}
-
-	EditingFlowAsset->NodeEditorTaskSets.RemoveAll([NodeId](const FMetaplotNodeEditorTasks& Entry)
-	{
-		return Entry.NodeId == NodeId;
-	});
-}
-
 int32 FMetaplotScenarioAssetEditorToolkit::GetTaskCountForNode(const FGuid& NodeId) const
 {
 	if (!EditingFlowAsset || !NodeId.IsValid())
@@ -1424,9 +1393,9 @@ int32 FMetaplotScenarioAssetEditorToolkit::GetTaskCountForNode(const FGuid& Node
 		return 0;
 	}
 
-	const FMetaplotNodeEditorTasks* TaskSet = EditingFlowAsset->NodeEditorTaskSets.FindByPredicate([NodeId](const FMetaplotNodeEditorTasks& Entry)
+	const FMetaplotNodeState* TaskSet = EditingFlowAsset->NodeStates.FindByPredicate([NodeId](const FMetaplotNodeState& Entry)
 	{
-		return Entry.NodeId == NodeId;
+		return Entry.ID == NodeId;
 	});
 	return TaskSet ? TaskSet->Tasks.Num() : 0;
 }

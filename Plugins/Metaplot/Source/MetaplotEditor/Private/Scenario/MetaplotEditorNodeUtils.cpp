@@ -2,6 +2,7 @@
 
 #include "DetailCategoryBuilder.h"
 #include "DetailLayoutBuilder.h"
+#include "Customizations/Widgets/SMetaplotNodeTypePicker.h"
 #include "Flow/MetaplotFlow.h"
 #include "IDetailChildrenBuilder.h"
 #include "IPropertyUtilities.h"
@@ -24,6 +25,149 @@ namespace UE::MetaplotEditor::EditorNodeUtils
 {
 namespace
 {
+	UObject* ResolveArrayOuterObject(const TSharedPtr<IPropertyHandle>& ArrayPropertyHandle)
+	{
+		if (!ArrayPropertyHandle.IsValid() || !ArrayPropertyHandle->IsValidHandle())
+		{
+			return nullptr;
+		}
+
+		TArray<UObject*> OuterObjects;
+		ArrayPropertyHandle->GetOuterObjects(OuterObjects);
+		for (UObject* OuterObject : OuterObjects)
+		{
+			if (!OuterObject)
+			{
+				continue;
+			}
+
+			if (Cast<UMetaplotFlow>(OuterObject))
+			{
+				return OuterObject;
+			}
+			if (UMetaplotFlow* OuterFlow = OuterObject->GetTypedOuter<UMetaplotFlow>())
+			{
+				return OuterFlow;
+			}
+		}
+
+		return nullptr;
+	}
+
+	void OnArrayTaskNodePicked(
+		UClass* PickedClass,
+		TSharedPtr<SComboButton> PickerCombo,
+		TSharedPtr<IPropertyHandle> ArrayPropertyHandle,
+		TSharedRef<IPropertyUtilities> PropUtils)
+	{
+		if (!PickedClass || !ArrayPropertyHandle.IsValid() || !ArrayPropertyHandle->IsValidHandle())
+		{
+			if (PickerCombo.IsValid())
+			{
+				PickerCombo->SetIsOpen(false);
+			}
+			return;
+		}
+
+		UObject* InstanceOuter = ResolveArrayOuterObject(ArrayPropertyHandle);
+		if (!InstanceOuter)
+		{
+			if (PickerCombo.IsValid())
+			{
+				PickerCombo->SetIsOpen(false);
+			}
+			return;
+		}
+
+		FMetaplotEditorNodeUtils::ModifyNodeInTransaction(
+			FText::FromString(TEXT("Add Metaplot Task")),
+			ArrayPropertyHandle,
+			[&]()
+			{
+				const TSharedPtr<IPropertyHandleArray> ArrayHandle = ArrayPropertyHandle->AsArray();
+				if (!ArrayHandle.IsValid())
+				{
+					return false;
+				}
+
+				uint32 OldNum = 0;
+				if (ArrayHandle->GetNumElements(OldNum) != FPropertyAccess::Success)
+				{
+					return false;
+				}
+				if (ArrayHandle->AddItem() != FPropertyAccess::Success)
+				{
+					return false;
+				}
+
+				uint32 NewNum = 0;
+				if (ArrayHandle->GetNumElements(NewNum) != FPropertyAccess::Success || NewNum == 0)
+				{
+					return false;
+				}
+
+				const uint32 NewIndex = (NewNum > OldNum) ? (NewNum - 1) : OldNum;
+				const TSharedPtr<IPropertyHandle> NewNodeHandle = ArrayHandle->GetElement(NewIndex);
+				return FMetaplotEditorNodeUtils::SetNodeType(NewNodeHandle, PickedClass, InstanceOuter);
+			});
+
+		PropUtils->ForceRefresh();
+		if (PickerCombo.IsValid())
+		{
+			PickerCombo->SetIsOpen(false);
+		}
+	}
+
+	TSharedRef<SWidget> GenerateArrayNodePicker(
+		TSharedPtr<SComboButton> PickerCombo,
+		TSharedPtr<IPropertyHandle> ArrayPropertyHandle,
+		TSharedRef<IPropertyUtilities> PropUtils)
+	{
+		return SNew(SBox)
+			.MinDesiredWidth(400.f)
+			.MinDesiredHeight(300.f)
+			.MaxDesiredHeight(300.f)
+			.Padding(2.f)
+			[
+				SNew(SMetaplotNodeTypePicker)
+				.BaseClass(UMetaplotStoryTask::StaticClass())
+				.BaseStruct(UMetaplotStoryTask::StaticClass())
+				.OnNodeTypePicked(FOnMetaplotNodeTypePicked::CreateStatic(
+					&OnArrayTaskNodePicked,
+					PickerCombo,
+					ArrayPropertyHandle,
+					PropUtils))
+			];
+	}
+
+	TSharedRef<SWidget> CreateAddNodePickerComboButton(
+		const FText& TooltipText,
+		const FLinearColor AddIconColor,
+		const TSharedPtr<IPropertyHandle>& ArrayPropertyHandle,
+		const TSharedRef<IPropertyUtilities>& PropUtils)
+	{
+		const TSharedRef<SComboButton> PickerCombo = SNew(SComboButton)
+			.ButtonStyle(FAppStyle::Get(), "SimpleButton")
+			.HasDownArrow(false)
+			.ToolTipText(TooltipText)
+			.ContentPadding(FMargin(4.f, 2.f))
+			.IsEnabled(PropUtils, &IPropertyUtilities::IsPropertyEditingEnabled)
+			.ButtonContent()
+			[
+				SNew(SImage)
+				.Image(FMetaplotEditorStyle::Get().GetBrush(TEXT("MetaplotEditor.Add")))
+				.ColorAndOpacity(AddIconColor)
+			];
+
+		PickerCombo->SetOnGetMenuContent(FOnGetContent::CreateStatic(
+			&GenerateArrayNodePicker,
+			PickerCombo.ToSharedPtr(),
+			ArrayPropertyHandle,
+			PropUtils));
+
+		return PickerCombo;
+	}
+
 	TSharedRef<SWidget> CreateAddItemButton(
 		const FText& TooltipText,
 		const FLinearColor AddIconColor,
@@ -72,11 +216,34 @@ IDetailCategoryBuilder& MakeArrayCategoryHeader(
 
 	const TSharedPtr<IPropertyUtilities> PropertyUtils = DetailBuilder.GetPropertyUtilities();
 	check(PropertyUtils.IsValid());
-	const TSharedRef<SWidget> AddWidget = CreateAddItemButton(
-		AddButtonTooltipText,
-		AddIconColor,
-		ArrayPropertyHandle,
-		PropertyUtils.ToSharedRef());
+	bool bIsTaskNodeArray = false;
+	const bool bHasValidArrayHandle = ArrayPropertyHandle.IsValid() && ArrayPropertyHandle->IsValidHandle();
+	if (bHasValidArrayHandle)
+	{
+		if (const FArrayProperty* ArrayProperty = CastField<const FArrayProperty>(ArrayPropertyHandle->GetProperty()))
+		{
+			if (const FStructProperty* InnerStruct = CastField<const FStructProperty>(ArrayProperty->Inner))
+			{
+				bIsTaskNodeArray = InnerStruct->Struct == FMetaplotEditorTaskNode::StaticStruct();
+			}
+		}
+	}
+
+	TSharedRef<SWidget> AddWidget = SNullWidget::NullWidget;
+	if (bHasValidArrayHandle)
+	{
+		AddWidget = bIsTaskNodeArray
+			? CreateAddNodePickerComboButton(
+				AddButtonTooltipText,
+				AddIconColor,
+				ArrayPropertyHandle,
+				PropertyUtils.ToSharedRef())
+			: CreateAddItemButton(
+				AddButtonTooltipText,
+				AddIconColor,
+				ArrayPropertyHandle,
+				PropertyUtils.ToSharedRef());
+	}
 	
 	const TSharedRef<SHorizontalBox> HeaderContent = SNew(SHorizontalBox);
 
@@ -132,6 +299,24 @@ IDetailCategoryBuilder& MakeArrayCategoryHeader(
 		/*bWholeRowContent*/true);
 	return Category;
 }
+	
+	
+void MakeArrayItems(IDetailCategoryBuilder& Category, const TSharedPtr<IPropertyHandle>& ArrayPropertyHandle)
+{
+	if (!ArrayPropertyHandle.IsValid() || !ArrayPropertyHandle->IsValidHandle())
+	{
+		return;
+	}
+
+	// Add items inline
+	const TSharedRef<FDetailArrayBuilder> Builder = MakeShareable(new FDetailArrayBuilder(ArrayPropertyHandle.ToSharedRef(), /*InGenerateHeader*/ false, /*InDisplayResetToDefault*/ true, /*InDisplayElementNum*/ false));
+	Builder->OnGenerateArrayElementWidget(FOnGenerateArrayElementWidget::CreateLambda([](TSharedRef<IPropertyHandle> PropertyHandle, int32 ArrayIndex, IDetailChildrenBuilder& ChildrenBuilder)
+	{
+		ChildrenBuilder.AddProperty(PropertyHandle);
+	}));
+	Category.AddCustomBuilder(Builder, /*bForAdvanced*/ false);
+}
+	
 }
 
 bool FMetaplotEditorNodeUtils::ModifyNodeInTransaction(
@@ -188,27 +373,6 @@ void FMetaplotEditorNodeUtils::MakeArrayCategoryHeader(
 		];
 }
 
-void FMetaplotEditorNodeUtils::MakeArrayItems(
-	IDetailCategoryBuilder& CategoryBuilder,
-	const TSharedPtr<IPropertyHandle>& ArrayHandle)
-{
-	if (!ArrayHandle.IsValid() || !ArrayHandle->IsValidHandle())
-	{
-		return;
-	}
-
-	const TSharedRef<FDetailArrayBuilder> ArrayBuilder = MakeShareable(new FDetailArrayBuilder(
-		ArrayHandle.ToSharedRef(),
-		/*InGenerateHeader*/ false,
-		/*InDisplayResetToDefault*/ true,
-		/*InDisplayElementNum*/ false));
-	ArrayBuilder->OnGenerateArrayElementWidget(
-		FOnGenerateArrayElementWidget::CreateLambda([](TSharedRef<IPropertyHandle> PropertyHandle, int32 /*ArrayIndex*/, IDetailChildrenBuilder& ChildrenBuilder)
-		{
-			ChildrenBuilder.AddProperty(PropertyHandle);
-		}));
-	CategoryBuilder.AddCustomBuilder(ArrayBuilder, /*bForAdvanced*/ false);
-}
 
 bool FMetaplotEditorNodeUtils::SetNodeType(
 	const TSharedPtr<IPropertyHandle>& NodeHandle,
@@ -322,35 +486,3 @@ bool FMetaplotEditorNodeUtils::EnsureNodeInstanceMatchesClass(
 	return bSetSuccess;
 }
 
-bool FMetaplotEditorNodeUtils::InstantiateStructSubobjects(
-	const TSharedPtr<IPropertyHandle>& NodeHandle,
-	UObject* InstanceOuter)
-{
-	if (!NodeHandle.IsValid() || !NodeHandle->IsValidHandle() || !InstanceOuter)
-	{
-		return false;
-	}
-
-	const TSharedPtr<IPropertyHandle> TaskClassHandle = NodeHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotEditorTaskNode, TaskClass));
-	const TSharedPtr<IPropertyHandle> InstanceHandle = NodeHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotEditorTaskNode, InstanceObject));
-	if (!TaskClassHandle.IsValid() || !TaskClassHandle->IsValidHandle() || !InstanceHandle.IsValid() || !InstanceHandle->IsValidHandle())
-	{
-		return false;
-	}
-
-	FString ClassPathString;
-	if (TaskClassHandle->GetValueAsFormattedString(ClassPathString) != FPropertyAccess::Success)
-	{
-		return false;
-	}
-
-	const FSoftClassPath TaskClassPath(ClassPathString);
-	UClass* TaskClass = TaskClassPath.TryLoadClass<UMetaplotStoryTask>();
-	if (!TaskClass || !TaskClass->IsChildOf(UMetaplotStoryTask::StaticClass()))
-	{
-		return false;
-	}
-
-	UMetaplotStoryTask* CreatedTask = NewObject<UMetaplotStoryTask>(InstanceOuter, TaskClass, NAME_None, RF_Transactional);
-	return InstanceHandle->SetValue(CreatedTask) == FPropertyAccess::Success;
-}

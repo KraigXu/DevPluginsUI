@@ -4,46 +4,36 @@
 
 namespace MetaplotFlowPrivate
 {
-	static bool SyncLegacyFromInstancedData(FMetaplotEditorTaskNode& TaskNode)
+	static bool NormalizeTaskNode(FMetaplotEditorTaskNode& TaskNode, UObject* InstanceOuter)
 	{
 		bool bChanged = false;
 
-		if (TaskNode.NodeData.IsValid() && TaskNode.NodeData.GetScriptStruct() == FMetaplotEditorTaskNodeData::StaticStruct())
+		if (!TaskNode.ID.IsValid())
 		{
-			const FMetaplotEditorTaskNodeData& NodeData = TaskNode.NodeData.Get<FMetaplotEditorTaskNodeData>();
-			if (TaskNode.TaskClass.IsNull() && !NodeData.TaskClass.IsNull())
+			TaskNode.ID = FGuid::NewGuid();
+			bChanged = true;
+		}
+
+		if (TaskNode.InstanceObject)
+		{
+			if (TaskNode.TaskClass.IsNull())
 			{
-				TaskNode.TaskClass = NodeData.TaskClass;
+				TaskNode.TaskClass = TaskNode.InstanceObject->GetClass();
 				bChanged = true;
 			}
-			if (TaskNode.bEnabled != NodeData.bEnabled)
+
+			if (InstanceOuter && TaskNode.InstanceObject->GetOuter() != InstanceOuter)
 			{
-				TaskNode.bEnabled = NodeData.bEnabled;
-				bChanged = true;
-			}
-			if (TaskNode.bConsideredForCompletion != NodeData.bConsideredForCompletion)
-			{
-				TaskNode.bConsideredForCompletion = NodeData.bConsideredForCompletion;
+				TaskNode.InstanceObject->Rename(nullptr, InstanceOuter, REN_DontCreateRedirectors | REN_NonTransactional);
 				bChanged = true;
 			}
 		}
 
-		if (TaskNode.InstanceData.IsValid() && TaskNode.InstanceData.GetScriptStruct() == FMetaplotEditorTaskInstanceData::StaticStruct())
+		if (TaskNode.TaskClass.IsNull() && TaskNode.InstanceObject == nullptr && TaskNode.bEnabled)
 		{
-			const FMetaplotEditorTaskInstanceData& InstanceData = TaskNode.InstanceData.Get<FMetaplotEditorTaskInstanceData>();
-			if (!TaskNode.InstanceObject && InstanceData.InstanceObject)
-			{
-				TaskNode.InstanceObject = InstanceData.InstanceObject;
-				bChanged = true;
-			}
+			TaskNode.bEnabled = false;
+			bChanged = true;
 		}
-
-		return bChanged;
-	}
-
-	static bool SyncInstancedDataFromLegacy(FMetaplotEditorTaskNode& TaskNode)
-	{
-		bool bChanged = false;
 
 		if (!TaskNode.NodeData.IsValid() || TaskNode.NodeData.GetScriptStruct() != FMetaplotEditorTaskNodeData::StaticStruct())
 		{
@@ -78,7 +68,6 @@ namespace MetaplotFlowPrivate
 			InstanceData.InstanceObject = TaskNode.InstanceObject;
 			bChanged = true;
 		}
-
 		return bChanged;
 	}
 }
@@ -86,110 +75,28 @@ namespace MetaplotFlowPrivate
 void UMetaplotFlow::PostLoad()
 {
 	Super::PostLoad();
-	MigrateStoryTaskSpecsToEditorTaskNodes();
 	NormalizeEditorTaskNodes();
-	SyncNodeEditorTaskSetsWithNodes();
-}
-
-bool UMetaplotFlow::MigrateStoryTaskSpecsToEditorTaskNodes()
-{
-	if (NodeTaskSets.IsEmpty())
-	{
-		return false;
-	}
-
-	bool bMigrated = false;
-	for (const FMetaplotNodeStoryTasks& LegacyTaskSet : NodeTaskSets)
-	{
-		FMetaplotNodeEditorTasks* ExistingTaskSet = NodeEditorTaskSets.FindByPredicate(
-			[&LegacyTaskSet](const FMetaplotNodeEditorTasks& EditorTaskSet)
-			{
-				return EditorTaskSet.NodeId == LegacyTaskSet.NodeId;
-			});
-
-		if (!ExistingTaskSet)
-		{
-			ExistingTaskSet = &NodeEditorTaskSets.AddDefaulted_GetRef();
-			ExistingTaskSet->NodeId = LegacyTaskSet.NodeId;
-		}
-
-		ExistingTaskSet->Tasks.Reserve(ExistingTaskSet->Tasks.Num() + LegacyTaskSet.StoryTasks.Num());
-		for (const FMetaplotStoryTaskSpec& LegacyTask : LegacyTaskSet.StoryTasks)
-		{
-			FMetaplotEditorTaskNode& NewTaskNode = ExistingTaskSet->Tasks.AddDefaulted_GetRef();
-			NewTaskNode.ID = FGuid::NewGuid();
-			NewTaskNode.InstanceObject = LegacyTask.Task;
-			NewTaskNode.TaskClass = LegacyTask.TaskClass;
-			NewTaskNode.bEnabled = true;
-			NewTaskNode.bConsideredForCompletion = LegacyTask.bRequired;
-
-			if (LegacyTask.Task)
-			{
-				if (NewTaskNode.TaskClass.IsNull())
-				{
-					NewTaskNode.TaskClass = LegacyTask.Task->GetClass();
-				}
-
-				if (LegacyTask.Task->GetOuter() != this)
-				{
-					LegacyTask.Task->Rename(nullptr, this, REN_DontCreateRedirectors | REN_NonTransactional);
-				}
-			}
-		}
-
-		bMigrated = true;
-	}
-
-	NodeTaskSets.Reset();
-	return bMigrated;
+	SyncNodeStatesWithNodes();
 }
 
 bool UMetaplotFlow::NormalizeEditorTaskNodes()
 {
 	bool bChanged = false;
 
-	for (FMetaplotNodeEditorTasks& EditorTaskSet : NodeEditorTaskSets)
+	for (FMetaplotNodeState& NodeState : NodeStates)
 	{
-		for (FMetaplotEditorTaskNode& TaskNode : EditorTaskSet.Tasks)
+		for (FMetaplotEditorTaskNode& TaskNode : NodeState.Tasks)
 		{
-			bChanged |= MetaplotFlowPrivate::SyncLegacyFromInstancedData(TaskNode);
-
-			if (!TaskNode.ID.IsValid())
-			{
-				TaskNode.ID = FGuid::NewGuid();
-				bChanged = true;
-			}
-
-			if (TaskNode.InstanceObject)
-			{
-				if (TaskNode.TaskClass.IsNull())
-				{
-					TaskNode.TaskClass = TaskNode.InstanceObject->GetClass();
-					bChanged = true;
-				}
-
-				if (TaskNode.InstanceObject->GetOuter() != this)
-				{
-					TaskNode.InstanceObject->Rename(nullptr, this, REN_DontCreateRedirectors | REN_NonTransactional);
-					bChanged = true;
-				}
-			}
-
-			if (TaskNode.TaskClass.IsNull() && TaskNode.InstanceObject == nullptr && TaskNode.bEnabled)
-			{
-				TaskNode.bEnabled = false;
-				bChanged = true;
-			}
-
-			bChanged |= MetaplotFlowPrivate::SyncInstancedDataFromLegacy(TaskNode);
+			bChanged |= MetaplotFlowPrivate::NormalizeTaskNode(TaskNode, this);
 		}
 	}
 
 	return bChanged;
 }
 
-bool UMetaplotFlow::SyncNodeEditorTaskSetsWithNodes()
+bool UMetaplotFlow::SyncNodeStatesWithNodes()
 {
+	// Kept for API compatibility while the project migrates to NodeStates-only task storage.
 	TSet<FGuid> ValidNodeIds;
 	ValidNodeIds.Reserve(Nodes.Num());
 	for (const FMetaplotNode& Node : Nodes)
@@ -202,21 +109,21 @@ bool UMetaplotFlow::SyncNodeEditorTaskSetsWithNodes()
 
 	bool bChanged = false;
 
-	NodeEditorTaskSets.RemoveAll([&](const FMetaplotNodeEditorTasks& Entry)
+	NodeStates.RemoveAll([&](const FMetaplotNodeState& Entry)
 	{
-		const bool bRemove = !Entry.NodeId.IsValid() || !ValidNodeIds.Contains(Entry.NodeId);
+		const bool bRemove = !Entry.ID.IsValid() || !ValidNodeIds.Contains(Entry.ID);
 		bChanged |= bRemove;
 		return bRemove;
 	});
 
 	TSet<FGuid> SeenTaskSetNodeIds;
-	SeenTaskSetNodeIds.Reserve(NodeEditorTaskSets.Num());
-	for (int32 Index = NodeEditorTaskSets.Num() - 1; Index >= 0; --Index)
+	SeenTaskSetNodeIds.Reserve(NodeStates.Num());
+	for (int32 Index = NodeStates.Num() - 1; Index >= 0; --Index)
 	{
-		const FGuid& NodeId = NodeEditorTaskSets[Index].NodeId;
+		const FGuid& NodeId = NodeStates[Index].ID;
 		if (SeenTaskSetNodeIds.Contains(NodeId))
 		{
-			NodeEditorTaskSets.RemoveAt(Index);
+			NodeStates.RemoveAt(Index);
 			bChanged = true;
 			continue;
 		}
@@ -230,14 +137,18 @@ bool UMetaplotFlow::SyncNodeEditorTaskSetsWithNodes()
 			continue;
 		}
 
-		const bool bExists = NodeEditorTaskSets.ContainsByPredicate([&](const FMetaplotNodeEditorTasks& Entry)
+		const bool bExists = NodeStates.ContainsByPredicate([&](const FMetaplotNodeState& Entry)
 		{
-			return Entry.NodeId == Node.NodeId;
+			return Entry.ID == Node.NodeId;
 		});
 		if (!bExists)
 		{
-			FMetaplotNodeEditorTasks& NewSet = NodeEditorTaskSets.AddDefaulted_GetRef();
-			NewSet.NodeId = Node.NodeId;
+			FMetaplotNodeState& NewState = NodeStates.AddDefaulted_GetRef();
+			NewState.ID = Node.NodeId;
+			NewState.Name = Node.NodeName;
+			NewState.Description = Node.Description;
+			NewState.Type = Node.NodeType;
+			NewState.bEnabled = true;
 			bChanged = true;
 		}
 	}

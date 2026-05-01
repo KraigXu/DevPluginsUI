@@ -9,6 +9,16 @@
 	"EnabledByDefault": true,
 	"CanContainContent": true,
 	"IsBetaVersion": true,
+	"Plugins": [
+		{
+			"Name": "StructUtils",
+			"Enabled": true
+		},
+		{
+			"Name": "StateTree",
+			"Enabled": true
+		}
+	],
 	"Modules": [
 		{
 			"Name": "Metaplot",

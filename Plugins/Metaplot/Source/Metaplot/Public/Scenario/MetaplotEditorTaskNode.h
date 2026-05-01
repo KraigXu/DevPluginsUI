@@ -51,7 +51,7 @@ struct METAPLOT_API FMetaplotEditorTaskNode
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Task")
 	bool bConsideredForCompletion = true;
 
-	// Phase A bridge: keep an InstancedStruct-backed representation close to StateTree's editor-node style.
+	// Transitional bridge: keep an InstancedStruct-backed representation for editor/runtime serialization.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Task")
 	FInstancedStruct NodeData;
 
@@ -59,14 +59,3 @@ struct METAPLOT_API FMetaplotEditorTaskNode
 	FInstancedStruct InstanceData;
 };
 
-USTRUCT(BlueprintType)
-struct METAPLOT_API FMetaplotNodeEditorTasks
-{
-	GENERATED_BODY()
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Node")
-	FGuid NodeId;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Node")
-	TArray<FMetaplotEditorTaskNode> Tasks;
-};

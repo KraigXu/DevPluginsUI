@@ -37,6 +37,12 @@ namespace UE::MetaplotEditor::EditorNodeUtils
 		const FText& AddButtonTooltipText,
 		int32 SortOrder);
 	
+	/**
+	 * Creates the items of a category.
+	 * @param Category Builder created by the header.
+	 * @param ArrayPropertyHandle Property handle pointing to a task-node array.
+	 */
+	void MakeArrayItems(IDetailCategoryBuilder& Category, const TSharedPtr<IPropertyHandle>& ArrayPropertyHandle);
 }
 
 
@@ -50,10 +56,7 @@ struct FMetaplotEditorNodeUtils
 	static void MakeArrayCategoryHeader(
 		IDetailCategoryBuilder& CategoryBuilder,
 		TFunction<TSharedRef<SWidget>()> BuildAddMenuWidget);
-
-	static void MakeArrayItems(
-		IDetailCategoryBuilder& CategoryBuilder,
-		const TSharedPtr<IPropertyHandle>& ArrayHandle);
+	
 
 	static bool SetNodeType(
 		const TSharedPtr<IPropertyHandle>& NodeHandle,
@@ -65,10 +68,6 @@ struct FMetaplotEditorNodeUtils
 		UObject* InstanceOuter);
 
 	static bool EnsureNodeInstanceMatchesClass(
-		const TSharedPtr<IPropertyHandle>& NodeHandle,
-		UObject* InstanceOuter);
-
-	static bool InstantiateStructSubobjects(
 		const TSharedPtr<IPropertyHandle>& NodeHandle,
 		UObject* InstanceOuter);
 };
@@ -108,4 +107,4 @@ namespace UE::MetaplotEditor::Colors
 	const FColor DarkPurple = Darken(Purple, DarkenLevel);
 	const FColor DarkMagenta = Darken(Magenta, DarkenLevel);
 	const FColor DarkBronze = Darken(Bronze, DarkenLevel);
-} // UE::StateTree::Colors
+} // UE::MetaplotEditor::Colors

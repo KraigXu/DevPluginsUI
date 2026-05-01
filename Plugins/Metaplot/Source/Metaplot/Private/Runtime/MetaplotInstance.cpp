@@ -104,9 +104,9 @@ bool UMetaplotInstance::ActivateNode(const FGuid& NodeId)
 
 void UMetaplotInstance::BuildNodeTasks(const FGuid& NodeId, FMetaplotRuntimeNodeState& OutNodeState)
 {
-	if (const FMetaplotNodeEditorTasks* EditorTaskSet = FindEditorTaskSet(NodeId))
+	if (const FMetaplotNodeState* NodeState = FindNodeState(NodeId))
 	{
-		for (const FMetaplotEditorTaskNode& TaskNode : EditorTaskSet->Tasks)
+		for (const FMetaplotEditorTaskNode& TaskNode : NodeState->Tasks)
 		{
 			if (!MetaplotRuntimeTaskPrivate::ResolveTaskEnabled(TaskNode))
 			{
@@ -139,43 +139,6 @@ void UMetaplotInstance::BuildNodeTasks(const FGuid& NodeId, FMetaplotRuntimeNode
 			RuntimeTask.RunState = EMetaplotTaskRunState::Running;
 			OutNodeState.Tasks.Add(RuntimeTask);
 		}
-		return;
-	}
-
-	const FMetaplotNodeStoryTasks* LegacyTaskSet = FindLegacyTaskSet(NodeId);
-	if (!LegacyTaskSet)
-	{
-		return;
-	}
-
-	for (const FMetaplotStoryTaskSpec& TaskSpec : LegacyTaskSet->StoryTasks)
-	{
-		UMetaplotStoryTask* TaskInstance = nullptr;
-		if (TaskSpec.Task)
-		{
-			TaskInstance = DuplicateObject<UMetaplotStoryTask>(TaskSpec.Task, this);
-		}
-		else
-		{
-			// Backward compatibility for old assets that only store TaskClass.
-			UClass* TaskClass = TaskSpec.TaskClass.LoadSynchronous();
-			if (TaskClass && TaskClass->IsChildOf(UMetaplotStoryTask::StaticClass()))
-			{
-				TaskInstance = NewObject<UMetaplotStoryTask>(this, TaskClass);
-			}
-		}
-		if (!TaskInstance)
-		{
-			continue;
-		}
-
-		TaskInstance->EnterTask(this, NodeId);
-
-		FMetaplotRuntimeTaskState RuntimeTask;
-		RuntimeTask.TaskInstance = TaskInstance;
-		RuntimeTask.bRequired = TaskSpec.bRequired;
-		RuntimeTask.RunState = EMetaplotTaskRunState::Running;
-		OutNodeState.Tasks.Add(RuntimeTask);
 	}
 }
 
@@ -320,36 +283,18 @@ const FMetaplotNode* UMetaplotInstance::FindNode(const FGuid& NodeId) const
 	return nullptr;
 }
 
-const FMetaplotNodeEditorTasks* UMetaplotInstance::FindEditorTaskSet(const FGuid& NodeId) const
+const FMetaplotNodeState* UMetaplotInstance::FindNodeState(const FGuid& NodeId) const
 {
 	if (!FlowAsset)
 	{
 		return nullptr;
 	}
 
-	for (const FMetaplotNodeEditorTasks& NodeTasks : FlowAsset->NodeEditorTaskSets)
+	for (const FMetaplotNodeState& NodeState : FlowAsset->NodeStates)
 	{
-		if (NodeTasks.NodeId == NodeId)
+		if (NodeState.ID == NodeId)
 		{
-			return &NodeTasks;
-		}
-	}
-
-	return nullptr;
-}
-
-const FMetaplotNodeStoryTasks* UMetaplotInstance::FindLegacyTaskSet(const FGuid& NodeId) const
-{
-	if (!FlowAsset)
-	{
-		return nullptr;
-	}
-
-	for (const FMetaplotNodeStoryTasks& NodeTasks : FlowAsset->NodeTaskSets)
-	{
-		if (NodeTasks.NodeId == NodeId)
-		{
-			return &NodeTasks;
+			return &NodeState;
 		}
 	}
 

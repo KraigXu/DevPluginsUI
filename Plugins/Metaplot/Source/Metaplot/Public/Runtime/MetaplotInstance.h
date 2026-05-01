@@ -65,8 +65,7 @@ protected:
 	EMetaplotNodeResult ComputeNodeResult(const FMetaplotNode& Node, const FMetaplotRuntimeNodeState& NodeState) const;
 	bool EvaluateTransitionConditions(const FMetaplotTransition& Transition) const;
 	const FMetaplotNode* FindNode(const FGuid& NodeId) const;
-	const FMetaplotNodeEditorTasks* FindEditorTaskSet(const FGuid& NodeId) const;
-	const FMetaplotNodeStoryTasks* FindLegacyTaskSet(const FGuid& NodeId) const;
+	const FMetaplotNodeState* FindNodeState(const FGuid& NodeId) const;
 
 protected:
 	UPROPERTY()

@@ -7,6 +7,16 @@
 
 class UMetaplotInstance;
 
+UENUM()
+enum class EMetaplotStoryTaskCompletionType : uint8
+{
+	/** All tasks need to complete for the group to completes. */
+	All,
+	/** Any task completes the group. */
+	Any,
+};
+
+
 UCLASS(Abstract, Blueprintable, EditInlineNew, DefaultToInstanced, CollapseCategories)
 class METAPLOT_API UMetaplotStoryTask : public UObject
 {

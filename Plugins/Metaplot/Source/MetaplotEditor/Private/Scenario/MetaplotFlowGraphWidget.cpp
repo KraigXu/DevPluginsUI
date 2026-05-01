@@ -279,11 +279,11 @@ namespace MetaplotGraphWidgetPrivate
 			return 0;
 		}
 
-		const FMetaplotNodeEditorTasks* TaskSet = Flow->NodeEditorTaskSets.FindByPredicate([NodeId](const FMetaplotNodeEditorTasks& Entry)
+		const FMetaplotNodeState* NodeState = Flow->NodeStates.FindByPredicate([NodeId](const FMetaplotNodeState& Entry)
 		{
-			return Entry.NodeId == NodeId;
+			return Entry.ID == NodeId;
 		});
-		return TaskSet ? TaskSet->Tasks.Num() : 0;
+		return NodeState ? NodeState->Tasks.Num() : 0;
 	}
 
 	static void AppendUniquePoint(TArray<FVector2D>& Points, const FVector2D& Point)
