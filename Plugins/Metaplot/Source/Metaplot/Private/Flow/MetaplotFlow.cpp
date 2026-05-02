@@ -16,12 +16,6 @@ namespace MetaplotFlowPrivate
 
 		if (TaskNode.InstanceObject)
 		{
-			if (TaskNode.TaskClass.IsNull())
-			{
-				TaskNode.TaskClass = TaskNode.InstanceObject->GetClass();
-				bChanged = true;
-			}
-
 			if (InstanceOuter && TaskNode.InstanceObject->GetOuter() != InstanceOuter)
 			{
 				TaskNode.InstanceObject->Rename(nullptr, InstanceOuter, REN_DontCreateRedirectors | REN_NonTransactional);
@@ -29,7 +23,7 @@ namespace MetaplotFlowPrivate
 			}
 		}
 
-		if (TaskNode.TaskClass.IsNull() && TaskNode.InstanceObject == nullptr && TaskNode.bEnabled)
+		if (TaskNode.InstanceObject == nullptr && TaskNode.bEnabled)
 		{
 			TaskNode.bEnabled = false;
 			bChanged = true;
@@ -41,9 +35,10 @@ namespace MetaplotFlowPrivate
 			bChanged = true;
 		}
 		FMetaplotEditorTaskNodeData& NodeData = TaskNode.NodeData.GetMutable<FMetaplotEditorTaskNodeData>();
-		if (NodeData.TaskClass != TaskNode.TaskClass)
+		const TSoftClassPtr<UMetaplotStoryTask> DerivedTaskClass = TaskNode.InstanceObject ? TaskNode.InstanceObject->GetClass() : nullptr;
+		if (NodeData.TaskClass != DerivedTaskClass)
 		{
-			NodeData.TaskClass = TaskNode.TaskClass;
+			NodeData.TaskClass = DerivedTaskClass;
 			bChanged = true;
 		}
 		if (NodeData.bEnabled != TaskNode.bEnabled)

@@ -10,6 +10,7 @@
 #include "PropertyCustomizationHelpers.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "MetaplotEditorStyle.h"
+#include "Runtime/MetaplotStoryTask.h"
 #include "Scenario/MetaplotEditorNodeUtils.h"
 #include "Styling/AppStyle.h"
 #include "Flow/MetaplotFlow.h"
@@ -448,16 +449,35 @@ void FMetaplotEditorTaskNodeCustomization::CustomizeHeader(
 	IPropertyTypeCustomizationUtils& CustomizationUtils)
 {
 	(void)CustomizationUtils;
+	const TSharedPtr<IPropertyHandle> InstanceHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotEditorTaskNode, InstanceObject));
+	FText HeaderText = FText::FromString(TEXT("Task"));
+	if (InstanceHandle.IsValid() && InstanceHandle->IsValidHandle())
+	{
+		TArray<void*> RawDatas;
+		InstanceHandle->AccessRawData(RawDatas);
+		for (void* RawData : RawDatas)
+		{
+			if (const TObjectPtr<UMetaplotStoryTask>* TaskPtr = static_cast<const TObjectPtr<UMetaplotStoryTask>*>(RawData))
+			{
+				if (TaskPtr->Get())
+				{
+					HeaderText = FText::FromString(TaskPtr->Get()->GetClass()->GetDisplayNameText().ToString());
+					break;
+				}
+			}
+		}
+	}
+	const TSharedRef<SWidget> HeaderValueWidget = SNew(STextBlock).Text(HeaderText);
+
 	HeaderRow
 	.NameContent()
 	[
-		PropertyHandle->CreatePropertyNameWidget()
+		SNullWidget::NullWidget
 	]
 	.ValueContent()
 	.MinDesiredWidth(260.0f)
 	[
-		SNew(STextBlock)
-		.Text(FText::FromString(TEXT("Task Node")))
+		HeaderValueWidget
 	];
 }
 
@@ -467,20 +487,11 @@ void FMetaplotEditorTaskNodeCustomization::CustomizeChildren(
 	IPropertyTypeCustomizationUtils& CustomizationUtils)
 {
 	const TSharedPtr<IPropertyUtilities> PropertyUtils = CustomizationUtils.GetPropertyUtilities();
-	const TSharedPtr<IPropertyHandle> IdHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotEditorTaskNode, ID));
-	const TSharedPtr<IPropertyHandle> TaskClassHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotEditorTaskNode, TaskClass));
 	const TSharedPtr<IPropertyHandle> InstanceHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotEditorTaskNode, InstanceObject));
-	const TSharedPtr<IPropertyHandle> EnabledHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotEditorTaskNode, bEnabled));
-	const TSharedPtr<IPropertyHandle> CompletionHandle = PropertyHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotEditorTaskNode, bConsideredForCompletion));
 
-	if (IdHandle.IsValid() && IdHandle->IsValidHandle())
+	if (InstanceHandle.IsValid() && InstanceHandle->IsValidHandle())
 	{
-		ChildBuilder.AddProperty(IdHandle.ToSharedRef());
-	}
-	if (TaskClassHandle.IsValid() && TaskClassHandle->IsValidHandle())
-	{
-		ChildBuilder.AddProperty(TaskClassHandle.ToSharedRef());
-		TaskClassHandle->SetOnPropertyValueChanged(FSimpleDelegate::CreateLambda([PropertyHandle, PropertyUtils]()
+		InstanceHandle->SetOnPropertyValueChanged(FSimpleDelegate::CreateLambda([PropertyHandle, PropertyUtils]()
 		{
 			if (UMetaplotFlow* Flow = MetaplotDetailsCustomizationPrivate::ResolveEditingFlowAsset(PropertyUtils))
 			{
@@ -493,16 +504,55 @@ void FMetaplotEditorTaskNodeCustomization::CustomizeChildren(
 			}
 		}));
 	}
+
+	bool bHasTaskInstance = false;
 	if (InstanceHandle.IsValid() && InstanceHandle->IsValidHandle())
 	{
-		ChildBuilder.AddProperty(InstanceHandle.ToSharedRef());
+		TArray<void*> RawDatas;
+		InstanceHandle->AccessRawData(RawDatas);
+		for (void* RawData : RawDatas)
+		{
+			if (const TObjectPtr<UMetaplotStoryTask>* TaskPtr = static_cast<const TObjectPtr<UMetaplotStoryTask>*>(RawData))
+			{
+				bHasTaskInstance = TaskPtr->Get() != nullptr;
+				if (bHasTaskInstance)
+				{
+					break;
+				}
+			}
+		}
 	}
-	if (EnabledHandle.IsValid() && EnabledHandle->IsValidHandle())
+
+	if (InstanceHandle.IsValid() && InstanceHandle->IsValidHandle())
 	{
-		ChildBuilder.AddProperty(EnabledHandle.ToSharedRef());
-	}
-	if (CompletionHandle.IsValid() && CompletionHandle->IsValidHandle())
-	{
-		ChildBuilder.AddProperty(CompletionHandle.ToSharedRef());
+		// Match StateTree-style details: hide container row and flatten instance parameters.
+		bool bFlattenedAnyParam = false;
+		uint32 NumChildren = 0;
+		InstanceHandle->GetNumChildren(NumChildren);
+		if (NumChildren > 0)
+		{
+			const TSharedPtr<IPropertyHandle> InstanceObjectValueHandle = InstanceHandle->GetChildHandle(0);
+			if (InstanceObjectValueHandle.IsValid() && InstanceObjectValueHandle->IsValidHandle())
+			{
+				uint32 NumParamChildren = 0;
+				InstanceObjectValueHandle->GetNumChildren(NumParamChildren);
+				for (uint32 ParamIdx = 0; ParamIdx < NumParamChildren; ++ParamIdx)
+				{
+					if (const TSharedPtr<IPropertyHandle> ParamHandle = InstanceObjectValueHandle->GetChildHandle(ParamIdx);
+						ParamHandle.IsValid() && ParamHandle->IsValidHandle())
+					{
+						ChildBuilder.AddProperty(ParamHandle.ToSharedRef());
+						bFlattenedAnyParam = true;
+					}
+				}
+			}
+		}
+
+		// Fallback: if flattening fails due handle shape differences, keep default object-property rendering.
+		if (!bFlattenedAnyParam && bHasTaskInstance)
+		{
+			IDetailPropertyRow& FallbackRow = ChildBuilder.AddProperty(InstanceHandle.ToSharedRef());
+			FallbackRow.ShouldAutoExpand(true);
+		}
 	}
 }

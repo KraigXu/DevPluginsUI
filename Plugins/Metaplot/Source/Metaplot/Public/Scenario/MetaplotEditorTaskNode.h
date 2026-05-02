@@ -39,9 +39,6 @@ struct METAPLOT_API FMetaplotEditorTaskNode
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Task")
 	FGuid ID;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Task")
-	TSoftClassPtr<UMetaplotStoryTask> TaskClass;
-
 	UPROPERTY(EditAnywhere, Instanced, BlueprintReadWrite, Category = "Task", meta = (ShowOnlyInnerProperties))
 	TObjectPtr<UMetaplotStoryTask> InstanceObject = nullptr;
 

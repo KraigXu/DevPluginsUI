@@ -385,11 +385,10 @@ bool FMetaplotEditorNodeUtils::SetNodeType(
 	}
 
 	const TSharedPtr<IPropertyHandle> IdHandle = NodeHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotEditorTaskNode, ID));
-	const TSharedPtr<IPropertyHandle> TaskClassHandle = NodeHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotEditorTaskNode, TaskClass));
 	const TSharedPtr<IPropertyHandle> InstanceHandle = NodeHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotEditorTaskNode, InstanceObject));
 	const TSharedPtr<IPropertyHandle> EnabledHandle = NodeHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotEditorTaskNode, bEnabled));
 	const TSharedPtr<IPropertyHandle> CompletionHandle = NodeHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotEditorTaskNode, bConsideredForCompletion));
-	if (!TaskClassHandle.IsValid() || !TaskClassHandle->IsValidHandle() || !InstanceHandle.IsValid() || !InstanceHandle->IsValidHandle())
+	if (!InstanceHandle.IsValid() || !InstanceHandle->IsValidHandle())
 	{
 		return false;
 	}
@@ -405,9 +404,10 @@ bool FMetaplotEditorNodeUtils::SetNodeType(
 		const FString NewIdString = FGuid::NewGuid().ToString(EGuidFormats::DigitsWithHyphensInBraces);
 		IdHandle->SetValueFromFormattedString(NewIdString);
 	}
-	const FSoftObjectPath ClassPath(SelectedTaskClass);
-	TaskClassHandle->SetValueFromFormattedString(ClassPath.ToString());
-	InstanceHandle->SetValue(CreatedTask);
+	if (InstanceHandle->SetValue(CreatedTask) != FPropertyAccess::Success)
+	{
+		return false;
+	}
 	if (EnabledHandle.IsValid() && EnabledHandle->IsValidHandle())
 	{
 		EnabledHandle->SetValue(true);
@@ -420,6 +420,8 @@ bool FMetaplotEditorNodeUtils::SetNodeType(
 	{
 		Flow->NormalizeEditorTaskNodes();
 	}
+	// Ensure the instance is aligned with the just-selected class.
+	EnsureNodeInstanceMatchesClass(NodeHandle, InstanceOuter);
 	NodeHandle->SetExpanded(true);
 	return true;
 }
@@ -440,32 +442,16 @@ bool FMetaplotEditorNodeUtils::EnsureNodeInstanceMatchesClass(
 		return false;
 	}
 
-	const TSharedPtr<IPropertyHandle> TaskClassHandle = NodeHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotEditorTaskNode, TaskClass));
 	const TSharedPtr<IPropertyHandle> InstanceHandle = NodeHandle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FMetaplotEditorTaskNode, InstanceObject));
-	if (!TaskClassHandle.IsValid() || !TaskClassHandle->IsValidHandle() || !InstanceHandle.IsValid() || !InstanceHandle->IsValidHandle())
+	if (!InstanceHandle.IsValid() || !InstanceHandle->IsValidHandle())
 	{
 		return false;
 	}
-
-	FString ClassPathString;
-	if (TaskClassHandle->GetValueAsFormattedString(ClassPathString) != FPropertyAccess::Success)
-	{
-		return false;
-	}
-
-	const FSoftClassPath TaskClassPath(ClassPathString);
-	UClass* TaskClass = TaskClassPath.TryLoadClass<UMetaplotStoryTask>();
 
 	UObject* ExistingObject = nullptr;
 	InstanceHandle->GetValue(ExistingObject);
 	UMetaplotStoryTask* ExistingTask = Cast<UMetaplotStoryTask>(ExistingObject);
-
-	if (!TaskClass || !TaskClass->IsChildOf(UMetaplotStoryTask::StaticClass()))
-	{
-		return InstanceHandle->SetValue(static_cast<UObject*>(nullptr)) == FPropertyAccess::Success;
-	}
-
-	if (ExistingTask && ExistingTask->GetClass() == TaskClass)
+	if (ExistingTask)
 	{
 		if (ExistingTask->GetOuter() != InstanceOuter)
 		{
@@ -473,16 +459,6 @@ bool FMetaplotEditorNodeUtils::EnsureNodeInstanceMatchesClass(
 		}
 		return true;
 	}
-
-	UMetaplotStoryTask* CreatedTask = NewObject<UMetaplotStoryTask>(InstanceOuter, TaskClass, NAME_None, RF_Transactional);
-	const bool bSetSuccess = InstanceHandle->SetValue(CreatedTask) == FPropertyAccess::Success;
-	if (bSetSuccess)
-	{
-		if (UMetaplotFlow* Flow = Cast<UMetaplotFlow>(InstanceOuter))
-		{
-			Flow->NormalizeEditorTaskNodes();
-		}
-	}
-	return bSetSuccess;
+	return true;
 }
 

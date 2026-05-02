@@ -6,6 +6,10 @@ namespace MetaplotRuntimeTaskPrivate
 {
 	static TSoftClassPtr<UMetaplotStoryTask> ResolveTaskClass(const FMetaplotEditorTaskNode& TaskNode)
 	{
+		if (TaskNode.InstanceObject)
+		{
+			return TaskNode.InstanceObject->GetClass();
+		}
 		if (TaskNode.NodeData.IsValid() && TaskNode.NodeData.GetScriptStruct() == FMetaplotEditorTaskNodeData::StaticStruct())
 		{
 			const FMetaplotEditorTaskNodeData& NodeData = TaskNode.NodeData.Get<FMetaplotEditorTaskNodeData>();
@@ -14,7 +18,7 @@ namespace MetaplotRuntimeTaskPrivate
 				return NodeData.TaskClass;
 			}
 		}
-		return TaskNode.TaskClass;
+		return nullptr;
 	}
 
 	static bool ResolveTaskEnabled(const FMetaplotEditorTaskNode& TaskNode)

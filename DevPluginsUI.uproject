@@ -17,6 +17,14 @@
 			"TargetAllowList": [
 				"Editor"
 			]
+		},
+		{
+			"Name": "MetaStory",
+			"Enabled": true
+		},
+		{
+			"Name": "StateTree",
+			"Enabled": false
 		}
 	]
 }
