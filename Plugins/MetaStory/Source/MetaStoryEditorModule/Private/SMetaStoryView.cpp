@@ -50,9 +50,9 @@ SMetaStoryView::~SMetaStoryView()
 	}
 }
 
-void SMetaStoryView::Construct(const FArguments& InArgs, TSharedRef<FMetaStoryViewModel> InStateTreeViewModel, const TSharedRef<FUICommandList>& InCommandList)
+void SMetaStoryView::Construct(const FArguments& InArgs, TSharedRef<FMetaStoryViewModel> InMetaStoryViewModel, const TSharedRef<FUICommandList>& InCommandList)
 {
-	MetaStoryViewModel = InStateTreeViewModel;
+	MetaStoryViewModel = InMetaStoryViewModel;
 
 	MetaStoryViewModel->GetOnAssetChanged().AddSP(this, &SMetaStoryView::HandleModelAssetChanged);
 	MetaStoryViewModel->GetOnStatesRemoved().AddSP(this, &SMetaStoryView::HandleModelStatesRemoved);

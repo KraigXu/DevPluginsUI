@@ -36,7 +36,7 @@ struct FMetaStoryStateItemCustomData
 
 
 /**
- * Widget that displays a list of State Tree states.
+ * Widget that displays a list of MetaStory states.
  */
 class SCompactTreeView : public SCompoundWidget
 {
@@ -120,7 +120,7 @@ protected:
 
 	UE_API static void FindStatesByIDRecursive(const TSharedPtr<FStateItem>& Item, TConstArrayView<FGuid> StateIDs, TArray<TSharedPtr<FStateItem>>& OutStates);
 
-	TWeakObjectPtr<const UMetaStory> WeakStateTree = nullptr;
+	TWeakObjectPtr<const UMetaStory> WeakMetaStory = nullptr;
 	TSharedPtr<FStateItem> RootItem;
 	TSharedPtr<FStateItem> FilteredRootItem;
 

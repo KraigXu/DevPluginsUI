@@ -65,7 +65,7 @@ UE::Trace::FStoreClient* FMetaStoryModule::GetStoreClient()
 FMetaStoryModule::FMetaStoryModule()
 #if WITH_METASTORY_TRACE
 	: StartDebuggerTracesCommand(FAutoConsoleCommand(
-		TEXT("statetree.startdebuggertraces"),
+		TEXT("metastory.startdebuggertraces"),
 		TEXT("Turns on MetaStory debugger traces if not already active."),
 		FConsoleCommandDelegate::CreateLambda([]
 			{
@@ -73,7 +73,7 @@ FMetaStoryModule::FMetaStoryModule()
 				IMetaStoryModule::Get().StartTraces(TraceId);
 			})))
 	, StopDebuggerTracesCommand(FAutoConsoleCommand(
-		TEXT("statetree.stopdebuggertraces"),
+		TEXT("metastory.stopdebuggertraces"),
 		TEXT("Turns off MetaStory debugger traces if active."),
 		FConsoleCommandDelegate::CreateLambda([]
 			{
@@ -85,7 +85,7 @@ FMetaStoryModule::FMetaStoryModule()
 
 void FMetaStoryModule::StartupModule()
 {
-#if UE_WITH_STATETREE_CRASHREPORTER
+#if UE_WITH_METASTORY_CRASHREPORTER
 	UE::MetaStory::FCrashReporterHandler::Register();
 #endif
 
@@ -160,7 +160,7 @@ void FMetaStoryModule::ShutdownModule()
 	IModularFeatures::Get().UnregisterModularFeature(TraceServices::ModuleFeatureName, &MetaStoryTraceModule);
 #endif // WITH_METASTORY_TRACE_DEBUGGER
 
-#if UE_WITH_STATETREE_CRASHREPORTER
+#if UE_WITH_METASTORY_CRASHREPORTER
 	UE::MetaStory::FCrashReporterHandler::Unregister();
 #endif
 

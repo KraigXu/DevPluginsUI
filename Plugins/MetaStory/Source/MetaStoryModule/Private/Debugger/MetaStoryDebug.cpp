@@ -28,8 +28,8 @@ FNodeDelegate OnTaskExitState_AnyThread;
 FEventSentDelegate OnEventSent_AnyThread;
 FEventConsumedDelegate OnEventConsumed_AnyThread;
 
-FNodeReference::FNodeReference(TNotNull<const UMetaStory*> InStateTree, const FMetaStoryIndex16 InNodeIndex)
-	: MetaStory(InStateTree)
+FNodeReference::FNodeReference(TNotNull<const UMetaStory*> InMetaStory, const FMetaStoryIndex16 InNodeIndex)
+	: MetaStory(InMetaStory)
 	, Index(InNodeIndex)
 {
 }

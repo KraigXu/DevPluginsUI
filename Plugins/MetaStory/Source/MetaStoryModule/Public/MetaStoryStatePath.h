@@ -103,7 +103,7 @@ namespace UE::MetaStory
 		FActiveFrameID FrameID;
 		/** The unique ID of the state for this instance. */
 		FActiveStateID StateID;
-		/** The index of the state handle the state tree asset. */
+		/** The index of the state handle the MetaStory asset. */
 		FMetaStoryStateHandle StateHandle;
 	};
 
@@ -126,8 +126,8 @@ namespace UE::MetaStory
 	{
 	public:
 		explicit FActiveStatePath() = default;
-		UE_API explicit FActiveStatePath(TNotNull<const UMetaStory*> InStateTree, const TArrayView<const FActiveState> InElements);
-		UE_API explicit FActiveStatePath(TNotNull<const UMetaStory*> InStateTree, TArray<FActiveState> InElements);
+		UE_API explicit FActiveStatePath(TNotNull<const UMetaStory*> InMetaStory, const TArrayView<const FActiveState> InElements);
+		UE_API explicit FActiveStatePath(TNotNull<const UMetaStory*> InMetaStory, TArray<FActiveState> InElements);
 
 		/** @return the number of elements in the path. */
 		[[nodiscard]] int32 Num() const

@@ -67,7 +67,7 @@ void FMetaStoryTraceProvider::AppendEvent(const FMetaStoryInstanceDebugId InInst
 	Session.WriteAccessCheck();
 
 	// It is currently possible to receive events from an instance without receiving event `EMetaStoryTraceEventType::Push` first
-	// (i.e. traces were activated after the statetree instance execution was started).    
+	// (i.e. traces were activated after the MetaStory instance execution was started).
 	// We plan to buffer the Instance events (Started/Stopped) to address this but for now we ignore events related to that instance.
 	if (const uint32* IndexPtr = InstanceIdToDebuggerEntryTimelines.Find(InInstanceId))
 	{
@@ -87,10 +87,10 @@ void FMetaStoryTraceProvider::AppendInstanceEvent(
 {
 	if (InEventType == EMetaStoryTraceEventType::Push)
 	{
-		TWeakObjectPtr<const UMetaStory> WeakStateTree;
-		if (GetAssetFromDebugId(AssetDebugId, WeakStateTree))
+		TWeakObjectPtr<const UMetaStory> WeakMetaStory;
+		if (GetAssetFromDebugId(AssetDebugId, WeakMetaStory))
 		{
-			if (const UMetaStory* MetaStory = WeakStateTree.Get())
+			if (const UMetaStory* MetaStory = WeakMetaStory.Get())
 			{
 				const TSharedRef<UE::MetaStoryDebugger::FInstanceDescriptor>* Descriptor = Descriptors.FindByPredicate(
 					[InInstanceId](const TSharedRef<const UE::MetaStoryDebugger::FInstanceDescriptor>& Descriptor)
@@ -137,17 +137,17 @@ void FMetaStoryTraceProvider::AppendInstanceEvent(
 	Session.UpdateDurationSeconds(InTime);
 }
 
-void FMetaStoryTraceProvider::AppendAssetDebugId(const UMetaStory* InStateTree, const FMetaStoryIndex16 AssetDebugId)
+void FMetaStoryTraceProvider::AppendAssetDebugId(const UMetaStory* InMetaStory, const FMetaStoryIndex16 AssetDebugId)
 {
-	TWeakObjectPtr<const UMetaStory> WeakStateTree;
+	TWeakObjectPtr<const UMetaStory> WeakMetaStory;
 	if (ensureMsgf(AssetDebugId.IsValid(), TEXT("Expecting valid asset debug Id."))
-		&& !GetAssetFromDebugId(AssetDebugId, WeakStateTree))
+		&& !GetAssetFromDebugId(AssetDebugId, WeakMetaStory))
 	{
-		MetaStoryAssets.Emplace(FMetaStoryDebugIdPair(InStateTree, AssetDebugId));
+		MetaStoryAssets.Emplace(FMetaStoryDebugIdPair(InMetaStory, AssetDebugId));
 	}
 }
 
-bool FMetaStoryTraceProvider::GetAssetFromDebugId(const FMetaStoryIndex16 AssetDebugId, TWeakObjectPtr<const UMetaStory>& WeakStateTree) const
+bool FMetaStoryTraceProvider::GetAssetFromDebugId(const FMetaStoryIndex16 AssetDebugId, TWeakObjectPtr<const UMetaStory>& WeakMetaStory) const
 {
 	verifyf(AssetDebugId.IsValid(), TEXT("Expecting valid asset debug Id."));
 	const FMetaStoryDebugIdPair* ExistingPair = MetaStoryAssets.FindByPredicate([AssetDebugId](const FMetaStoryDebugIdPair& Pair)
@@ -155,17 +155,17 @@ bool FMetaStoryTraceProvider::GetAssetFromDebugId(const FMetaStoryIndex16 AssetD
 		return Pair.Id == AssetDebugId;
 	});
 
-	WeakStateTree = ExistingPair ? ExistingPair->WeakStateTree : nullptr; 
+	WeakMetaStory = ExistingPair ? ExistingPair->WeakMetaStory : nullptr; 
 
 	return ExistingPair != nullptr;
 }
 
-bool FMetaStoryTraceProvider::GetAssetFromInstanceId(const FMetaStoryInstanceDebugId InstanceId, TWeakObjectPtr<const UMetaStory>& WeakStateTree) const
+bool FMetaStoryTraceProvider::GetAssetFromInstanceId(const FMetaStoryInstanceDebugId InstanceId, TWeakObjectPtr<const UMetaStory>& WeakMetaStory) const
 {
 	if (const uint32* IndexPtr = InstanceIdToDebuggerEntryTimelines.Find(InstanceId))
 	{
 		check(Descriptors.Num() == EventsTimelines.Num());
-		WeakStateTree = Descriptors[*IndexPtr].Get().MetaStory;
+		WeakMetaStory = Descriptors[*IndexPtr].Get().MetaStory;
 		return true;
 	}
 

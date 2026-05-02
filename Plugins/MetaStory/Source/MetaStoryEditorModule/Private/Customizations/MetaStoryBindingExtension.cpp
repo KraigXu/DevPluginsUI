@@ -1148,7 +1148,7 @@ void FMetaStoryBindingExtension::CustomizeDetailWidgetRow(FDetailWidgetRow& InWi
 							FPropertyBindingPath SourceBindingPath = CurrentBinding.GetSourcePath();
 							FPropertyBindingPath TargetBindingPath = CurrentBinding.GetTargetPath();
 
-							EditorData->GetPropertyEditorBindings()->AddStateTreeBinding(MoveTemp(Bindings[Idx]));
+							EditorData->GetPropertyEditorBindings()->AddMetaStoryBinding(MoveTemp(Bindings[Idx]));
 							EditorData->OnPropertyBindingChanged(SourceBindingPath, TargetBindingPath);
 						}
 

@@ -308,7 +308,7 @@ void SFindInAsset::MakeQueryDelayed()
 	{
 		if (UMetaStory* MetaStoryPtr = Cast<UMetaStory>(MetaStorysToProcess.Pop().ResolveObjectPtr()))
 		{
-			ProcessedStateTrees.Add(MetaStoryPtr);
+			ProcessedMetaStories.Add(MetaStoryPtr);
 
 			TArray<Private::FFoundItemStack> StackItems;
 			auto ProcessProperty = [Self = this, &StackItems, MetaStoryPtr](const TPropertyValueIterator<FProperty>& Iterator, const FString& Value)
@@ -403,7 +403,7 @@ void SFindInAsset::MakeQueryDelayed()
 					{
 						if (State->Type == EMetaStoryStateType::LinkedAsset && State->LinkedAsset)
 						{
-							if (!Self->ProcessedStateTrees.Contains(State->LinkedAsset))
+							if (!Self->ProcessedMetaStories.Contains(State->LinkedAsset))
 							{
 								Self->MetaStorysToProcess.Add(State->LinkedAsset);
 							}
@@ -466,7 +466,7 @@ void SFindInAsset::MakeQuery(FStringView InSearchString)
 	{
 		if (TSharedPtr<IMetaStoryEditorHost> EditorHostPinned = EditorHost.Pin())
 		{
-			const UMetaStory* MetaStory = EditorHostPinned->GetStateTree();
+			const UMetaStory* MetaStory = EditorHostPinned->GetMetaStory();
 			MetaStorysToProcess.Add(MetaStory);
 			bSearching = true;
 			TriggerQueryDelayed();
@@ -477,7 +477,7 @@ void SFindInAsset::MakeQuery(FStringView InSearchString)
 void SFindInAsset::ClearResults()
 {
 	bSearching = false;
-	ProcessedStateTrees.Reset();
+	ProcessedMetaStories.Reset();
 	MetaStorysToProcess.Reset();
 	ItemsFound.Empty();
 	HighlightText = FText::FromString(SearchString);

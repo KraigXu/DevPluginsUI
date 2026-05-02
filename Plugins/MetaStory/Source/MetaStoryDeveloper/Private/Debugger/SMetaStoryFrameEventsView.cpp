@@ -66,9 +66,9 @@ void VisitEventTreeElements(const TConstArrayView<TSharedPtr<FFrameEventTreeElem
 // SFrameEventsView
 //----------------------------------------------------------------------//
 
-void SFrameEventsView::Construct(const FArguments& InArgs, TNotNull<const UMetaStory*> InStateTree)
+void SFrameEventsView::Construct(const FArguments& InArgs, TNotNull<const UMetaStory*> InMetaStory)
 {
-	WeakStateTree = InStateTree;
+	WeakMetaStory = InMetaStory;
 
 	// EventsTreeView scrollbars
 	TSharedRef<SScrollBar> HorizontalScrollBar = SNew(SScrollBar)
@@ -187,7 +187,7 @@ void SFrameEventsView::GenerateElementsForProperties(const FMetaStoryTraceEventV
 			const TSharedPtr<FFrameEventTreeElement> NewChildElement = MakeShareable(new FFrameEventTreeElement(
 				ParentElement->Frame,
 				FMetaStoryTraceEventVariantType(TInPlaceType<EventType>(), Event),
-				ParentElement->WeakStateTree.Get()));
+				ParentElement->WeakMetaStory.Get()));
 
 			ParentElement->Children.Add(NewChildElement);
 		};
@@ -321,7 +321,7 @@ void SFrameEventsView::RequestRefresh(const FScrubState& InScrubState)
 
 	const TConstArrayView<FFrameSpan> Spans = EventCollection.FrameSpans;
 	check(Spans.Num());
-	check(WeakStateTree.IsValid());
+	check(WeakMetaStory.IsValid());
 
 	TArray<TSharedPtr<FFrameEventTreeElement>, TInlineAllocator<8>> ScopeStack;
 
@@ -344,7 +344,7 @@ void SFrameEventsView::RequestRefresh(const FScrubState& InScrubState)
 	const TraceServices::FFrame Frame = Span.Frame;
 	const int32 MaxEventIdx = Spans.IsValidIndex(SpanIdx + 1) ? Spans[SpanIdx + 1].EventIdx : Events.Num();
 
-	const UMetaStory* const RootTree = WeakStateTree.Get();
+	const UMetaStory* const RootTree = WeakMetaStory.Get();
 	const UMetaStory* ActiveTree = RootTree;
 
 	for (int32 EventIdx = FirstEventIdx; EventIdx < MaxEventIdx; EventIdx++)
@@ -382,7 +382,7 @@ void SFrameEventsView::RequestRefresh(const FScrubState& InScrubState)
 		}
 		else if (const FMetaStoryTraceInstanceFrameEvent* FrameEvent = Event.TryGet<FMetaStoryTraceInstanceFrameEvent>())
 		{
-			ActiveTree = FrameEvent->WeakStateTree.Get();
+			ActiveTree = FrameEvent->WeakMetaStory.Get();
 			check(ActiveTree);
 
 			// We don't want to create an entry.

@@ -16,10 +16,10 @@ class UMetaStorySchemaProvider : public UInterface
 };
 
 /**
-* Implementing this interface allows derived class to override the schema used to filter valid state trees for a FMetaStoryReference.
-* The state tree reference property needs to be marked with SchemaCanBeOverriden metatag.
+* Implementing this interface allows derived class to override the schema used to filter valid MetaStorys for a FMetaStoryReference.
+* The MetaStory reference property needs to be marked with SchemaCanBeOverriden metatag.
 * Ex:
-*	UPROPERTY(EditAnywhere, Category = AI, meta=(Schema="/Script/GameplayStateTreeModule.MetaStoryComponentSchema", SchemaCanBeOverriden))
+*	UPROPERTY(EditAnywhere, Category = AI, meta=(Schema="/Script/MetaStoryModule.MetaStoryDefaultSchema", SchemaCanBeOverriden))
 *	FMetaStoryReference MetaStoryRef;
 */
 class IMetaStorySchemaProvider

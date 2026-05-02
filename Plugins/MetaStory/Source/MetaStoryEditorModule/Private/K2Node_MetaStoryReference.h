@@ -57,12 +57,12 @@ public:
 
 private:
 	void CreatePropertyPins();
-	UMetaStory* GetStateTreeDefaultValue() const;
-	void SetStateTree(UMetaStory* InStateTree);
-	void HandleStateTreeCompiled(const UMetaStory& MetaStory);
+	UMetaStory* GetMetaStoryDefaultValue() const;
+	void SetMetaStory(UMetaStory* InMetaStory);
+	void HandleMetaStoryCompiled(const UMetaStory& MetaStory);
 
 private:
-	/** Created pins from the state tree properties */
+	/** Created pins from the MetaStory properties */
 	UPROPERTY()
 	TArray<FOptionalPinFromProperty> ShowPinForProperties;
 	/** State tree asset set in the pin and saved here to rebuild the property pins.*/

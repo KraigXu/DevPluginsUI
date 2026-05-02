@@ -140,67 +140,67 @@ void OutputActiveStatesEventTrace(FMetaStoryInstanceDebugId InstanceId, TConstAr
 
 } // UE::MetaStoryTrace
 
-#define TRACE_STATETREE_INSTANCE_EVENT(Context, EventType) \
+#define TRACE_METASTORY_INSTANCE_EVENT(Context, EventType) \
 	UE::MetaStoryTrace::OutputInstanceLifetimeEvent(Context, EventType);
 
-#define TRACE_STATETREE_INSTANCE_FRAME_EVENT(Context, Frame) \
+#define TRACE_METASTORY_INSTANCE_FRAME_EVENT(Context, Frame) \
 	UE::MetaStoryTrace::OutputInstanceFrameEvent(Context, Frame);
 
-#define TRACE_STATETREE_PHASE_EVENT(Context, Phase, EventType, StateHandle) \
+#define TRACE_METASTORY_PHASE_EVENT(Context, Phase, EventType, StateHandle) \
 	UE::MetaStoryTrace::OutputPhaseScopeEvent(Context, Phase, EventType, StateHandle); \
 
-#define TRACE_STATETREE_LOG_EVENT(Context, TraceVerbosity, Format, ...) \
+#define TRACE_METASTORY_LOG_EVENT(Context, TraceVerbosity, Format, ...) \
 	if (UE_TRACE_CHANNELEXPR_IS_ENABLED(MetaStoryDebugChannel)) \
 	{ \
 		UE::MetaStoryTrace::OutputLogEventTrace(Context, ELogVerbosity::TraceVerbosity, Format, ##__VA_ARGS__); \
 	}
 
-#define TRACE_STATETREE_STATE_EVENT(Context, StateHandle, EventType) \
+#define TRACE_METASTORY_STATE_EVENT(Context, StateHandle, EventType) \
 	if (UE_TRACE_CHANNELEXPR_IS_ENABLED(MetaStoryDebugChannel)) \
 	{ \
 		UE::MetaStoryTrace::OutputStateEventTrace(Context, StateHandle, EventType); \
 	}
 
-#define TRACE_STATETREE_TASK_EVENT(Context, TaskIdx, DataView, EventType, Status) \
+#define TRACE_METASTORY_TASK_EVENT(Context, TaskIdx, DataView, EventType, Status) \
 	if (UE_TRACE_CHANNELEXPR_IS_ENABLED(MetaStoryDebugChannel)) \
 	{ \
 		UE::MetaStoryTrace::OutputTaskEventTrace(Context, TaskIdx, DataView, EventType, Status); \
 	}
 
-#define TRACE_STATETREE_EVALUATOR_EVENT(Context, EvaluatorIdx, DataView, EventType) \
+#define TRACE_METASTORY_EVALUATOR_EVENT(Context, EvaluatorIdx, DataView, EventType) \
 	if (UE_TRACE_CHANNELEXPR_IS_ENABLED(MetaStoryDebugChannel)) \
 	{ \
 		UE::MetaStoryTrace::OutputEvaluatorEventTrace(Context, EvaluatorIdx, DataView, EventType); \
 	}
 
-#define TRACE_STATETREE_CONDITION_EVENT(Context, ConditionIdx, DataView, EventType) \
+#define TRACE_METASTORY_CONDITION_EVENT(Context, ConditionIdx, DataView, EventType) \
 	if (UE_TRACE_CHANNELEXPR_IS_ENABLED(MetaStoryDebugChannel)) \
 	{ \
 		UE::MetaStoryTrace::OutputConditionEventTrace(Context, ConditionIdx, DataView, EventType); \
 	}
 
-#define TRACE_STATETREE_TRANSITION_EVENT(Context, TransitionIdx, EventType) \
+#define TRACE_METASTORY_TRANSITION_EVENT(Context, TransitionIdx, EventType) \
 	if (UE_TRACE_CHANNELEXPR_IS_ENABLED(MetaStoryDebugChannel)) \
 	{ \
 		UE::MetaStoryTrace::OutputTransitionEventTrace(Context, TransitionIdx, EventType); \
 	}
 
-#define TRACE_STATETREE_ACTIVE_STATES_EVENT(Context, ActivateFrames) \
+#define TRACE_METASTORY_ACTIVE_STATES_EVENT(Context, ActivateFrames) \
 		UE::MetaStoryTrace::OutputActiveStatesEventTrace(Context, ActivateFrames);
 
 #undef UE_API
 
 #else //WITH_METASTORY_TRACE
 
-#define TRACE_STATETREE_INSTANCE_EVENT(...)
-#define TRACE_STATETREE_INSTANCE_FRAME_EVENT(...)
-#define TRACE_STATETREE_PHASE_EVENT(...)
-#define TRACE_STATETREE_LOG_EVENT(...)
-#define TRACE_STATETREE_STATE_EVENT(...)
-#define TRACE_STATETREE_TASK_EVENT(...)
-#define TRACE_STATETREE_EVALUATOR_EVENT(...)
-#define TRACE_STATETREE_CONDITION_EVENT(...)
-#define TRACE_STATETREE_TRANSITION_EVENT(...)
-#define TRACE_STATETREE_ACTIVE_STATES_EVENT(...)
+#define TRACE_METASTORY_INSTANCE_EVENT(...)
+#define TRACE_METASTORY_INSTANCE_FRAME_EVENT(...)
+#define TRACE_METASTORY_PHASE_EVENT(...)
+#define TRACE_METASTORY_LOG_EVENT(...)
+#define TRACE_METASTORY_STATE_EVENT(...)
+#define TRACE_METASTORY_TASK_EVENT(...)
+#define TRACE_METASTORY_EVALUATOR_EVENT(...)
+#define TRACE_METASTORY_CONDITION_EVENT(...)
+#define TRACE_METASTORY_TRANSITION_EVENT(...)
+#define TRACE_METASTORY_ACTIVE_STATES_EVENT(...)
 
 #endif // WITH_METASTORY_TRACE

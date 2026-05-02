@@ -9,7 +9,7 @@
 #include "MetaStoryCompiler.h"
 #include "Conditions/MetaStoryCommonConditions.h"
 
-#define LOCTEXT_NAMESPACE "AITestSuite_StateTreeTest"
+#define LOCTEXT_NAMESPACE "AITestSuite_MetaStoryTest"
 
 UE_DISABLE_OPTIMIZATION_SHIP
 
@@ -19,13 +19,13 @@ struct FMetaStoryTest_Delegate_ConcurrentListeners : FMetaStoryTestBase
 {
 	virtual bool InstantTest() override
 	{
-		UMetaStory& MetaStory = NewStateTree();
+		UMetaStory& MetaStory = NewMetaStory();
 		UMetaStoryEditorData& EditorData = *Cast<UMetaStoryEditorData>(MetaStory.EditorData);
 		UMetaStoryState& Root = EditorData.AddSubTree(FName("Root"));
 
-		TStateTreeEditorNode<FTestTask_BroadcastDelegate>& DispatcherTask = Root.AddTask<FTestTask_BroadcastDelegate>(FName("DispatcherTask"));
-		TStateTreeEditorNode<FTestTask_ListenDelegate>& ListenerTaskA = Root.AddTask<FTestTask_ListenDelegate>(FName("ListenerTaskA"));
-		TStateTreeEditorNode<FTestTask_ListenDelegate>& ListenerTaskB = Root.AddTask<FTestTask_ListenDelegate>(FName("ListenerTaskB"));
+		TMetaStoryTypedEditorNode<FTestTask_BroadcastDelegate>& DispatcherTask = Root.AddTask<FTestTask_BroadcastDelegate>(FName("DispatcherTask"));
+		TMetaStoryTypedEditorNode<FTestTask_ListenDelegate>& ListenerTaskA = Root.AddTask<FTestTask_ListenDelegate>(FName("ListenerTaskA"));
+		TMetaStoryTypedEditorNode<FTestTask_ListenDelegate>& ListenerTaskB = Root.AddTask<FTestTask_ListenDelegate>(FName("ListenerTaskB"));
 
 		EditorData.AddPropertyBinding(DispatcherTask, GET_MEMBER_NAME_STRING_CHECKED(FTestTask_BroadcastDelegate_InstanceData, OnTickDelegate), ListenerTaskB, GET_MEMBER_NAME_STRING_CHECKED(FTestTask_ListenDelegate_InstanceData, Listener));
 		EditorData.AddPropertyBinding(DispatcherTask, GET_MEMBER_NAME_STRING_CHECKED(FTestTask_BroadcastDelegate_InstanceData, OnTickDelegate), ListenerTaskA, GET_MEMBER_NAME_STRING_CHECKED(FTestTask_ListenDelegate_InstanceData, Listener));
@@ -36,7 +36,7 @@ struct FMetaStoryTest_Delegate_ConcurrentListeners : FMetaStoryTestBase
 		AITEST_TRUE("MetaStory should get compiled", bResult);
 
 		FMetaStoryInstanceData InstanceData;
-		FTestStateTreeExecutionContext Exec(MetaStory, MetaStory, InstanceData);
+		FTestMetaStoryExecutionContext Exec(MetaStory, MetaStory, InstanceData);
 		const bool bInitSucceeded = Exec.IsValid();
 		AITEST_TRUE("MetaStory should init", bInitSucceeded);
 
@@ -61,13 +61,13 @@ struct FMetaStoryTest_Delegate_ConcurrentListeners : FMetaStoryTestBase
 		return true;
 	}
 };
-IMPLEMENT_STATE_TREE_INSTANT_TEST(FMetaStoryTest_Delegate_ConcurrentListeners, "System.MetaStory.Delegate.ConcurrentListeners");
+IMPLEMENT_METASTORY_INSTANT_TEST(FMetaStoryTest_Delegate_ConcurrentListeners, "System.MetaStory.Delegate.ConcurrentListeners");
 
 struct FMetaStoryTest_Delegate_MutuallyExclusiveListeners : FMetaStoryTestBase
 {
 	virtual bool InstantTest() override
 	{
-		UMetaStory& MetaStory = NewStateTree();
+		UMetaStory& MetaStory = NewMetaStory();
 		UMetaStoryEditorData& EditorData = *Cast<UMetaStoryEditorData>(MetaStory.EditorData);
 		UMetaStoryState& Root = EditorData.AddSubTree(FName(TEXT("Root")));
 
@@ -77,10 +77,10 @@ struct FMetaStoryTest_Delegate_MutuallyExclusiveListeners : FMetaStoryTestBase
 		StateA.AddTransition(EMetaStoryTransitionTrigger::OnTick, EMetaStoryTransitionType::GotoState, &StateB);
 		StateB.AddTransition(EMetaStoryTransitionTrigger::OnTick, EMetaStoryTransitionType::GotoState, &StateA);
 
-		TStateTreeEditorNode<FTestTask_BroadcastDelegate>& DispatcherTask = Root.AddTask<FTestTask_BroadcastDelegate>(FName(TEXT("DispatcherTask")));
-		TStateTreeEditorNode<FTestTask_ListenDelegate>& ListenerTaskA0 = StateA.AddTask<FTestTask_ListenDelegate>(FName(TEXT("ListenerTaskA0")));
-		TStateTreeEditorNode<FTestTask_ListenDelegate>& ListenerTaskA1 = StateA.AddTask<FTestTask_ListenDelegate>(FName(TEXT("ListenerTaskA1")));
-		TStateTreeEditorNode<FTestTask_ListenDelegate>& ListenerTaskB = StateB.AddTask<FTestTask_ListenDelegate>(FName(TEXT("ListenerTaskB")));
+		TMetaStoryTypedEditorNode<FTestTask_BroadcastDelegate>& DispatcherTask = Root.AddTask<FTestTask_BroadcastDelegate>(FName(TEXT("DispatcherTask")));
+		TMetaStoryTypedEditorNode<FTestTask_ListenDelegate>& ListenerTaskA0 = StateA.AddTask<FTestTask_ListenDelegate>(FName(TEXT("ListenerTaskA0")));
+		TMetaStoryTypedEditorNode<FTestTask_ListenDelegate>& ListenerTaskA1 = StateA.AddTask<FTestTask_ListenDelegate>(FName(TEXT("ListenerTaskA1")));
+		TMetaStoryTypedEditorNode<FTestTask_ListenDelegate>& ListenerTaskB = StateB.AddTask<FTestTask_ListenDelegate>(FName(TEXT("ListenerTaskB")));
 
 		EditorData.AddPropertyBinding(DispatcherTask, GET_MEMBER_NAME_STRING_CHECKED(FTestTask_BroadcastDelegate_InstanceData, OnTickDelegate), ListenerTaskA0, GET_MEMBER_NAME_STRING_CHECKED(FTestTask_ListenDelegate_InstanceData, Listener));
 		EditorData.AddPropertyBinding(DispatcherTask, GET_MEMBER_NAME_STRING_CHECKED(FTestTask_BroadcastDelegate_InstanceData, OnTickDelegate), ListenerTaskA1, GET_MEMBER_NAME_STRING_CHECKED(FTestTask_ListenDelegate_InstanceData, Listener));
@@ -92,7 +92,7 @@ struct FMetaStoryTest_Delegate_MutuallyExclusiveListeners : FMetaStoryTestBase
 		AITEST_TRUE("MetaStory should get compiled", bResult);
 
 		FMetaStoryInstanceData InstanceData;
-		FTestStateTreeExecutionContext Exec(MetaStory, MetaStory, InstanceData);
+		FTestMetaStoryExecutionContext Exec(MetaStory, MetaStory, InstanceData);
 		const bool bInitSucceeded = Exec.IsValid();
 		AITEST_TRUE("MetaStory should init", bInitSucceeded);
 
@@ -119,13 +119,13 @@ struct FMetaStoryTest_Delegate_MutuallyExclusiveListeners : FMetaStoryTestBase
 		return true;
 	}
 };
-IMPLEMENT_STATE_TREE_INSTANT_TEST(FMetaStoryTest_Delegate_MutuallyExclusiveListeners, "System.MetaStory.Delegate.MutuallyExclusiveListeners");
+IMPLEMENT_METASTORY_INSTANT_TEST(FMetaStoryTest_Delegate_MutuallyExclusiveListeners, "System.MetaStory.Delegate.MutuallyExclusiveListeners");
 
 struct FMetaStoryTest_Delegate_Transitions : FMetaStoryTestBase
 {
 	virtual bool InstantTest() override
 	{
-		UMetaStory& MetaStory = NewStateTree();
+		UMetaStory& MetaStory = NewMetaStory();
 		UMetaStoryEditorData& EditorData = *Cast<UMetaStoryEditorData>(MetaStory.EditorData);
 		UMetaStoryState& Root = EditorData.AddSubTree(FName(TEXT("Root")));
 
@@ -135,8 +135,8 @@ struct FMetaStoryTest_Delegate_Transitions : FMetaStoryTestBase
 		FMetaStoryTransition& TransitionAToB = StateA.AddTransition(EMetaStoryTransitionTrigger::OnDelegate, EMetaStoryTransitionType::GotoState, &StateB);
 		FMetaStoryTransition& TransitionBToA = StateB.AddTransition(EMetaStoryTransitionTrigger::OnDelegate, EMetaStoryTransitionType::GotoState, &StateA);
 
-		TStateTreeEditorNode<FTestTask_BroadcastDelegate>& DispatcherTask0 = Root.AddTask<FTestTask_BroadcastDelegate>(FName(TEXT("DispatcherTask0")));
-		TStateTreeEditorNode<FTestTask_BroadcastDelegate>& DispatcherTask1 = Root.AddTask<FTestTask_BroadcastDelegate>(FName(TEXT("DispatcherTask1")));
+		TMetaStoryTypedEditorNode<FTestTask_BroadcastDelegate>& DispatcherTask0 = Root.AddTask<FTestTask_BroadcastDelegate>(FName(TEXT("DispatcherTask0")));
+		TMetaStoryTypedEditorNode<FTestTask_BroadcastDelegate>& DispatcherTask1 = Root.AddTask<FTestTask_BroadcastDelegate>(FName(TEXT("DispatcherTask1")));
 		
 		EditorData.AddPropertyBinding(FPropertyBindingPath(DispatcherTask0.ID, GET_MEMBER_NAME_CHECKED(FTestTask_BroadcastDelegate_InstanceData, OnTickDelegate)),  FPropertyBindingPath(TransitionAToB.ID, GET_MEMBER_NAME_CHECKED(FMetaStoryTransition, DelegateListener)));
 		EditorData.AddPropertyBinding(FPropertyBindingPath(DispatcherTask1.ID, GET_MEMBER_NAME_CHECKED(FTestTask_BroadcastDelegate_InstanceData, OnTickDelegate)), FPropertyBindingPath(TransitionBToA.ID, GET_MEMBER_NAME_CHECKED(FMetaStoryTransition, DelegateListener)));
@@ -147,7 +147,7 @@ struct FMetaStoryTest_Delegate_Transitions : FMetaStoryTestBase
 		AITEST_TRUE("MetaStory should get compiled", bResult);
 
 		FMetaStoryInstanceData InstanceData;
-		FTestStateTreeExecutionContext Exec(MetaStory, MetaStory, InstanceData);
+		FTestMetaStoryExecutionContext Exec(MetaStory, MetaStory, InstanceData);
 		const bool bInitSucceeded = Exec.IsValid();
 		AITEST_TRUE("MetaStory should init", bInitSucceeded);
 
@@ -168,19 +168,19 @@ struct FMetaStoryTest_Delegate_Transitions : FMetaStoryTestBase
 		return true;
 	}
 };
-IMPLEMENT_STATE_TREE_INSTANT_TEST(FMetaStoryTest_Delegate_Transitions, "System.MetaStory.Delegate.Transitions");
+IMPLEMENT_METASTORY_INSTANT_TEST(FMetaStoryTest_Delegate_Transitions, "System.MetaStory.Delegate.Transitions");
 
 struct FMetaStoryTest_Delegate_Rebroadcasting : FMetaStoryTestBase
 {
 	virtual bool InstantTest() override
 	{
-		UMetaStory& MetaStory = NewStateTree();
+		UMetaStory& MetaStory = NewMetaStory();
 		UMetaStoryEditorData& EditorData = *Cast<UMetaStoryEditorData>(MetaStory.EditorData);
 		UMetaStoryState& Root = EditorData.AddSubTree(FName(TEXT("Root")));
 
-		TStateTreeEditorNode<FTestTask_BroadcastDelegate>& DispatcherTask = Root.AddTask<FTestTask_BroadcastDelegate>(FName(TEXT("DispatcherTask")));
-		TStateTreeEditorNode<FTestTask_RebroadcastDelegate>& RedispatcherTask = Root.AddTask<FTestTask_RebroadcastDelegate>(FName(TEXT("RedispatcherTask")));
-		TStateTreeEditorNode<FTestTask_ListenDelegate>& ListenerTask = Root.AddTask<FTestTask_ListenDelegate>(FName(TEXT("ListenerTask")));
+		TMetaStoryTypedEditorNode<FTestTask_BroadcastDelegate>& DispatcherTask = Root.AddTask<FTestTask_BroadcastDelegate>(FName(TEXT("DispatcherTask")));
+		TMetaStoryTypedEditorNode<FTestTask_RebroadcastDelegate>& RedispatcherTask = Root.AddTask<FTestTask_RebroadcastDelegate>(FName(TEXT("RedispatcherTask")));
+		TMetaStoryTypedEditorNode<FTestTask_ListenDelegate>& ListenerTask = Root.AddTask<FTestTask_ListenDelegate>(FName(TEXT("ListenerTask")));
 
 		EditorData.AddPropertyBinding(DispatcherTask, GET_MEMBER_NAME_STRING_CHECKED(FTestTask_BroadcastDelegate_InstanceData, OnTickDelegate), RedispatcherTask, TEXT("Listener"));
 		EditorData.AddPropertyBinding(RedispatcherTask, TEXT("Dispatcher"), ListenerTask, TEXT("Listener"));
@@ -191,7 +191,7 @@ struct FMetaStoryTest_Delegate_Rebroadcasting : FMetaStoryTestBase
 		AITEST_TRUE(TEXT("MetaStory should get compiled"), bResult);
 
 		FMetaStoryInstanceData InstanceData;
-		FTestStateTreeExecutionContext Exec(MetaStory, MetaStory, InstanceData);
+		FTestMetaStoryExecutionContext Exec(MetaStory, MetaStory, InstanceData);
 		const bool bInitSucceeded = Exec.IsValid();
 		AITEST_TRUE(TEXT("MetaStory should init"), bInitSucceeded);
 
@@ -211,18 +211,18 @@ struct FMetaStoryTest_Delegate_Rebroadcasting : FMetaStoryTestBase
 		return true;
 	}
 };
-IMPLEMENT_STATE_TREE_INSTANT_TEST(FMetaStoryTest_Delegate_Rebroadcasting, "System.MetaStory.Delegate.Rebroadcasting");
+IMPLEMENT_METASTORY_INSTANT_TEST(FMetaStoryTest_Delegate_Rebroadcasting, "System.MetaStory.Delegate.Rebroadcasting");
 
 struct FMetaStoryTest_Delegate_SelfRemoval : FMetaStoryTestBase
 {
 	virtual bool InstantTest() override
 	{
-		UMetaStory& MetaStory = NewStateTree();
+		UMetaStory& MetaStory = NewMetaStory();
 		UMetaStoryEditorData& EditorData = *Cast<UMetaStoryEditorData>(MetaStory.EditorData);
 		UMetaStoryState& Root = EditorData.AddSubTree(FName(TEXT("Root")));
 
-		TStateTreeEditorNode<FTestTask_BroadcastDelegate>& DispatcherTask = Root.AddTask<FTestTask_BroadcastDelegate>(FName(TEXT("DispatcherTask")));
-		TStateTreeEditorNode<FTestTask_CustomFuncOnDelegate>& CustomFuncTask = Root.AddTask<FTestTask_CustomFuncOnDelegate>(FName(TEXT("CustomFuncTask")));
+		TMetaStoryTypedEditorNode<FTestTask_BroadcastDelegate>& DispatcherTask = Root.AddTask<FTestTask_BroadcastDelegate>(FName(TEXT("DispatcherTask")));
+		TMetaStoryTypedEditorNode<FTestTask_CustomFuncOnDelegate>& CustomFuncTask = Root.AddTask<FTestTask_CustomFuncOnDelegate>(FName(TEXT("CustomFuncTask")));
 
 		uint32 TriggersCounter = 0;
 
@@ -239,7 +239,7 @@ struct FMetaStoryTest_Delegate_SelfRemoval : FMetaStoryTestBase
 		AITEST_TRUE(TEXT("MetaStory should get compiled"), bResult);
 
 		FMetaStoryInstanceData InstanceData;
-		FTestStateTreeExecutionContext Exec(MetaStory, MetaStory, InstanceData);
+		FTestMetaStoryExecutionContext Exec(MetaStory, MetaStory, InstanceData);
 		const bool bInitSucceeded = Exec.IsValid();
 		AITEST_TRUE(TEXT("MetaStory should init"), bInitSucceeded);
 
@@ -259,13 +259,13 @@ struct FMetaStoryTest_Delegate_SelfRemoval : FMetaStoryTestBase
 		return true;
 	}
 };
-IMPLEMENT_STATE_TREE_INSTANT_TEST(FMetaStoryTest_Delegate_SelfRemoval, "System.MetaStory.Delegate.SelfRemoval");
+IMPLEMENT_METASTORY_INSTANT_TEST(FMetaStoryTest_Delegate_SelfRemoval, "System.MetaStory.Delegate.SelfRemoval");
 
 struct FMetaStoryTest_Delegate_WithoutRemoval : FMetaStoryTestBase
 {
 	virtual bool InstantTest() override
 	{
-		UMetaStory& MetaStory = NewStateTree();
+		UMetaStory& MetaStory = NewMetaStory();
 		UMetaStoryEditorData& EditorData = *Cast<UMetaStoryEditorData>(MetaStory.EditorData);
 		UMetaStoryState& Root = EditorData.AddSubTree(FName(TEXT("Root")));
 
@@ -274,8 +274,8 @@ struct FMetaStoryTest_Delegate_WithoutRemoval : FMetaStoryTestBase
 
 		FMetaStoryTransition& TransitionAToB = StateA.AddTransition(EMetaStoryTransitionTrigger::OnTick, EMetaStoryTransitionType::GotoState, &StateB);
 
-		TStateTreeEditorNode<FTestTask_BroadcastDelegate>& DispatcherTask = Root.AddTask<FTestTask_BroadcastDelegate>(FName(TEXT("DispatcherTask")));
-		TStateTreeEditorNode<FTestTask_ListenDelegate>& ListenerTask = StateA.AddTask<FTestTask_ListenDelegate>(FName(TEXT("ListenerTask")));
+		TMetaStoryTypedEditorNode<FTestTask_BroadcastDelegate>& DispatcherTask = Root.AddTask<FTestTask_BroadcastDelegate>(FName(TEXT("DispatcherTask")));
+		TMetaStoryTypedEditorNode<FTestTask_ListenDelegate>& ListenerTask = StateA.AddTask<FTestTask_ListenDelegate>(FName(TEXT("ListenerTask")));
 		EditorData.AddPropertyBinding(DispatcherTask, GET_MEMBER_NAME_STRING_CHECKED(FTestTask_BroadcastDelegate_InstanceData, OnTickDelegate), ListenerTask, GET_MEMBER_NAME_STRING_CHECKED(FTestTask_ListenDelegate_InstanceData, Listener));
 		ListenerTask.GetNode().bRemoveOnExit = false;
 
@@ -285,7 +285,7 @@ struct FMetaStoryTest_Delegate_WithoutRemoval : FMetaStoryTestBase
 		AITEST_TRUE(TEXT("MetaStory should get compiled"), bResult);
 
 		FMetaStoryInstanceData InstanceData;
-		FTestStateTreeExecutionContext Exec(MetaStory, MetaStory, InstanceData);
+		FTestMetaStoryExecutionContext Exec(MetaStory, MetaStory, InstanceData);
 		const bool bInitSucceeded = Exec.IsValid();
 		AITEST_TRUE(TEXT("MetaStory should init"), bInitSucceeded);
 
@@ -308,20 +308,20 @@ struct FMetaStoryTest_Delegate_WithoutRemoval : FMetaStoryTestBase
 		return true;
 	}
 };
-IMPLEMENT_STATE_TREE_INSTANT_TEST(FMetaStoryTest_Delegate_WithoutRemoval, "System.MetaStory.Delegate.WithoutRemoval");
+IMPLEMENT_METASTORY_INSTANT_TEST(FMetaStoryTest_Delegate_WithoutRemoval, "System.MetaStory.Delegate.WithoutRemoval");
 
 struct FMetaStoryTest_Delegate_GlobalDispatcherAndListener : FMetaStoryTestBase
 {
 	virtual bool InstantTest() override
 	{
-		UMetaStory& MetaStory = NewStateTree();
+		UMetaStory& MetaStory = NewMetaStory();
 		UMetaStoryEditorData& EditorData = *Cast<UMetaStoryEditorData>(MetaStory.EditorData);
 		UMetaStoryState& Root = EditorData.AddSubTree(FName(TEXT("Root")));
-		TStateTreeEditorNode<FTestTask_Stand>& RootTask = Root.AddTask<FTestTask_Stand>();
+		TMetaStoryTypedEditorNode<FTestTask_Stand>& RootTask = Root.AddTask<FTestTask_Stand>();
 		RootTask.GetNode().TicksToCompletion = 100;
 
-		TStateTreeEditorNode<FTestTask_BroadcastDelegate>& DispatcherTask = EditorData.AddGlobalTask<FTestTask_BroadcastDelegate>(FName(TEXT("DispatcherTask")));
-		TStateTreeEditorNode<FTestTask_ListenDelegate>& ListenerTask = EditorData.AddGlobalTask<FTestTask_ListenDelegate>(FName(TEXT("ListenerTask")));
+		TMetaStoryTypedEditorNode<FTestTask_BroadcastDelegate>& DispatcherTask = EditorData.AddGlobalTask<FTestTask_BroadcastDelegate>(FName(TEXT("DispatcherTask")));
+		TMetaStoryTypedEditorNode<FTestTask_ListenDelegate>& ListenerTask = EditorData.AddGlobalTask<FTestTask_ListenDelegate>(FName(TEXT("ListenerTask")));
 		ListenerTask.GetNode().bRemoveOnExit = false;
 
 		EditorData.AddPropertyBinding(DispatcherTask, GET_MEMBER_NAME_STRING_CHECKED(FTestTask_BroadcastDelegate_InstanceData, OnTickDelegate), ListenerTask, GET_MEMBER_NAME_STRING_CHECKED(FTestTask_CustomFuncOnDelegate_InstanceData, Listener));
@@ -332,7 +332,7 @@ struct FMetaStoryTest_Delegate_GlobalDispatcherAndListener : FMetaStoryTestBase
 		AITEST_TRUE(TEXT("MetaStory should get compiled"), bResult);
 
 		FMetaStoryInstanceData InstanceData;
-		FTestStateTreeExecutionContext Exec(MetaStory, MetaStory, InstanceData);
+		FTestMetaStoryExecutionContext Exec(MetaStory, MetaStory, InstanceData);
 		const bool bInitSucceeded = Exec.IsValid();
 		AITEST_TRUE(TEXT("MetaStory should init"), bInitSucceeded);
 
@@ -352,18 +352,18 @@ struct FMetaStoryTest_Delegate_GlobalDispatcherAndListener : FMetaStoryTestBase
 		return true;
 	}
 };
-IMPLEMENT_STATE_TREE_INSTANT_TEST(FMetaStoryTest_Delegate_GlobalDispatcherAndListener, "System.MetaStory.Delegate.GlobalDispatcherAndListener");
+IMPLEMENT_METASTORY_INSTANT_TEST(FMetaStoryTest_Delegate_GlobalDispatcherAndListener, "System.MetaStory.Delegate.GlobalDispatcherAndListener");
 
 struct FMetaStoryTest_Delegate_ListeningToDelegateOnExit : FMetaStoryTestBase
 {
 	virtual bool InstantTest() override
 	{
-		UMetaStory& MetaStory = NewStateTree();
+		UMetaStory& MetaStory = NewMetaStory();
 		UMetaStoryEditorData& EditorData = *Cast<UMetaStoryEditorData>(MetaStory.EditorData);
 		UMetaStoryState& Root = EditorData.AddSubTree(FName(TEXT("Root")));
 
-		TStateTreeEditorNode<FTestTask_BroadcastDelegate>& DispatcherTask = Root.AddTask<FTestTask_BroadcastDelegate>(FName(TEXT("DispatcherTask")));
-		TStateTreeEditorNode<FTestTask_ListenDelegate>& ListenerTask = Root.AddTask<FTestTask_ListenDelegate>(FName(TEXT("ListenerTask")));
+		TMetaStoryTypedEditorNode<FTestTask_BroadcastDelegate>& DispatcherTask = Root.AddTask<FTestTask_BroadcastDelegate>(FName(TEXT("DispatcherTask")));
+		TMetaStoryTypedEditorNode<FTestTask_ListenDelegate>& ListenerTask = Root.AddTask<FTestTask_ListenDelegate>(FName(TEXT("ListenerTask")));
 		ListenerTask.GetNode().bRemoveOnExit = false;
 
 		EditorData.AddPropertyBinding(DispatcherTask, GET_MEMBER_NAME_STRING_CHECKED(FTestTask_BroadcastDelegate_InstanceData, OnExitDelegate), ListenerTask, GET_MEMBER_NAME_STRING_CHECKED(FTestTask_CustomFuncOnDelegate_InstanceData, Listener));
@@ -374,7 +374,7 @@ struct FMetaStoryTest_Delegate_ListeningToDelegateOnExit : FMetaStoryTestBase
 		AITEST_TRUE(TEXT("MetaStory should get compiled"), bResult);
 
 		FMetaStoryInstanceData InstanceData;
-		FTestStateTreeExecutionContext Exec(MetaStory, MetaStory, InstanceData);
+		FTestMetaStoryExecutionContext Exec(MetaStory, MetaStory, InstanceData);
 		const bool bInitSucceeded = Exec.IsValid();
 		AITEST_TRUE(TEXT("MetaStory should init"), bInitSucceeded);
 
@@ -389,14 +389,14 @@ struct FMetaStoryTest_Delegate_ListeningToDelegateOnExit : FMetaStoryTestBase
 		return true;
 	}
 };
-IMPLEMENT_STATE_TREE_INSTANT_TEST(FMetaStoryTest_Delegate_ListeningToDelegateOnExit, "System.MetaStory.Delegate.ListeningToDelegateOnExit");
+IMPLEMENT_METASTORY_INSTANT_TEST(FMetaStoryTest_Delegate_ListeningToDelegateOnExit, "System.MetaStory.Delegate.ListeningToDelegateOnExit");
 
 /** Test same state and the state index < number of instance data. */
 struct FMetaStoryTest_Delegate_ListeningToDelegateOnExit2 : FMetaStoryTestBase
 {
 	virtual bool InstantTest() override
 	{
-		UMetaStory& MetaStory = NewStateTree();
+		UMetaStory& MetaStory = NewMetaStory();
 		UMetaStoryEditorData& EditorData = *Cast<UMetaStoryEditorData>(MetaStory.EditorData);
 		UMetaStoryState& Root = EditorData.AddSubTree(FName(TEXT("Root")));
 		UMetaStoryState& StateB = Root.AddChildState("StateA")
@@ -415,8 +415,8 @@ struct FMetaStoryTest_Delegate_ListeningToDelegateOnExit2 : FMetaStoryTestBase
 			EditorData.AddGlobalTask<FTestTask_Stand>().GetNode().TicksToCompletion = 100;
 		}
 		{
-			TStateTreeEditorNode<FTestTask_BroadcastDelegate>& DispatcherTask = StateB.AddTask<FTestTask_BroadcastDelegate>(FName(TEXT("DispatcherTask")));
-			TStateTreeEditorNode<FTestTask_ListenDelegate>& ListenerTask = StateB.AddTask<FTestTask_ListenDelegate>(FName(TEXT("ListenerTask")));
+			TMetaStoryTypedEditorNode<FTestTask_BroadcastDelegate>& DispatcherTask = StateB.AddTask<FTestTask_BroadcastDelegate>(FName(TEXT("DispatcherTask")));
+			TMetaStoryTypedEditorNode<FTestTask_ListenDelegate>& ListenerTask = StateB.AddTask<FTestTask_ListenDelegate>(FName(TEXT("ListenerTask")));
 			ListenerTask.GetNode().bRemoveOnExit = false;
 
 			EditorData.AddPropertyBinding(DispatcherTask, GET_MEMBER_NAME_STRING_CHECKED(FTestTask_BroadcastDelegate_InstanceData, OnExitDelegate), ListenerTask, GET_MEMBER_NAME_STRING_CHECKED(FTestTask_CustomFuncOnDelegate_InstanceData, Listener));
@@ -433,7 +433,7 @@ struct FMetaStoryTest_Delegate_ListeningToDelegateOnExit2 : FMetaStoryTestBase
 		}
 
 		FMetaStoryInstanceData InstanceData;
-		FTestStateTreeExecutionContext Exec(MetaStory, MetaStory, InstanceData);
+		FTestMetaStoryExecutionContext Exec(MetaStory, MetaStory, InstanceData);
 		const bool bInitSucceeded = Exec.IsValid();
 		AITEST_TRUE("MetaStory should init", bInitSucceeded);
 
@@ -466,7 +466,7 @@ struct FMetaStoryTest_Delegate_ListenerDispatcherOnNode : FMetaStoryTestBase
 	{
 		// Root(Dispatcher, ListenerOnNode1 -> DispatcherOnNode, ListenerOnNode2 -> DispatcherOnInstance, ListenerOnInstance -> DispatcherOnNode)
 
-		UMetaStory& MetaStory = NewStateTree();
+		UMetaStory& MetaStory = NewMetaStory();
 		UMetaStoryEditorData& EditorData = *Cast<UMetaStoryEditorData>(MetaStory.EditorData);
 		UMetaStoryState& Root = EditorData.AddSubTree(FName(TEXT("Root")));
 
@@ -475,21 +475,21 @@ struct FMetaStoryTest_Delegate_ListenerDispatcherOnNode : FMetaStoryTestBase
 		bool bListenerOnInstanceBroadcasted = false;
 
 		{
-			TStateTreeEditorNode<FTestTask_DispatcherOnNodeAndInstance>& DispatcherTaskNode = Root.AddTask<FTestTask_DispatcherOnNodeAndInstance>(FName(TEXT("Dispatcher")));
+			TMetaStoryTypedEditorNode<FTestTask_DispatcherOnNodeAndInstance>& DispatcherTaskNode = Root.AddTask<FTestTask_DispatcherOnNodeAndInstance>(FName(TEXT("Dispatcher")));
 
-			TStateTreeEditorNode<FTestTask_ListenerOnNode>& ListenerOnNode1TaskNode = Root.AddTask<FTestTask_ListenerOnNode>(FName(TEXT("ListenerOnNode1")));
+			TMetaStoryTypedEditorNode<FTestTask_ListenerOnNode>& ListenerOnNode1TaskNode = Root.AddTask<FTestTask_ListenerOnNode>(FName(TEXT("ListenerOnNode1")));
 			ListenerOnNode1TaskNode.GetNode().CustomFunc = [&bListenerOnNode1Broadcasted](const FMetaStoryWeakExecutionContext& WeakExecContext)
 			{
 				bListenerOnNode1Broadcasted = true;
 			};
 
-			TStateTreeEditorNode<FTestTask_ListenerOnNode>& ListenerOnNode2TaskNode = Root.AddTask<FTestTask_ListenerOnNode>(FName(TEXT("ListenerOnNode2")));
+			TMetaStoryTypedEditorNode<FTestTask_ListenerOnNode>& ListenerOnNode2TaskNode = Root.AddTask<FTestTask_ListenerOnNode>(FName(TEXT("ListenerOnNode2")));
 			ListenerOnNode2TaskNode.GetNode().CustomFunc = [&bListenerOnNode2Broadcasted](const FMetaStoryWeakExecutionContext& WeakExecContext)
 			{
 				bListenerOnNode2Broadcasted = true;
 			};
 
-			TStateTreeEditorNode<FTestTask_ListenerOnInstance>& ListenerOnInstanceTaskNode = Root.AddTask<FTestTask_ListenerOnInstance>(FName(TEXT("ListenerOnInstance")));
+			TMetaStoryTypedEditorNode<FTestTask_ListenerOnInstance>& ListenerOnInstanceTaskNode = Root.AddTask<FTestTask_ListenerOnInstance>(FName(TEXT("ListenerOnInstance")));
 			ListenerOnInstanceTaskNode.GetNode().CustomFunc = [&bListenerOnInstanceBroadcasted](const FMetaStoryWeakExecutionContext& WeakExecContext)
 			{
 				bListenerOnInstanceBroadcasted = true;
@@ -545,7 +545,7 @@ struct FMetaStoryTest_Delegate_ListenerDispatcherOnNode : FMetaStoryTestBase
 
 		{
 			FMetaStoryInstanceData InstanceData;
-			FTestStateTreeExecutionContext Exec(MetaStory, MetaStory, InstanceData);
+			FTestMetaStoryExecutionContext Exec(MetaStory, MetaStory, InstanceData);
 			const bool bInitSucceeded = Exec.IsValid();
 			AITEST_TRUE("MetaStory should init", bInitSucceeded);
 
@@ -576,11 +576,11 @@ struct FMetaStoryTest_Delegate_DispatcherOnNodeListenerOnTransition : FMetaStory
 		//     State1(Transition on Delegate -> DispatcherOnNode) -> State2
 		//	   State2(Transition on Delegate -> DispatcherOnInstance) -> Tree Succeeded
 
-		UMetaStory& MetaStory = NewStateTree();
+		UMetaStory& MetaStory = NewMetaStory();
 		UMetaStoryEditorData& EditorData = *Cast<UMetaStoryEditorData>(MetaStory.EditorData);
 
 		UMetaStoryState& Root = EditorData.AddSubTree(FName(TEXT("Root")));
-		TStateTreeEditorNode<FTestTask_DispatcherOnNodeAndInstance> DispatcherTaskNode = Root.AddTask<FTestTask_DispatcherOnNodeAndInstance>(TEXT("Dispatcher"));
+		TMetaStoryTypedEditorNode<FTestTask_DispatcherOnNodeAndInstance> DispatcherTaskNode = Root.AddTask<FTestTask_DispatcherOnNodeAndInstance>(TEXT("Dispatcher"));
 		UMetaStoryState& State1 = Root.AddChildState(FName(TEXT("State1")));
 		FMetaStoryTransition& DelegateOnNodeTransition = State1.AddTransition(EMetaStoryTransitionTrigger::OnDelegate, EMetaStoryTransitionType::NextState);
 
@@ -621,7 +621,7 @@ struct FMetaStoryTest_Delegate_DispatcherOnNodeListenerOnTransition : FMetaStory
 
 		{
 			FMetaStoryInstanceData InstanceData;
-			FTestStateTreeExecutionContext Exec(MetaStory, MetaStory, InstanceData);
+			FTestMetaStoryExecutionContext Exec(MetaStory, MetaStory, InstanceData);
 			const bool bInitSucceeded = Exec.IsValid();
 			AITEST_TRUE("MetaStory should init", bInitSucceeded);
 
@@ -634,7 +634,7 @@ struct FMetaStoryTest_Delegate_DispatcherOnNodeListenerOnTransition : FMetaStory
 			Exec.LogClear();
 
 			Exec.Tick(0.1f);
-			AITEST_TRUE("Expected Tree to be succeeded.", Exec.GetStateTreeRunStatus() == EMetaStoryRunStatus::Succeeded);
+			AITEST_TRUE("Expected Tree to be succeeded.", Exec.GetMetaStoryRunStatus() == EMetaStoryRunStatus::Succeeded);
 			Exec.LogClear();
 		}
 

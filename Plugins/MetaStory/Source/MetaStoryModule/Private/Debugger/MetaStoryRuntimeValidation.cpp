@@ -40,7 +40,7 @@ bool bRuntimeValidationInstanceData = false;
 static FAutoConsoleVariableRef CVarRuntimeValidationInstanceData(
 	TEXT("MetaStory.RuntimeValidation.InstanceData"),
 	bRuntimeValidationInstanceData,
-	TEXT("Test if the state tree instance data and shared instance data are valid.")
+	TEXT("Test if the MetaStory instance data and shared instance data are valid.")
 );
 
 FString NodeToString(const UObject* Obj, FGuid Id)
@@ -71,18 +71,18 @@ FRuntimeValidationInstanceData::~FRuntimeValidationInstanceData()
 	}
 }
 
-void FRuntimeValidationInstanceData::SetContext(const UObject* InNewOwner, const UMetaStory* InNewStateTree, bool bInInstanceDataWriteAccessAcquired)
+void FRuntimeValidationInstanceData::SetContext(const UObject* InNewOwner, const UMetaStory* InNewMetaStory, bool bInInstanceDataWriteAccessAcquired)
 {
-	TWeakObjectPtr<const UMetaStory> NewStateTree = InNewStateTree;
+	TWeakObjectPtr<const UMetaStory> NewMetaStory = InNewMetaStory;
 	TWeakObjectPtr<const UObject> NewOwner = InNewOwner;
 	if (Private::bRuntimeValidationContext)
 	{
-		if (MetaStory.IsValid() && MetaStory != NewStateTree && bInstanceDataWriteAccessAcquired)
+		if (MetaStory.IsValid() && MetaStory != NewMetaStory && bInstanceDataWriteAccessAcquired)
 		{
 			ensureAlwaysMsgf(false, TEXT("MetaStory runtime check failed: The MetaStory '%s' is different from the previously set '%s'.\n"
 				"Make sure you initialize FMetaStoryExecutionContext with the same value every time.\n"
 				"Auto deactivate Runtime check MetaStory.RuntimeValidation.Context to prevent reporting the same error multiple times.")
-				, InNewStateTree ? *InNewStateTree->GetFullName() : TEXT("MetaStory"), *MetaStory.Get()->GetFullName());
+				, InNewMetaStory ? *InNewMetaStory->GetFullName() : TEXT("MetaStory"), *MetaStory.Get()->GetFullName());
 			Private::bRuntimeValidationContext = false;
 		}
 		if (Owner.IsValid() && Owner != NewOwner)
@@ -95,10 +95,10 @@ void FRuntimeValidationInstanceData::SetContext(const UObject* InNewOwner, const
 		}
 	}
 
-	ValidateTreeNodes(InNewStateTree);
-	ValidateInstanceData(InNewStateTree);
+	ValidateTreeNodes(InNewMetaStory);
+	ValidateInstanceData(InNewMetaStory);
 
-	MetaStory = NewStateTree;
+	MetaStory = NewMetaStory;
 	Owner = NewOwner;
 	bInstanceDataWriteAccessAcquired |= bInInstanceDataWriteAccessAcquired;
 }
@@ -152,11 +152,11 @@ void FRuntimeValidationInstanceData::NodeExitState(FGuid NodeID, FActiveFrameID 
 	}
 }
 
-void FRuntimeValidationInstanceData::ValidateTreeNodes(const UMetaStory* InNewStateTree) const
+void FRuntimeValidationInstanceData::ValidateTreeNodes(const UMetaStory* InNewMetaStory) const
 {
 	if (Private::bRuntimeValidationDoesNewerVersionExists)
 	{
-		if (InNewStateTree && InNewStateTree->IsReadyToRun())
+		if (InNewMetaStory && InNewMetaStory->IsReadyToRun())
 		{
 			auto DoesNewerVersionExists = [](const UObject* InstanceDataType)
 			{
@@ -176,7 +176,7 @@ void FRuntimeValidationInstanceData::ValidateTreeNodes(const UMetaStory* InNewSt
 				return bHasNewerVersionExistsFlag;
 			};
 			{
-				const FMetaStoryInstanceData& InstanceData = InNewStateTree->GetDefaultInstanceData();
+				const FMetaStoryInstanceData& InstanceData = InNewMetaStory->GetDefaultInstanceData();
 				const int32 InstanceDataNum = InstanceData.Num();
 				for (int32 Index = 0; Index < InstanceDataNum; ++Index)
 				{
@@ -205,7 +205,7 @@ void FRuntimeValidationInstanceData::ValidateTreeNodes(const UMetaStory* InNewSt
 				}
 			}
 
-			for (FConstStructView NodeView : InNewStateTree->GetNodes())
+			for (FConstStructView NodeView : InNewMetaStory->GetNodes())
 			{
 				const FMetaStoryNodeBase* Node = NodeView.GetPtr<const FMetaStoryNodeBase>();
 				if (Node)
@@ -225,19 +225,19 @@ void FRuntimeValidationInstanceData::ValidateTreeNodes(const UMetaStory* InNewSt
 	}
 }
 
-void FRuntimeValidationInstanceData::ValidateInstanceData(const UMetaStory* NewStateTree)
+void FRuntimeValidationInstanceData::ValidateInstanceData(const UMetaStory* NewMetaStory)
 {
 	if (Private::bRuntimeValidationInstanceData)
 	{
-		if (NewStateTree)
+		if (NewMetaStory)
 		{
-			if (!NewStateTree->GetDefaultInstanceData().GetStorage().AreAllInstancesValid())
+			if (!NewMetaStory->GetDefaultInstanceData().GetStorage().AreAllInstancesValid())
 			{
 				ensureAlwaysMsgf(false, TEXT("The instance data has invalid data."));
 				Private::bRuntimeValidationInstanceData = false;
 			}
 
-			TSharedPtr<FMetaStoryInstanceData> SharedPtr = NewStateTree->GetSharedInstanceData();
+			TSharedPtr<FMetaStoryInstanceData> SharedPtr = NewMetaStory->GetSharedInstanceData();
 			if (ensureMsgf(SharedPtr, TEXT("The shared instance data is invalid")))
 			{
 				if (!SharedPtr->GetStorage().AreAllInstancesValid())

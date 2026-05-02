@@ -204,7 +204,7 @@ void FMetaStoryStateParametersDetails::FindOuterObjects()
 	check(StructProperty);
 	
 	WeakEditorData = nullptr;
-	WeakStateTree = nullptr;
+	WeakMetaStory = nullptr;
 	WeakState = nullptr;
 
 	TArray<UObject*> OuterObjects;
@@ -213,10 +213,10 @@ void FMetaStoryStateParametersDetails::FindOuterObjects()
 	{
 		UMetaStoryState* OuterState = Cast<UMetaStoryState>(Outer);
 		UMetaStoryEditorData* OuterEditorData = Outer->GetTypedOuter<UMetaStoryEditorData>();
-		UMetaStory* OuterStateTree = OuterEditorData ? OuterEditorData->GetTypedOuter<UMetaStory>() : nullptr;
-		if (OuterEditorData && OuterStateTree && OuterState)
+		UMetaStory* OuterMetaStory = OuterEditorData ? OuterEditorData->GetTypedOuter<UMetaStory>() : nullptr;
+		if (OuterEditorData && OuterMetaStory && OuterState)
 		{
-			WeakStateTree = OuterStateTree;
+			WeakMetaStory = OuterMetaStory;
 			WeakEditorData = OuterEditorData;
 			WeakState = OuterState;
 			break;

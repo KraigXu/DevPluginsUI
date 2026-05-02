@@ -23,7 +23,7 @@
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(K2Node_MetaStoryReference)
 
-#define LOCTEXT_NAMESPACE "K2Node_StateTreeReference"
+#define LOCTEXT_NAMESPACE "K2Node_MetaStoryReference"
 
 namespace UE::MetaStoryEditor::Private
 {
@@ -44,7 +44,7 @@ namespace UE::MetaStoryEditor::Private
 	bool CanUseProperty(const UEdGraphPin* Pin)
 	{
 		// A property needs to be linked to be considered.
-		//The default value won't matches the value in the state tree asset.
+		//The default value won't matches the value in the MetaStory asset.
 		return !Pin->bOrphanedPin
 			&& Pin->ParentPin == nullptr
 			&& Pin->LinkedTo.Num() > 0;
@@ -81,7 +81,7 @@ UK2Node_MakeMetaStoryReference::UK2Node_MakeMetaStoryReference()
 {
 	if (!HasAnyFlags(RF_ClassDefaultObject))
 	{
-		ParametersChangedHandle = UE::MetaStory::Delegates::OnPostCompile.AddUObject(this, &UK2Node_MakeMetaStoryReference::HandleStateTreeCompiled);
+		ParametersChangedHandle = UE::MetaStory::Delegates::OnPostCompile.AddUObject(this, &UK2Node_MakeMetaStoryReference::HandleMetaStoryCompiled);
 	}
 }
 
@@ -200,13 +200,13 @@ void UK2Node_MakeMetaStoryReference::PinDefaultValueChanged(UEdGraphPin* Pin)
 
 	if (Pin == FindPinChecked(UE::MetaStoryEditor::Private::MetaStoryPinName))
 	{
-		SetStateTree(GetStateTreeDefaultValue());
+		SetMetaStory(GetMetaStoryDefaultValue());
 	}
 }
 
 namespace UE::MetaStoryEditor::Private
 {
-	class SMakeStateTreeRefeerenceNode : public SGraphNodeK2Default
+	class SMakeMetaStoryReferenceNode : public SGraphNodeK2Default
 	{
 		TSharedPtr<SGraphPin> CreatePinWidget(UEdGraphPin* Pin) const
 		{
@@ -222,7 +222,7 @@ namespace UE::MetaStoryEditor::Private
 
 TSharedPtr<SGraphNode> UK2Node_MakeMetaStoryReference::CreateVisualWidget()
 {
-	return SNew(UE::MetaStoryEditor::Private::SMakeStateTreeRefeerenceNode, this);
+	return SNew(UE::MetaStoryEditor::Private::SMakeMetaStoryReferenceNode, this);
 }
 
 void UK2Node_MakeMetaStoryReference::PreloadRequiredAssets()
@@ -269,15 +269,15 @@ void UK2Node_MakeMetaStoryReference::ValidateNodeDuringCompilation(class FCompil
 
 		// Tests if the cached value matches the value of the pin. It should match unless it was set manually by code.
 		{
-			UEdGraphPin* ThisStateTreePin = FindPinChecked(UE::MetaStoryEditor::Private::MetaStoryPinName);
-			if (MetaStory != ThisStateTreePin->DefaultObject)
+			UEdGraphPin* ThisMetaStoryPin = FindPinChecked(UE::MetaStoryEditor::Private::MetaStoryPinName);
+			if (MetaStory != ThisMetaStoryPin->DefaultObject)
 			{
 				MessageLog.Error(*LOCTEXT("MetaStoryMatchingError", "The MetaStory asset does not match the pin @@. Clear and set the MetaStory pin.").ToString(), this);
 			}
 		}
 	}
 	
-	// Tests if we expect a state tree (it is valid to construct an empty struct)
+	// Tests if we expect a MetaStory (it is valid to construct an empty struct)
 	if (bTestExistingProperties)
 	{
 		const bool bHasProperty = Pins.ContainsByPredicate([](const UEdGraphPin* Pin)
@@ -287,7 +287,7 @@ void UK2Node_MakeMetaStoryReference::ValidateNodeDuringCompilation(class FCompil
 			});
 		if (bHasProperty)
 		{
-			MessageLog.Error(*LOCTEXT("NoStateTree_Error", "No MetaStory in @@").ToString(), this);
+			MessageLog.Error(*LOCTEXT("NoMetaStory_Error", "No MetaStory in @@").ToString(), this);
 		}
 	}
 }
@@ -303,23 +303,23 @@ void UK2Node_MakeMetaStoryReference::GetMenuActions(FBlueprintActionDatabaseRegi
 	}
 }
 
-void UK2Node_MakeMetaStoryReference::SetStateTree(UMetaStory* InStateTree)
+void UK2Node_MakeMetaStoryReference::SetMetaStory(UMetaStory* InMetaStory)
 {
-	MetaStory = InStateTree;
+	MetaStory = InMetaStory;
 	FBlueprintEditorUtils::MarkBlueprintAsModified(GetBlueprint());
 	ReconstructNode();
 }
 
-UMetaStory* UK2Node_MakeMetaStoryReference::GetStateTreeDefaultValue() const
+UMetaStory* UK2Node_MakeMetaStoryReference::GetMetaStoryDefaultValue() const
 {
 	return Cast<UMetaStory>(FindPinChecked(UE::MetaStoryEditor::Private::MetaStoryPinName)->DefaultObject);
 }
 
-void UK2Node_MakeMetaStoryReference::HandleStateTreeCompiled(const UMetaStory& InStateTree)
+void UK2Node_MakeMetaStoryReference::HandleMetaStoryCompiled(const UMetaStory& InMetaStory)
 {
-	if (&InStateTree == MetaStory)
+	if (&InMetaStory == MetaStory)
 	{
-		SetStateTree(MetaStory);
+		SetMetaStory(MetaStory);
 	}
 }
 
@@ -332,35 +332,35 @@ void UK2Node_MakeMetaStoryReference::ExpandNode(FKismetCompilerContext& Compiler
 		const UEdGraphSchema_K2* K2Schema = CompilerContext.GetSchema();
 
 		// Convert to
-		//local = MakeStateTreeReference(MetaStory)
+		//local = MakeMetaStoryReference(MetaStory)
 		//for each properties
 		//  K2_SetParametersProperty(local, id, value)
 		UEdGraphPin* LastThen = nullptr;
-		UEdGraphPin* MakeStateTreeReferenceNodeResultPin = nullptr;
+		UEdGraphPin* MakeMetaStoryReferenceNodeResultPin = nullptr;
 		{
-			UK2Node_CallFunction* MakeStateTreeReferenceNode = CompilerContext.SpawnIntermediateNode<UK2Node_CallFunction>(this, SourceGraph);
-			UFunction* Function = UMetaStoryFunctionLibrary::StaticClass()->FindFunctionByName(GET_FUNCTION_NAME_CHECKED(UMetaStoryFunctionLibrary, MakeStateTreeReference));
-			MakeStateTreeReferenceNode->SetFromFunction(Function);
-			MakeStateTreeReferenceNode->AllocateDefaultPins();
-			CompilerContext.MessageLog.NotifyIntermediateObjectCreation(MakeStateTreeReferenceNode, SourceGraph);
+			UK2Node_CallFunction* MakeMetaStoryReferenceNode = CompilerContext.SpawnIntermediateNode<UK2Node_CallFunction>(this, SourceGraph);
+			UFunction* Function = UMetaStoryFunctionLibrary::StaticClass()->FindFunctionByName(GET_FUNCTION_NAME_CHECKED(UMetaStoryFunctionLibrary, MakeMetaStoryReference));
+			MakeMetaStoryReferenceNode->SetFromFunction(Function);
+			MakeMetaStoryReferenceNode->AllocateDefaultPins();
+			CompilerContext.MessageLog.NotifyIntermediateObjectCreation(MakeMetaStoryReferenceNode, SourceGraph);
 			{
-				UEdGraphPin* ThisStateTreePin = FindPinChecked(UE::MetaStoryEditor::Private::MetaStoryPinName);
-				UEdGraphPin* NewStateTreePin = MakeStateTreeReferenceNode->FindPinChecked(FName("MetaStory"));
-				CompilerContext.MovePinLinksToIntermediate(*ThisStateTreePin, *NewStateTreePin);
+				UEdGraphPin* ThisMetaStoryPin = FindPinChecked(UE::MetaStoryEditor::Private::MetaStoryPinName);
+				UEdGraphPin* NewMetaStoryPin = MakeMetaStoryReferenceNode->FindPinChecked(FName("MetaStory"));
+				CompilerContext.MovePinLinksToIntermediate(*ThisMetaStoryPin, *NewMetaStoryPin);
 			}
 			{
 				UEdGraphPin* ThisResultPin = FindPinChecked(UEdGraphSchema_K2::PN_ReturnValue);
-				MakeStateTreeReferenceNodeResultPin = MakeStateTreeReferenceNode->FindPinChecked(UEdGraphSchema_K2::PN_ReturnValue);
-				CompilerContext.MovePinLinksToIntermediate(*ThisResultPin, *MakeStateTreeReferenceNodeResultPin);
+				MakeMetaStoryReferenceNodeResultPin = MakeMetaStoryReferenceNode->FindPinChecked(UEdGraphSchema_K2::PN_ReturnValue);
+				CompilerContext.MovePinLinksToIntermediate(*ThisResultPin, *MakeMetaStoryReferenceNodeResultPin);
 			}
 			{
 				UEdGraphPin* ThisExecPin = GetExecPin();
-				UEdGraphPin* NewExecPin = MakeStateTreeReferenceNode->GetExecPin();
+				UEdGraphPin* NewExecPin = MakeMetaStoryReferenceNode->GetExecPin();
 				CompilerContext.MovePinLinksToIntermediate(*ThisExecPin, *NewExecPin);
 			}
 			{
 				UEdGraphPin* ThisThenPin = GetThenPin();
-				UEdGraphPin* NewThenPin = MakeStateTreeReferenceNode->GetThenPin();
+				UEdGraphPin* NewThenPin = MakeMetaStoryReferenceNode->GetThenPin();
 				CompilerContext.MovePinLinksToIntermediate(*ThisThenPin, *NewThenPin);
 				LastThen = NewThenPin;
 			}
@@ -382,7 +382,7 @@ void UK2Node_MakeMetaStoryReference::ExpandNode(FKismetCompilerContext& Compiler
 						
 						{
 							UEdGraphPin* NewValuePin = SetParametersPropertyNode->FindPinChecked(FName("Reference"), EGPD_Input);
-							ensure(K2Schema->TryCreateConnection(MakeStateTreeReferenceNodeResultPin, NewValuePin));
+							ensure(K2Schema->TryCreateConnection(MakeMetaStoryReferenceNodeResultPin, NewValuePin));
 						}
 						{
 							UEdGraphPin* NewValuePin = SetParametersPropertyNode->FindPinChecked(FName("PropertyID"), EGPD_Input);

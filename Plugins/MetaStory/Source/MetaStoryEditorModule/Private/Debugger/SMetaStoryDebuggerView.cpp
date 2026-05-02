@@ -202,16 +202,16 @@ void SMetaStoryDebuggerView::OnPIESingleStepped(bool bSimulating) const
 }
 
 void SMetaStoryDebuggerView::Construct(const FArguments& InArgs
-	, const TNotNull<const UMetaStory*> InStateTree
-	, const TSharedRef<FMetaStoryViewModel>& InStateTreeViewModel
+	, const TNotNull<const UMetaStory*> InMetaStory
+	, const TSharedRef<FMetaStoryViewModel>& InMetaStoryViewModel
 	, const TSharedRef<FUICommandList>& InCommandList)
 {
 	CommandList = InCommandList;
 
-	MetaStoryViewModel = InStateTreeViewModel;
-	MetaStory = InStateTree;
-	MetaStoryEditorData = Cast<UMetaStoryEditorData>(InStateTree->EditorData.Get());
-	Debugger = InStateTreeViewModel->GetDebugger();
+	MetaStoryViewModel = InMetaStoryViewModel;
+	MetaStory = InMetaStory;
+	MetaStoryEditorData = Cast<UMetaStoryEditorData>(InMetaStory->EditorData.Get());
+	Debugger = InMetaStoryViewModel->GetDebugger();
 	check(Debugger);
 
 	const IMetaStoryModule& MetaStoryModule = FModuleManager::GetModuleChecked<IMetaStoryModule>("MetaStoryModule");
@@ -259,9 +259,9 @@ void SMetaStoryDebuggerView::ConstructLegacyView(const TSharedRef<FUICommandList
 {
 	// Registers a delegate to be notified when the associated MetaStory asset get successfully recompiled
 	// to clear any previous recorded data that could mismatch new compiled tree data version.
-	UE::MetaStory::Delegates::OnPostCompile.AddSPLambda(this, [this](const UMetaStory& RecompiledStateTree)
+	UE::MetaStory::Delegates::OnPostCompile.AddSPLambda(this, [this](const UMetaStory& RecompiledMetaStory)
 		{
-			if (MetaStory == &RecompiledStateTree)
+			if (MetaStory == &RecompiledMetaStory)
 			{
 				ResetTracks();
 			}
@@ -697,7 +697,7 @@ FReply SMetaStoryDebuggerView::OnPreviewKeyDown(const FGeometry& MyGeometry, con
 
 void SMetaStoryDebuggerView::Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime)
 {
-	QUICK_SCOPE_CYCLE_COUNTER(STAT_StateTreeDebuggerView_TickView);
+	QUICK_SCOPE_CYCLE_COUNTER(STAT_MetaStoryDebuggerView_TickView);
 
 	check(Debugger);
 

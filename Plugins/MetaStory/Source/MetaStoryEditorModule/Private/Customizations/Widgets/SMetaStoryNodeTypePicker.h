@@ -1,4 +1,4 @@
-﻿// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -14,7 +14,7 @@ class UMetaStorySchema;
 class SSearchBox;
 
 /**
- * Widget that displays a list of State Tree nodes which match base types and specified schema.
+ * Widget that displays a list of MetaStory nodes which match base types and specified schema.
  * Can be used e.g. in popup menus to select node types.
  */
 class SMetaStoryNodeTypePicker : public SCompoundWidget

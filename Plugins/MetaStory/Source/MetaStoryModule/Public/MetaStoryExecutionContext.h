@@ -58,10 +58,10 @@ namespace UE::MetaStory::ExecutionContext
  *		OutDataViews[Index] = ...;
  *	}
  */
-DECLARE_DELEGATE_RetVal_FourParams(bool, FOnCollectStateTreeExternalData, const FMetaStoryExecutionContext& /*Context*/, const UMetaStory* /*MetaStory*/, TArrayView<const FMetaStoryExternalDataDesc> /*ExternalDataDescs*/, TArrayView<FMetaStoryDataView> /*OutDataViews*/);
+DECLARE_DELEGATE_RetVal_FourParams(bool, FOnCollectMetaStoryExternalData, const FMetaStoryExecutionContext& /*Context*/, const UMetaStory* /*MetaStory*/, TArrayView<const FMetaStoryExternalDataDesc> /*ExternalDataDescs*/, TArrayView<FMetaStoryDataView> /*OutDataViews*/);
 
 /**
- * Read-only execution context to interact with the state tree instance data. Only const and read accesses are available.
+ * Read-only execution context to interact with the MetaStory instance data. Only const and read accesses are available.
  * Multiple FMetaStoryReadOnlyExecutionContext can coexist on different threads as long no other (minimal, weak, regular) execution context exists.
  * The user is responsible for preventing invalid multi-threaded access.
  */
@@ -84,7 +84,7 @@ public:
 	 */
 	bool IsValid() const
 	{
-		return RootStateTree.IsReadyToRun();
+		return RootMetaStory.IsReadyToRun();
 	}
 
 	/** @return The owner of the context */
@@ -100,9 +100,9 @@ public:
 	}
 
 	/** @return the MetaStory asset in use by the instance. It is the root asset. */
-	TNotNull<const UMetaStory*> GetStateTree() const
+	TNotNull<const UMetaStory*> GetMetaStory() const
 	{
-		return &RootStateTree;
+		return &RootMetaStory;
 	}
 
 	/** @return true if there is a pending event with specified tag. */
@@ -118,14 +118,14 @@ public:
 	/** @return Pointer to a State or null if state not found */
 	const FMetaStoryCompactState* GetStateFromHandle(const FMetaStoryStateHandle StateHandle) const
 	{
-		return RootStateTree.GetStateFromHandle(StateHandle);
+		return RootMetaStory.GetStateFromHandle(StateHandle);
 	}
 
 	/** @return the delta time for the next execution context tick. */
 	UE_API FMetaStoryScheduledTick GetNextScheduledTick() const;
 
 	/** @return the tree run status. */
-	UE_API EMetaStoryRunStatus GetStateTreeRunStatus() const;
+	UE_API EMetaStoryRunStatus GetMetaStoryRunStatus() const;
 
 	/** @return the status of the last tick function */
 	UE_API EMetaStoryRunStatus GetLastTickStatus() const;
@@ -201,7 +201,7 @@ protected:
 	UObject& Owner;
 
 	/** The MetaStory asset the context is initialized for */
-	const UMetaStory& RootStateTree;
+	const UMetaStory& RootMetaStory;
 
 	/** Data storage of the instance data. */
 	FMetaStoryInstanceStorage& Storage;
@@ -213,7 +213,7 @@ protected:
 };
 
 /**
- * Minimal execution context to interact with the state tree instance data.
+ * Minimal execution context to interact with the MetaStory instance data.
  * A regular execution context requires the context data and external data to be valid to execute all possible operations.
  * The minimal execution context doesn't requires those data but supports only a subset of operations.
  */
@@ -278,7 +278,7 @@ protected:
  * In common case you can use the constructor to initialize the context, and us a helper struct
  * to set up the context data and external data getter:
  *
- *		FMetaStoryExecutionContext Context(*GetOwner(), *MetaStoryRef.GetStateTree(), InstanceData);
+ *		FMetaStoryExecutionContext Context(*GetOwner(), *MetaStoryRef.GetMetaStory(), InstanceData);
  *		if (SetContextRequirements(Context))
  *		{
  *			Context.Tick(DeltaTime);
@@ -295,7 +295,7 @@ protected:
  *			Context.SetContextDataByName(...);
  *			...
  *
- *			Context.SetCollectExternalDataCallback(FOnCollectStateTreeExternalData::CreateUObject(this, &UMyComponent::CollectExternalData);
+ *			Context.SetCollectExternalDataCallback(FOnCollectMetaStoryExternalData::CreateUObject(this, &UMyComponent::CollectExternalData);
  *
  *			return Context.AreContextDataViewsValid();
  *		}
@@ -317,18 +317,18 @@ protected:
  *		}
  *
  * In this example the SetContextRequirements() method is used to set the context defined in the schema,
- * and the delegate FOnCollectStateTreeExternalData is used to query the external data required by the tasks and conditions.
+ * and the delegate FOnCollectMetaStoryExternalData is used to query the external data required by the tasks and conditions.
  *
- * In case the State Tree links to other state tree assets, the collect external data might get called
+ * In case the MetaStory links to other MetaStory assets, the collect external data might get called
  * multiple times, once for each asset.
  */
 struct FMetaStoryExecutionContext : public FMetaStoryMinimalExecutionContext
 {
 public:
-	UE_API FMetaStoryExecutionContext(UObject& InOwner, const UMetaStory& InStateTree, FMetaStoryInstanceData& InInstanceData, const FOnCollectStateTreeExternalData& CollectExternalDataCallback = {}, const EMetaStoryRecordTransitions RecordTransitions = EMetaStoryRecordTransitions::No);
+	UE_API FMetaStoryExecutionContext(UObject& InOwner, const UMetaStory& InMetaStory, FMetaStoryInstanceData& InInstanceData, const FOnCollectMetaStoryExternalData& CollectExternalDataCallback = {}, const EMetaStoryRecordTransitions RecordTransitions = EMetaStoryRecordTransitions::No);
 	/** Construct an execution context from a parent context and another tree. Useful to run a subtree from the parent context with the same schema. */
-	UE_API FMetaStoryExecutionContext(const FMetaStoryExecutionContext& InContextToCopy, const UMetaStory& InStateTree, FMetaStoryInstanceData& InInstanceData);
-	UE_API FMetaStoryExecutionContext(TNotNull<UObject*> Owner, TNotNull<const UMetaStory*> MetaStory, FMetaStoryInstanceData& InInstanceData, const FOnCollectStateTreeExternalData& CollectExternalDataCallback = {}, const EMetaStoryRecordTransitions RecordTransitions = EMetaStoryRecordTransitions::No);
+	UE_API FMetaStoryExecutionContext(const FMetaStoryExecutionContext& InContextToCopy, const UMetaStory& InMetaStory, FMetaStoryInstanceData& InInstanceData);
+	UE_API FMetaStoryExecutionContext(TNotNull<UObject*> Owner, TNotNull<const UMetaStory*> MetaStory, FMetaStoryInstanceData& InInstanceData, const FOnCollectMetaStoryExternalData& CollectExternalDataCallback = {}, const EMetaStoryRecordTransitions RecordTransitions = EMetaStoryRecordTransitions::No);
 	/** Construct an execution context from a parent context and another tree. Useful to run a subtree from the parent context with the same schema. */
 	UE_API FMetaStoryExecutionContext(const FMetaStoryExecutionContext& InContextToCopy, TNotNull<const UMetaStory*> MetaStory, FMetaStoryInstanceData& InInstanceData);
 	UE_API virtual ~FMetaStoryExecutionContext();
@@ -338,24 +338,24 @@ private:
 	FMetaStoryExecutionContext& operator=(const FMetaStoryExecutionContext&) = delete;
 
 public:
-	/** Sets callback used to collect external data views during State Tree execution. */
-	UE_API void SetCollectExternalDataCallback(const FOnCollectStateTreeExternalData& Callback);
+	/** Sets callback used to collect external data views during MetaStory execution. */
+	UE_API void SetCollectExternalDataCallback(const FOnCollectMetaStoryExternalData& Callback);
 
-	UE_DEPRECATED(5.6, "Use SetLinkedStateTreeOverrides that creates a copy.")
+	UE_DEPRECATED(5.6, "Use SetLinkedMetaStoryOverrides that creates a copy.")
 	/**
-	 * Overrides for linked State Trees. This table is used to override State Tree references on linked states.
+	 * Overrides for linked MetaStorys. This table is used to override MetaStory references on linked states.
 	 * If a linked state's tag is exact match of the tag specified on the table, the reference from the table is used instead.
 	 */
-	UE_API void SetLinkedStateTreeOverrides(const FMetaStoryReferenceOverrides* InLinkedStateTreeOverrides);
+	UE_API void SetLinkedMetaStoryOverrides(const FMetaStoryReferenceOverrides* InLinkedMetaStoryOverrides);
 
 	/**
-	 * Overrides for linked State Trees. This table is used to override State Tree references on linked states.
+	 * Overrides for linked MetaStorys. This table is used to override MetaStory references on linked states.
 	 * If a linked state's tag is exact match of the tag specified on the table, the reference from the table is used instead.
 	 */
-	UE_API void SetLinkedStateTreeOverrides(FMetaStoryReferenceOverrides InLinkedStateTreeOverrides);
+	UE_API void SetLinkedMetaStoryOverrides(FMetaStoryReferenceOverrides InLinkedMetaStoryOverrides);
 
-	/** @return the first state tree reference set by SetLinkedStateTreeOverrides that matches the StateTag. Or null if not found. */
-	UE_API const FMetaStoryReference* GetLinkedStateTreeOverrideForTag(const FGameplayTag StateTag) const;
+	/** @return the first MetaStory reference set by SetLinkedMetaStoryOverrides that matches the StateTag. Or null if not found. */
+	UE_API const FMetaStoryReference* GetLinkedMetaStoryOverrideForTag(const FGameplayTag StateTag) const;
 
 	/** Structure to-be-populated and set for any MetaStory using any EMetaStoryDataSourceType::ExternalGlobalParameterData bindings */
 	struct FExternalGlobalParameters
@@ -393,7 +393,7 @@ public:
 		return InstanceData.GetMutableEventQueue();
 	}
 
-	/** @return a weak context to interact with the state tree instance data that can be stored for later uses. */
+	/** @return a weak context to interact with the MetaStory instance data that can be stored for later uses. */
 	UE_API FMetaStoryWeakExecutionContext MakeWeakExecutionContext() const;
 	
 	/**
@@ -470,14 +470,14 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 	UE_API EMetaStoryRunStatus Stop(const EMetaStoryRunStatus CompletionStatus = EMetaStoryRunStatus::Stopped);
 
 	/**
-	 * Tick the state tree logic, updates the tasks and triggers transitions.
+	 * Tick the MetaStory logic, updates the tasks and triggers transitions.
 	 * @param DeltaTime time to advance the logic.
 	 * @returns tree run status after the tick.
 	 */
 	UE_API EMetaStoryRunStatus Tick(const float DeltaTime);
 
 	/**
-	 * Tick the state tree logic partially, updates the tasks.
+	 * Tick the MetaStory logic partially, updates the tasks.
 	 * For full update TickTriggerTransitions() should be called after.
 	 * @param DeltaTime time to advance the logic.
 	 * @returns tree run status after the partial tick.
@@ -485,7 +485,7 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 	UE_API EMetaStoryRunStatus TickUpdateTasks(const float DeltaTime);
 	
 	/**
-	 * Tick the state tree logic partially, triggers the transitions.
+	 * Tick the MetaStory logic partially, triggers the transitions.
 	 * For full update TickUpdateTasks() should be called before.
 	 * @returns tree run status after the partial tick.
 	 */
@@ -608,7 +608,7 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 	/** @return Array view to named external data descriptors associated with this context. Note: Init() must be called before calling this method. */
 	TConstArrayView<FMetaStoryExternalDataDesc> GetContextDataDescs() const
 	{
-		return RootStateTree.GetContextDataDescs();
+		return RootMetaStory.GetContextDataDescs();
 	}
 
 	/** Sets context data view value for specific item. */
@@ -630,7 +630,7 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 
 	/**
 	 * Returns reference to external data based on provided handle. The return type is deduced from the handle's template type.
-     * @param Handle Valid TStateTreeExternalDataHandle<> handle. 
+     * @param Handle Valid TMetaStoryExternalDataHandle<> handle. 
 	 * @return reference to external data based on handle or null if data is not set.
 	 */ 
 	template <typename T>
@@ -645,7 +645,7 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 
 	/**
 	 * Returns pointer to external data based on provided item handle. The return type is deduced from the handle's template type.
-     * @param Handle Valid TStateTreeExternalDataHandle<> handle.
+     * @param Handle Valid TMetaStoryExternalDataHandle<> handle.
 	 * @return pointer to external data based on handle or null if item is not set or handle is invalid.
 	 */ 
 	template <typename T>
@@ -721,13 +721,13 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 		return GetExecutionRuntimeDataView().template GetMutable<typename T::FExecutionRuntimeDataType>();
 	}
 
-	/** @returns reference to instance data struct that can be passed to lambdas. See TStateTreeInstanceDataStructRef for usage. */
+	/** @returns reference to instance data struct that can be passed to lambdas. See TMetaStoryInstanceDataStructRef for usage. */
 	template <typename T>
-	TStateTreeInstanceDataStructRef<typename T::FInstanceDataType> GetInstanceDataStructRef(const T& Node) const
+	TMetaStoryInstanceDataStructRef<typename T::FInstanceDataType> GetInstanceDataStructRef(const T& Node) const
 	{
 		static_assert(TIsDerivedFrom<T, FMetaStoryNodeBase>::IsDerived, "Expecting Node to derive from FMetaStoryNodeBase.");
 		check(CurrentlyProcessedFrame);
-		return TStateTreeInstanceDataStructRef<typename T::FInstanceDataType>(InstanceData, *CurrentlyProcessedFrame, Node.InstanceDataHandle);
+		return TMetaStoryInstanceDataStructRef<typename T::FInstanceDataType>(InstanceData, *CurrentlyProcessedFrame, Node.InstanceDataHandle);
 	}
 
 	/**
@@ -781,10 +781,10 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 
 	/**
 	 * Forces transition to a state. It will skip all conditions.
-	 * Primarily used for replication purposes so that a client state tree stays in sync with its server counterpart.
+	 * Primarily used for replication purposes so that a client MetaStory stays in sync with its server counterpart.
 	 * It has to be a running instance. It will not work if you didn't call Start or if the execution previously failed.
-	 * @param Recorded state transition to run on the state tree.
-	 * @return The new run status for the state tree.
+	 * @param Recorded state transition to run on the MetaStory.
+	 * @return The new run status for the MetaStory.
 	 */
 	UE_API EMetaStoryRunStatus ForceTransition(const FMetaStoryRecordedTransitionResult& Transition);
 	
@@ -1309,7 +1309,7 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 		const FSelectStateArguments& Args,
 		const FSelectStateInternalArguments& InternalArgs,
 		const TSharedRef<FSelectStateResult>& OutSelectionResult,
-		TNotNull<const UMetaStory*> NextStateTree,
+		TNotNull<const UMetaStory*> NextMetaStory,
 		const FMetaStoryCompactState& NextState,
 		bool bShouldCreateNewState
 		);
@@ -1318,7 +1318,7 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 		const FSelectStateArguments& Args,
 		const FSelectStateInternalArguments& InternalArgs,
 		const TSharedRef<FSelectStateResult>& OutSelectionResult,
-		TNotNull<const UMetaStory*> NextStateTree,
+		TNotNull<const UMetaStory*> NextMetaStory,
 		const FMetaStoryCompactState& NextState,
 		const UMetaStory* NextLinkedStateAsset,
 		bool bShouldCreateNewState);
@@ -1327,7 +1327,7 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 		const FSelectStateArguments& Args,
 		const FSelectStateInternalArguments& InternalArgs,
 		const TSharedRef<FSelectStateResult>& OutSelectionResult,
-		TNotNull<const UMetaStory*> NextStateTree,
+		TNotNull<const UMetaStory*> NextMetaStory,
 		const FMetaStoryCompactState& TargetState,
 		const FMetaStoryStateHandle TargetStateHandle);
 		
@@ -1335,7 +1335,7 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 		const FSelectStateArguments& Args,
 		const FSelectStateInternalArguments& InternalArgs,
 		const TSharedRef<FSelectStateResult>& OutSelectionResult,
-		TNotNull<const UMetaStory*> NextStateTree,
+		TNotNull<const UMetaStory*> NextMetaStory,
 		const FMetaStoryCompactState& TargetState,
 		const FMetaStoryStateHandle TargetStateHandle);
 
@@ -1343,7 +1343,7 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 		const FSelectStateArguments& Args,
 		const FSelectStateInternalArguments& InternalArgs,
 		const TSharedRef<FSelectStateResult>& OutSelectionResult,
-		TNotNull<const UMetaStory*> NextStateTree,
+		TNotNull<const UMetaStory*> NextMetaStory,
 		const FMetaStoryCompactState& TargetState,
 		const FMetaStoryStateHandle TargetStateHandle);
 
@@ -1351,7 +1351,7 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 		const FSelectStateArguments& Args,
 		const FSelectStateInternalArguments& InternalArgs,
 		const TSharedRef<FSelectStateResult>& OutSelectionResult,
-		TNotNull<const UMetaStory*> NextStateTree,
+		TNotNull<const UMetaStory*> NextMetaStory,
 		const FMetaStoryCompactState& TargetState,
 		const FMetaStoryStateHandle TargetStateHandle);
 
@@ -1359,7 +1359,7 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 		const FSelectStateArguments& Args,
 		const FSelectStateInternalArguments& InternalArgs,
 		const TSharedRef<FSelectStateResult>& OutSelectionResult,
-		TNotNull<const UMetaStory*> NextStateTree,
+		TNotNull<const UMetaStory*> NextMetaStory,
 		const FMetaStoryCompactState& TargetState,
 		const FMetaStoryStateHandle TargetStateHandle);
 
@@ -1375,7 +1375,7 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 		return Storage.GetExecutionState();
 	}
 
-	/** Updates the update phase of the statetree execution state. */
+	/** Updates the update phase of the MetaStory execution state. */
 	UE_API void SetUpdatePhaseInExecutionState(FMetaStoryExecutionState& ExecutionState, EMetaStoryUpdatePhase UpdatePhase) const;
 
 	/** @return String describing state status for logging and debug. */
@@ -1454,13 +1454,13 @@ protected:
 	UE_API bool CollectActiveExternalData(const TArrayView<FMetaStoryExecutionFrame> Frames);
 
 	/**
-	 * Collects external data for specific State Tree asset. If the data is already collected, cached index is returned.
+	 * Collects external data for specific MetaStory asset. If the data is already collected, cached index is returned.
 	 * @returns index in ContextAndExternalDataViews for the first external data.
 	 */
 	UE_API FMetaStoryIndex16 CollectExternalData(const UMetaStory* MetaStory);
 
 	/**
-	 * Stores copy of provided parameters as State Tree global parameters.
+	 * Stores copy of provided parameters as MetaStory global parameters.
 	 * @param Parameters parameters to copy
 	 * @returns true if successfully set the parameters
 	 */
@@ -1493,17 +1493,17 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 	TSharedPtr<FMetaStoryEventQueue> EventQueue;
 
 #if WITH_EDITORONLY_DATA
-	UE_DEPRECATED(5.6, "Use the LinkedStateTreeOverrides copy")
-	/** Pointer to linked state tree overrides. */
-	const FMetaStoryReferenceOverrides* LinkedStateTreeOverrides = nullptr;
+	UE_DEPRECATED(5.6, "Use LinkedAssetMetaStoryOverrides instead of the raw pointer.")
+	/** Pointer to linked MetaStory overrides (editor-only legacy). */
+	const FMetaStoryReferenceOverrides* LinkedMetaStoryOverrides = nullptr;
 #endif
-	/** Current linked state tree overrides. */
-	FMetaStoryReferenceOverrides LinkedAssetStateTreeOverrides;
+	/** Current linked MetaStory overrides. */
+	FMetaStoryReferenceOverrides LinkedAssetMetaStoryOverrides;
 	
 	/** Data view of the context data. */
 	TArray<FMetaStoryDataView> ContextAndExternalDataViews;
 
-	FOnCollectStateTreeExternalData CollectExternalDataDelegate;
+	FOnCollectMetaStoryExternalData CollectExternalDataDelegate;
 
 	struct FCollectedExternalDataCache
 	{
@@ -1513,7 +1513,7 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 	TArray<FCollectedExternalDataCache> CollectedExternalCache;
 	bool bActiveExternalDataCollected = false;
 
-	/** Holds the container. Multiple instances with the same state tree can occur in a recursive call. */
+	/** Holds the container. Multiple instances with the same MetaStory can occur in a recursive call. */
 	struct FEvaluationScopeDataCache
 	{
 		UE::MetaStory::InstanceData::FEvaluationScopeInstanceContainer* Container;
@@ -1705,7 +1705,7 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 		FMetaStoryDataView SavedNodeInstanceData;
 	};
 
-	/** If true, the state tree context will create snapshots of transition events and capture them within RecordedTransitions for later use. */
+	/** If true, the MetaStory context will create snapshots of transition events and capture them within RecordedTransitions for later use. */
 	bool bRecordTransitions = false;
 
 	/** Captured snapshots for transition results that can be used to recreate transitions. This array is only populated if bRecordTransitions is true. */
@@ -1718,11 +1718,11 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 /**
  * The const version of a MetaStory Execution Context that prevents using the FMetaStoryInstanceData with non-const member function.
  */
-struct FConstStateTreeExecutionContextView
+struct FConstMetaStoryExecutionContextView
 {
 public:
-	FConstStateTreeExecutionContextView(UObject& InOwner, const UMetaStory& InStateTree, const FMetaStoryInstanceData& InInstanceData)
-		: ExecutionContext(InOwner, InStateTree, const_cast<FMetaStoryInstanceData&>(InInstanceData))
+	FConstMetaStoryExecutionContextView(UObject& InOwner, const UMetaStory& InMetaStory, const FMetaStoryInstanceData& InInstanceData)
+		: ExecutionContext(InOwner, InMetaStory, const_cast<FMetaStoryInstanceData&>(InInstanceData))
 	{}
 
 	operator const FMetaStoryExecutionContext& ()
@@ -1736,8 +1736,8 @@ public:
 	}
 
 private:
-	FConstStateTreeExecutionContextView(const FConstStateTreeExecutionContextView&) = delete;
-	FConstStateTreeExecutionContextView& operator=(const FConstStateTreeExecutionContextView&) = delete;
+	FConstMetaStoryExecutionContextView(const FConstMetaStoryExecutionContextView&) = delete;
+	FConstMetaStoryExecutionContextView& operator=(const FConstMetaStoryExecutionContextView&) = delete;
 
 private:
 	FMetaStoryExecutionContext ExecutionContext;

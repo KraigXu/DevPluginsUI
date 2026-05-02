@@ -24,7 +24,7 @@ FMetaStoryStrongTaskRef::FMetaStoryStrongTaskRef(TStrongObjectPtr<const UMetaSto
 	}
 #endif
 
-const UMetaStory* FMetaStoryStrongTaskRef::GetStateTree() const
+const UMetaStory* FMetaStoryStrongTaskRef::GetMetaStory() const
 {
 	return IsValid() ? MetaStory.Get() : nullptr;
 }

@@ -19,11 +19,11 @@ enum class EMetaStoryLinkerStatus : uint8
 
 /**
  * The MetaStory linker is used to resolved references to various MetaStory data at load time.
- * @see TStateTreeExternalDataHandle<> for example usage.
+ * @see TMetaStoryExternalDataHandle<> for example usage.
  */
 struct FMetaStoryLinker
 {
-	UE_API explicit FMetaStoryLinker(TNotNull<const UMetaStory*> InStateTree);
+	UE_API explicit FMetaStoryLinker(TNotNull<const UMetaStory*> InMetaStory);
 
 	UE_DEPRECATED(5.7, "Use the constructor with the MetaStory pointer.")
 	explicit FMetaStoryLinker(const UMetaStorySchema* InSchema)
@@ -37,14 +37,14 @@ struct FMetaStoryLinker
 	}
 
 	/** @returns the MetaStory asset. */
-	const UMetaStory* GetStateTree() const
+	const UMetaStory* GetMetaStory() const
 	{
 		return MetaStory.Get();
 	}
 	
 	/**
 	 * Links reference to an external UObject.
-	 * @param Handle Reference to TStateTreeExternalDataHandle<> with UOBJECT type to link to.
+	 * @param Handle Reference to TMetaStoryExternalDataHandle<> with UOBJECT type to link to.
 	 */
 	template <typename T>
 	typename TEnableIf<TIsDerivedFrom<typename T::DataType, UObject>::IsDerived, void>::Type LinkExternalData(T& Handle)
@@ -54,7 +54,7 @@ struct FMetaStoryLinker
 
 	/**
 	 * Links reference to an external UStruct.
-	 * @param Handle Reference to TStateTreeExternalDataHandle<> with USTRUCT type to link to.
+	 * @param Handle Reference to TMetaStoryExternalDataHandle<> with USTRUCT type to link to.
 	 */
 	template <typename T>
 	typename TEnableIf<!TIsDerivedFrom<typename T::DataType, UObject>::IsDerived && !TIsIInterface<typename T::DataType>::Value, void>::Type LinkExternalData(T& Handle)
@@ -64,7 +64,7 @@ struct FMetaStoryLinker
 
 	/**
 	 * Links reference to an external IInterface.
-	 * @param Handle Reference to TStateTreeExternalDataHandle<> with IINTERFACE type to link to.
+	 * @param Handle Reference to TMetaStoryExternalDataHandle<> with IINTERFACE type to link to.
 	 */
 	template <typename T>
 	typename TEnableIf<TIsIInterface<typename T::DataType>::Value, void>::Type LinkExternalData(T& Handle)
@@ -74,7 +74,7 @@ struct FMetaStoryLinker
 
 	/**
 	 * Links reference to an external Object or Struct.
-	 * This function should only be used when TStateTreeExternalDataHandle<> cannot be used, i.e. the Struct is based on some data.
+	 * This function should only be used when TMetaStoryExternalDataHandle<> cannot be used, i.e. the Struct is based on some data.
 	 * @param Handle Reference to link to.
 	 * @param Struct Expected type of the Object or Struct to link to.
 	 * @param Requirement Describes if the external data is expected to be required or optional.

@@ -375,7 +375,7 @@ FString FMetaStoryTraceActiveStatesEvent::GetValueString(const UMetaStory&) cons
 	FStringBuilderBase StatePath;
 	for (const FMetaStoryTraceActiveStates::FAssetActiveStates& PerAssetStates : ActiveStates.PerAssetStates)
 	{
-		if (const UMetaStory* MetaStory = PerAssetStates.WeakStateTree.Get())
+		if (const UMetaStory* MetaStory = PerAssetStates.WeakMetaStory.Get())
 		{
 			for (const FMetaStoryStateHandle Handle : PerAssetStates.ActiveStates)
 			{
@@ -400,7 +400,7 @@ FString FMetaStoryTraceActiveStatesEvent::GetTypeString(const UMetaStory& MetaSt
 //----------------------------------------------------------------------//
 FMetaStoryTraceInstanceFrameEvent::FMetaStoryTraceInstanceFrameEvent(const double RecordingWorldTime, const EMetaStoryTraceEventType EventType, const UMetaStory* MetaStory)
 	: FMetaStoryTraceBaseEvent(RecordingWorldTime, EventType)
-	, WeakStateTree(MetaStory)
+	, WeakMetaStory(MetaStory)
 {
 }
 
@@ -411,7 +411,7 @@ FString FMetaStoryTraceInstanceFrameEvent::ToFullString(const UMetaStory& MetaSt
 
 FString FMetaStoryTraceInstanceFrameEvent::GetValueString(const UMetaStory& MetaStory) const
 {
-	return GetNameSafe(WeakStateTree.Get());
+	return GetNameSafe(WeakMetaStory.Get());
 }
 
 FString FMetaStoryTraceInstanceFrameEvent::GetTypeString(const UMetaStory& MetaStory) const

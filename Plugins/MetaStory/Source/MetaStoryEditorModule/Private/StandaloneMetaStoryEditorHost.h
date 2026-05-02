@@ -6,14 +6,14 @@
 
 class FMetaStoryEditor;
 
-class FStandaloneStateTreeEditorHost : public IMetaStoryEditorHost
+class FStandaloneMetaStoryEditorHost : public IMetaStoryEditorHost
 {	
 public:
-	void Init(const TWeakPtr<FMetaStoryEditor>& InWeakStateTreeEditor);
+	void Init(const TWeakPtr<FMetaStoryEditor>& InWeakMetaStoryEditor);
 	
 	//~ IMetaStoryEditorHost overrides
-	virtual UMetaStory* GetStateTree() const override;
-	virtual FSimpleMulticastDelegate& OnStateTreeChanged() override;
+	virtual UMetaStory* GetMetaStory() const override;
+	virtual FSimpleMulticastDelegate& OnMetaStoryChanged() override;
 	virtual TSharedPtr<IDetailsView> GetAssetDetailsView() override;
 	virtual TSharedPtr<IDetailsView> GetDetailsView() override;
 	virtual TSharedPtr<UE::MetaStoryEditor::FWorkspaceTabHost> GetTabHost() const override;
@@ -23,7 +23,7 @@ public:
 	virtual FName GetCompilerTabName() const override;
 
 protected:
-	TWeakPtr<FMetaStoryEditor> WeakStateTreeEditor;
-	FSimpleMulticastDelegate OnStateTreeChangedDelegate;
+	TWeakPtr<FMetaStoryEditor> WeakMetaStoryEditor;
+	FSimpleMulticastDelegate OnMetaStoryChangedDelegate;
 	TSharedPtr<UE::MetaStoryEditor::FWorkspaceTabHost> TabHost;
 };

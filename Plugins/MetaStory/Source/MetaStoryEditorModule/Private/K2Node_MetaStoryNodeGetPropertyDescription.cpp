@@ -10,7 +10,7 @@
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(K2Node_MetaStoryNodeGetPropertyDescription)
 
-#define LOCTEXT_NAMESPACE "K2Node_StateTreeNodeGetPropertyDescription"
+#define LOCTEXT_NAMESPACE "K2Node_MetaStoryNodeGetPropertyDescription"
 
 
 void UK2Node_MetaStoryNodeGetPropertyDescription::AllocateDefaultPins()

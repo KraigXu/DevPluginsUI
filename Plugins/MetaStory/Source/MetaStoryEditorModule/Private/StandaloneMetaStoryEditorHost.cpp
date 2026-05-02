@@ -4,49 +4,49 @@
 #include "MetaStoryEditor.h"
 #include "MetaStoryEditorWorkspaceTabHost.h"
 
-void FStandaloneStateTreeEditorHost::Init(const TWeakPtr<FMetaStoryEditor>& InWeakStateTreeEditor)
+void FStandaloneMetaStoryEditorHost::Init(const TWeakPtr<FMetaStoryEditor>& InWeakMetaStoryEditor)
 {
-	WeakStateTreeEditor = InWeakStateTreeEditor;
+	WeakMetaStoryEditor = InWeakMetaStoryEditor;
 	TabHost = MakeShared<UE::MetaStoryEditor::FWorkspaceTabHost>();
 }
 
-UMetaStory* FStandaloneStateTreeEditorHost::GetStateTree() const
+UMetaStory* FStandaloneMetaStoryEditorHost::GetMetaStory() const
 {
-	if (TSharedPtr<FMetaStoryEditor> SharedEditor = WeakStateTreeEditor.Pin())
+	if (TSharedPtr<FMetaStoryEditor> SharedEditor = WeakMetaStoryEditor.Pin())
 	{
 		return SharedEditor->MetaStory;
 	}
 	return nullptr;
 }
 
-FName FStandaloneStateTreeEditorHost::GetCompilerLogName() const
+FName FStandaloneMetaStoryEditorHost::GetCompilerLogName() const
 {
 	return FMetaStoryEditor::CompilerLogListingName;
 }
 
-FName FStandaloneStateTreeEditorHost::GetCompilerTabName() const
+FName FStandaloneMetaStoryEditorHost::GetCompilerTabName() const
 {
 	return FMetaStoryEditor::CompilerResultsTabId;
 }
 
-bool FStandaloneStateTreeEditorHost::ShouldShowCompileButton() const
+bool FStandaloneMetaStoryEditorHost::ShouldShowCompileButton() const
 {
 	return true;
 }
 
-bool FStandaloneStateTreeEditorHost::CanToolkitSpawnWorkspaceTab() const
+bool FStandaloneMetaStoryEditorHost::CanToolkitSpawnWorkspaceTab() const
 {
 	return false;
 }
 
-FSimpleMulticastDelegate& FStandaloneStateTreeEditorHost::OnStateTreeChanged()
+FSimpleMulticastDelegate& FStandaloneMetaStoryEditorHost::OnMetaStoryChanged()
 {
-	return OnStateTreeChangedDelegate;
+	return OnMetaStoryChangedDelegate;
 }
 
-TSharedPtr<IDetailsView> FStandaloneStateTreeEditorHost::GetAssetDetailsView()
+TSharedPtr<IDetailsView> FStandaloneMetaStoryEditorHost::GetAssetDetailsView()
 {
-	if (TSharedPtr<FMetaStoryEditor> SharedEditor = WeakStateTreeEditor.Pin())
+	if (TSharedPtr<FMetaStoryEditor> SharedEditor = WeakMetaStoryEditor.Pin())
 	{
 		return SharedEditor->AssetDetailsView;
 	}
@@ -54,9 +54,9 @@ TSharedPtr<IDetailsView> FStandaloneStateTreeEditorHost::GetAssetDetailsView()
 	return nullptr;	
 }
 
-TSharedPtr<IDetailsView> FStandaloneStateTreeEditorHost::GetDetailsView()
+TSharedPtr<IDetailsView> FStandaloneMetaStoryEditorHost::GetDetailsView()
 {
-	if (TSharedPtr<FMetaStoryEditor> SharedEditor = WeakStateTreeEditor.Pin())
+	if (TSharedPtr<FMetaStoryEditor> SharedEditor = WeakMetaStoryEditor.Pin())
 	{
 		return SharedEditor->SelectionDetailsView;
 	}
@@ -64,7 +64,7 @@ TSharedPtr<IDetailsView> FStandaloneStateTreeEditorHost::GetDetailsView()
 	return nullptr;	
 }
 
-TSharedPtr<UE::MetaStoryEditor::FWorkspaceTabHost> FStandaloneStateTreeEditorHost::GetTabHost() const
+TSharedPtr<UE::MetaStoryEditor::FWorkspaceTabHost> FStandaloneMetaStoryEditorHost::GetTabHost() const
 {
 	return TabHost;
 }

@@ -43,13 +43,13 @@ namespace UE::MetaStory::Async
 }
 
 /**
- * Execution context to interact with the state tree instance data asynchronously.
+ * Execution context to interact with the MetaStory instance data asynchronously.
  * It should only be allocated on the stack.
  * You are responsible for making it thread-safe if needed.
  *		ThreadSafeAsyncCallback.AddLambda(
  *			[MyTag, WeakContext = Context.MakeWeakExecutionContext()]()
  *			{
- *				TStateTreeStrongExecutionContext<true> StrongContext = WeakContext.CreateStrongContext();
+ *				TMetaStoryStrongExecutionContext<true> StrongContext = WeakContext.CreateStrongContext();
  *				if (StrongContext.SendEvent())
  *				{
  *					...
@@ -57,14 +57,14 @@ namespace UE::MetaStory::Async
  *			});
  */
 template<bool bWithWriteAccess>
-struct TStateTreeStrongExecutionContext
+struct TMetaStoryStrongExecutionContext
 {
-	TStateTreeStrongExecutionContext() = default;
-	UE_API explicit TStateTreeStrongExecutionContext(const FMetaStoryWeakExecutionContext& WeakContext);
-	UE_API ~TStateTreeStrongExecutionContext();
+	TMetaStoryStrongExecutionContext() = default;
+	UE_API explicit TMetaStoryStrongExecutionContext(const FMetaStoryWeakExecutionContext& WeakContext);
+	UE_API ~TMetaStoryStrongExecutionContext();
 
-	TStateTreeStrongExecutionContext(const TStateTreeStrongExecutionContext& Other) = delete;
-	TStateTreeStrongExecutionContext& operator=(const TStateTreeStrongExecutionContext& Other) = delete;
+	TMetaStoryStrongExecutionContext(const TMetaStoryStrongExecutionContext& Other) = delete;
+	TMetaStoryStrongExecutionContext& operator=(const TMetaStoryStrongExecutionContext& Other) = delete;
 
 	/** @return The owner of the context */
 	TStrongObjectPtr<UObject> GetOwner() const
@@ -73,7 +73,7 @@ struct TStateTreeStrongExecutionContext
 	}
 
 	/** @return the MetaStory asset in use. */
-	TStrongObjectPtr<const UMetaStory> GetStateTree() const
+	TStrongObjectPtr<const UMetaStory> GetMetaStory() const
 	{
 		return MetaStory;
 	}
@@ -191,7 +191,7 @@ private:
 	UE_API FMetaStoryDataView GetInstanceDataPtrInternal() const;
 
 	template<bool bWriteAccess = bWithWriteAccess UE_REQUIRES(bWriteAccess)>
-	static void ScheduleNextTick(TNotNull<UObject*> Owner, TNotNull<const UMetaStory*> RootStateTree, FMetaStoryInstanceStorage& Storage, UE::MetaStory::EMetaStoryTickReason Reason);
+	static void ScheduleNextTick(TNotNull<UObject*> Owner, TNotNull<const UMetaStory*> RootMetaStory, FMetaStoryInstanceStorage& Storage, UE::MetaStory::EMetaStoryTickReason Reason);
 
 	TStrongObjectPtr<UObject> Owner;
 	TStrongObjectPtr<const UMetaStory> MetaStory;
@@ -206,14 +206,14 @@ private:
 	friend struct FMetaStoryPropertyRef;
 };
 
-using FMetaStoryStrongExecutionContext = TStateTreeStrongExecutionContext<true>;
-using FMetaStoryStrongReadOnlyExecutionContext = TStateTreeStrongExecutionContext<false>;
+using FMetaStoryStrongExecutionContext = TMetaStoryStrongExecutionContext<true>;
+using FMetaStoryStrongReadOnlyExecutionContext = TMetaStoryStrongExecutionContext<false>;
 
 /**
  * Execution context that can be saved/copied and used asynchronously. 
  * You are responsible for making it thread-safe if needed.
  * The context is valid if the state (or global context) from which it was created is still
- * active. The owner, state tree, and storage also need to be valid. 
+ * active. The owner, MetaStory, and storage also need to be valid. 
  *
  *		ThreadSafeAsyncCallback.AddLambda(
  *			[MyTag, WeakContext = Context.MakeWeakExecutionContext]()
@@ -227,7 +227,7 @@ using FMetaStoryStrongReadOnlyExecutionContext = TStateTreeStrongExecutionContex
 struct FMetaStoryWeakExecutionContext
 {
 	template<bool bRequireWriteAccess>
-	friend struct TStateTreeStrongExecutionContext;
+	friend struct TMetaStoryStrongExecutionContext;
 
 public:
 	FMetaStoryWeakExecutionContext() = default;
@@ -241,7 +241,7 @@ public:
 	}
 
 	/** @return the MetaStory asset in use. */
-	TStrongObjectPtr<const UMetaStory> GetStateTree() const
+	TStrongObjectPtr<const UMetaStory> GetMetaStory() const
 	{
 		return MetaStory.Pin();
 	}

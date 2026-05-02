@@ -93,7 +93,7 @@ PRAGMA_DISABLE_DEPRECATION_WARNINGS
 PRAGMA_ENABLE_DEPRECATION_WARNINGS
 
 	template<typename T, typename... TArgs>
-	TStateTreeEditorNode<T>& AddCondition(TArgs&&... InArgs)
+	TMetaStoryTypedEditorNode<T>& AddCondition(TArgs&&... InArgs)
 	{
 		FMetaStoryEditorNode& CondNode = Conditions.AddDefaulted_GetRef();
 		CondNode.ID = FGuid::NewGuid();
@@ -107,7 +107,7 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 		{
 			CondNode.ExecutionRuntimeData.InitializeAs(InstanceType);
 		}
-		return static_cast<TStateTreeEditorNode<T>&>(CondNode);
+		return static_cast<TMetaStoryTypedEditorNode<T>&>(CondNode);
 	}
 
 	FGuid GetEventID() const
@@ -269,7 +269,7 @@ public:
 	 * @return reference to the new condition.
 	 */
 	template<typename T, typename... TArgs>
-	TStateTreeEditorNode<T>& AddEnterCondition(TArgs&&... InArgs)
+	TMetaStoryTypedEditorNode<T>& AddEnterCondition(TArgs&&... InArgs)
 	{
 		FMetaStoryEditorNode& CondNode = EnterConditions.AddDefaulted_GetRef();
 		CondNode.ID = FGuid::NewGuid();
@@ -283,7 +283,7 @@ public:
 		{
 			CondNode.ExecutionRuntimeData.InitializeAs(InstanceType);
 		}
-		return static_cast<TStateTreeEditorNode<T>&>(CondNode);
+		return static_cast<TMetaStoryTypedEditorNode<T>&>(CondNode);
 	}
 
 	/**
@@ -291,7 +291,7 @@ public:
 	 * @return reference to the new Task.
 	 */
 	template<typename T, typename... TArgs>
-	TStateTreeEditorNode<T>& AddTask(TArgs&&... InArgs)
+	TMetaStoryTypedEditorNode<T>& AddTask(TArgs&&... InArgs)
 	{
 		FMetaStoryEditorNode& TaskItem = Tasks.AddDefaulted_GetRef();
 		TaskItem.ID = FGuid::NewGuid();
@@ -305,7 +305,7 @@ public:
 		{
 			TaskItem.ExecutionRuntimeData.InitializeAs(InstanceType);
 		}
-		return static_cast<TStateTreeEditorNode<T>&>(TaskItem);
+		return static_cast<TMetaStoryTypedEditorNode<T>&>(TaskItem);
 	}
 
 	/** Sets linked state and updates parameters to match the linked state. */
@@ -338,7 +338,7 @@ public:
 	}
 
 	//~ IMetaStorySchemaProvider API
-	/**  @return Class of schema used by the state tree containing this state. */
+	/**  @return Class of schema used by the MetaStory containing this state. */
 	UE_API virtual TSubclassOf<UMetaStorySchema> GetSchema() const override;
 
 	//~IMetaStorySchemaProvider API
@@ -377,7 +377,7 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "State", Meta=(DirectStatesOnly, SubtreesOnly))
 	FMetaStoryStateLink LinkedSubtree;
 
-	/** Another State Tree asset to run as extension of this State. */
+	/** Another MetaStory asset to run as extension of this State. */
 	UPROPERTY(EditDefaultsOnly, Category = "State")
 	TObjectPtr<UMetaStory> LinkedAsset = nullptr;
 
@@ -386,7 +386,7 @@ public:
 	 * If set the state cannot sleep.
 	 * If set all the other states (children or parents) will also tick at that rate.
 	 * If more than one active states has a custom tick rate then the smallest custom tick rate wins.
-	 * If not set, the state will tick every frame unless the state tree is allowed to sleep.
+	 * If not set, the state will tick every frame unless the MetaStory is allowed to sleep.
 	 */
 	UPROPERTY(EditDefaultsOnly, Category = "State", meta = (EditCondition = "bHasCustomTickRate", ClampMin = 0.0f))
 	float CustomTickRate = 0.0f;

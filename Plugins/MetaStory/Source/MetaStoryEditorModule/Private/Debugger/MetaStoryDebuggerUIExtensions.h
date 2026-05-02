@@ -18,15 +18,15 @@ class UMetaStoryEditorData;
 namespace UE::MetaStoryEditor::DebuggerExtensions
 {
 
-TSharedRef<SWidget> CreateStateWidget(TSharedPtr<IPropertyHandle> StateEnabledProperty, const TSharedPtr<FMetaStoryViewModel>& InStateTreeViewModel);
-void AppendStateMenuItems(FMenuBuilder& InMenuBuilder, TSharedPtr<IPropertyHandle> StateEnabledProperty, const TSharedPtr<FMetaStoryViewModel>& InStateTreeViewModel);
+TSharedRef<SWidget> CreateStateWidget(TSharedPtr<IPropertyHandle> StateEnabledProperty, const TSharedPtr<FMetaStoryViewModel>& InMetaStoryViewModel);
+void AppendStateMenuItems(FMenuBuilder& InMenuBuilder, TSharedPtr<IPropertyHandle> StateEnabledProperty, const TSharedPtr<FMetaStoryViewModel>& InMetaStoryViewModel);
 
-TSharedRef<SWidget> CreateEditorNodeWidget(const TSharedPtr<IPropertyHandle>& StructPropertyHandle, const TSharedPtr<FMetaStoryViewModel>& InStateTreeViewModel);
-void AppendEditorNodeMenuItems(FMenuBuilder& InMenuBuilder, const TSharedPtr<IPropertyHandle>& StructPropertyHandle, const TSharedPtr<FMetaStoryViewModel>& InStateTreeViewModel);
+TSharedRef<SWidget> CreateEditorNodeWidget(const TSharedPtr<IPropertyHandle>& StructPropertyHandle, const TSharedPtr<FMetaStoryViewModel>& InMetaStoryViewModel);
+void AppendEditorNodeMenuItems(FMenuBuilder& InMenuBuilder, const TSharedPtr<IPropertyHandle>& StructPropertyHandle, const TSharedPtr<FMetaStoryViewModel>& InMetaStoryViewModel);
 bool IsEditorNodeEnabled(const TSharedPtr<IPropertyHandle>& StructPropertyHandle);
 
-TSharedRef<SWidget> CreateTransitionWidget(const TSharedPtr<IPropertyHandle>& StructPropertyHandle, const TSharedPtr<FMetaStoryViewModel>& InStateTreeViewModel);
-void AppendTransitionMenuItems(FMenuBuilder& InMenuBuilder, const TSharedPtr<IPropertyHandle>& StructPropertyHandle, const TSharedPtr<FMetaStoryViewModel>& InStateTreeViewModel);
+TSharedRef<SWidget> CreateTransitionWidget(const TSharedPtr<IPropertyHandle>& StructPropertyHandle, const TSharedPtr<FMetaStoryViewModel>& InMetaStoryViewModel);
+void AppendTransitionMenuItems(FMenuBuilder& InMenuBuilder, const TSharedPtr<IPropertyHandle>& StructPropertyHandle, const TSharedPtr<FMetaStoryViewModel>& InMetaStoryViewModel);
 bool IsTransitionEnabled(const TSharedPtr<IPropertyHandle>& StructPropertyHandle);
 
 }; // UE::MetaStoryEditor::DebuggerExtensions

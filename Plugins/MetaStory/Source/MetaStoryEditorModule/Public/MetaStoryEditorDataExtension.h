@@ -15,7 +15,7 @@ class UMetaStoryEditorData;
 class UMetaStoryState;
 
 /**
- * Extension for the editor data of the state tree asset.
+ * Extension for the editor data of the MetaStory asset.
  */
 UCLASS(Abstract, DefaultToInstanced, EditInlineNew, Within=MetaStoryEditorData, MinimalAPI)
 class UMetaStoryEditorDataExtension : public UObject
@@ -33,7 +33,7 @@ public:
 	}
 
 protected:
-	UMetaStoryEditorData* GetStateTreeEditorData() const
+	UMetaStoryEditorData* GetMetaStoryEditorData() const
 	{
 		return GetTypedOuter<UMetaStoryEditorData>();
 	}

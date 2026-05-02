@@ -20,14 +20,14 @@ public:
 	FRuntimeValidationInstanceData() = default;
 	~FRuntimeValidationInstanceData();
 
-	void SetContext(const UObject* InOwner, const UMetaStory* InStateTree, bool bInInstanceDataWriteAccessAcquired);
+	void SetContext(const UObject* InOwner, const UMetaStory* InMetaStory, bool bInInstanceDataWriteAccessAcquired);
 
 	void NodeEnterState(FGuid NodeID, FActiveFrameID FrameID);
 	void NodeExitState(FGuid NodeID, FActiveFrameID FrameID);
 
 private:
-	void ValidateTreeNodes(const UMetaStory* NewStateTree) const;
-	void ValidateInstanceData(const UMetaStory* NewStateTree);
+	void ValidateTreeNodes(const UMetaStory* NewMetaStory) const;
+	void ValidateInstanceData(const UMetaStory* NewMetaStory);
 
 private:
 	enum class EState : uint8

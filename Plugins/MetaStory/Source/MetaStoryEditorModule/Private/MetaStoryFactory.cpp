@@ -132,7 +132,7 @@ UObject* UMetaStoryFactory::FactoryCreateNew(UClass* Class, UObject* InParent, F
 	EditorData->EditorSchema = NewObject<UMetaStoryEditorSchema>(EditorData, EditorSchemaClass, FName(), RF_Transactional);
 
 	FMetaStoryCompilerLog Log;
-	const bool bSuccess = UMetaStoryEditingSubsystem::CompileStateTree(NewMetaStory, Log);
+	const bool bSuccess = UMetaStoryEditingSubsystem::CompileMetaStory(NewMetaStory, Log);
 
 	if (!bSuccess)
 	{

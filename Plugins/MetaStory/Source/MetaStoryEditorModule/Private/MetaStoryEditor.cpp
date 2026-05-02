@@ -59,7 +59,7 @@ const FName MetaStoryEditorAppName(TEXT("MetaStoryEditorApp"));
 
 const FName FMetaStoryEditor::SelectionDetailsTabId(TEXT("MetaStoryEditor_SelectionDetails"));
 const FName FMetaStoryEditor::AssetDetailsTabId(TEXT("MetaStoryEditor_AssetDetails"));
-const FName FMetaStoryEditor::MetaStoryViewTabId(TEXT("MetaStoryEditor_StateTreeView"));
+const FName FMetaStoryEditor::MetaStoryViewTabId(TEXT("MetaStoryEditor_MetaStoryView"));
 const FName FMetaStoryEditor::CompilerResultsTabId(TEXT("MetaStoryEditor_CompilerResults"));
 const FName FMetaStoryEditor::CompilerLogListingName(TEXT("MetaStoryCompiler"));
 const FName FMetaStoryEditor::LayoutLeftStackId("LeftStackId");
@@ -70,7 +70,7 @@ namespace UE::MetaStory::Editor
 bool GbDisplayItemIds = false;
 
 FAutoConsoleVariableRef CVarDisplayItemIds(
-	TEXT("statetree.displayitemids"),
+	TEXT("metastory.displayitemids"),
 	GbDisplayItemIds,
 	TEXT("Appends Id to task and state names in the treeview and expose Ids in the details view."));
 }
@@ -85,7 +85,7 @@ void FMetaStoryEditor::AddReferencedObjects(FReferenceCollector& Collector)
 
 void FMetaStoryEditor::RegisterTabSpawners(const TSharedRef<class FTabManager>& InTabManager)
 {
-	WorkspaceMenuCategory = InTabManager->AddLocalWorkspaceMenuCategory(LOCTEXT("WorkspaceMenu_StateTreeEditor", "MetaStory Editor"));
+	WorkspaceMenuCategory = InTabManager->AddLocalWorkspaceMenuCategory(LOCTEXT("WorkspaceMenu_MetaStoryEditor", "MetaStory Editor"));
 	auto WorkspaceMenuCategoryRef = WorkspaceMenuCategory.ToSharedRef();
 
 	FAssetEditorToolkit::RegisterTabSpawners(InTabManager);
@@ -100,7 +100,7 @@ void FMetaStoryEditor::RegisterTabSpawners(const TSharedRef<class FTabManager>& 
 		.SetGroup(WorkspaceMenuCategoryRef)
 		.SetIcon(FSlateIcon(FAppStyle::GetAppStyleSetName(), "LevelEditor.Tabs.Details"));
 
-	InTabManager->RegisterTabSpawner(MetaStoryViewTabId, FOnSpawnTab::CreateSP(this, &FMetaStoryEditor::SpawnTab_StateTreeView))
+	InTabManager->RegisterTabSpawner(MetaStoryViewTabId, FOnSpawnTab::CreateSP(this, &FMetaStoryEditor::SpawnTab_MetaStoryView))
 		.SetDisplayName(NSLOCTEXT("MetaStoryEditor", "MetaStoryViewTab", "States"))
 		.SetGroup(WorkspaceMenuCategoryRef)
 		.SetIcon(FSlateIcon(FAppStyle::GetAppStyleSetName(), "LevelEditor.Tabs.Outliner"));
@@ -147,18 +147,18 @@ void FMetaStoryEditor::UnregisterTabSpawners(const TSharedRef<class FTabManager>
 	}
 }
 
-void FMetaStoryEditor::InitEditor( const EToolkitMode::Type Mode, const TSharedPtr< class IToolkitHost >& InitToolkitHost, UMetaStory* InStateTree)
+void FMetaStoryEditor::InitEditor( const EToolkitMode::Type Mode, const TSharedPtr< class IToolkitHost >& InitToolkitHost, UMetaStory* InMetaStory)
 {
-	MetaStory = InStateTree;
+	MetaStory = InMetaStory;
 	check(MetaStory != NULL);
 
 	UMetaStoryEditingSubsystem* MetaStoryEditingSubsystem = GEditor->GetEditorSubsystem<UMetaStoryEditingSubsystem>();
 	check(MetaStoryEditingSubsystem);
 
-	EditorHost = MakeShared<FStandaloneStateTreeEditorHost>();
+	EditorHost = MakeShared<FStandaloneMetaStoryEditorHost>();
 	EditorHost->Init(StaticCastSharedRef<FMetaStoryEditor>(AsShared()));
 
-	MetaStoryViewModel = MetaStoryEditingSubsystem->FindOrAddViewModel(InStateTree);
+	MetaStoryViewModel = MetaStoryEditingSubsystem->FindOrAddViewModel(InMetaStory);
 
 	FMessageLogModule& MessageLogModule = FModuleManager::LoadModuleChecked<FMessageLogModule>("MessageLog");
 	FMessageLogInitializationOptions LogOptions;
@@ -172,7 +172,7 @@ void FMetaStoryEditor::InitEditor( const EToolkitMode::Type Mode, const TSharedP
 	CompilerResultsListing = MessageLogModule.GetLogListing(CompilerLogListingName);
 	CompilerResults = MessageLogModule.CreateLogListingWidget(CompilerResultsListing.ToSharedRef());
 
-	TSharedRef<FTabManager::FLayout> StandaloneDefaultLayout = FTabManager::NewLayout("Standalone_StateTree_Layout_v5")
+	TSharedRef<FTabManager::FLayout> StandaloneDefaultLayout = FTabManager::NewLayout("Standalone_MetaStory_Layout_v5")
 	->AddArea
 	(
 		FTabManager::NewPrimaryArea()->SetOrientation(Orient_Vertical)
@@ -259,7 +259,7 @@ void FMetaStoryEditor::PostInitAssetEditor()
 		}
 	}
 
-	EditorModeManager->SetDefaultMode(UMetaStoryEditorMode::EM_StateTree);
+	EditorModeManager->SetDefaultMode(UMetaStoryEditorMode::EM_MetaStory);
 	EditorModeManager->ActivateDefaultMode();
 }
 
@@ -306,7 +306,7 @@ void FMetaStoryEditor::OnClose()
 	HostedToolkit.Reset();
 }
 
-TSharedRef<SDockTab> FMetaStoryEditor::SpawnTab_StateTreeView(const FSpawnTabArgs& Args)
+TSharedRef<SDockTab> FMetaStoryEditor::SpawnTab_MetaStoryView(const FSpawnTabArgs& Args)
 {
 	check(Args.GetTabId() == MetaStoryViewTabId);
 

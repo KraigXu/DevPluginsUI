@@ -34,7 +34,7 @@ class UMetaStoryEditorData;
 
 
 /**
- * Widget holding the timelines for all statetree instances matching a given asset
+ * Widget holding the timelines for all MetaStory instances matching a given asset
  * in addition to some frame details panels.
  */
 class SMetaStoryDebuggerView : public SCompoundWidget
@@ -45,7 +45,7 @@ public:
 
 	~SMetaStoryDebuggerView();
 
-	void Construct(const FArguments& InArgs, TNotNull<const UMetaStory*> InStateTree, const TSharedRef<FMetaStoryViewModel>& InStateTreeViewModel, const TSharedRef<FUICommandList>& InCommandList);
+	void Construct(const FArguments& InArgs, TNotNull<const UMetaStory*> InMetaStory, const TSharedRef<FMetaStoryViewModel>& InMetaStoryViewModel, const TSharedRef<FUICommandList>& InCommandList);
 
 	[[nodiscard]] TSharedPtr<FMetaStoryDebugger> GetDebugger() const
 	{
@@ -143,7 +143,7 @@ private:
 	TWeakObjectPtr<UMetaStoryEditorData> MetaStoryEditorData;
 	TSharedPtr<FUICommandList> CommandList;
 
-	/** Tracks for all statetree instance owners producing trace events for the associated state tree asset. */
+	/** Tracks for all MetaStory instance owners producing trace events for the associated MetaStory asset. */
 	TArray<TSharedPtr<RewindDebugger::FRewindDebuggerTrack>> InstanceOwnerTracks;
 
 	/**

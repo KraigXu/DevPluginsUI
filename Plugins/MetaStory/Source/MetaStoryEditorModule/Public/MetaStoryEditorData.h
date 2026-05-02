@@ -249,7 +249,7 @@ public:
 	 * @return reference to the new Evaluator. 
 	 */
 	template<typename T, typename... TArgs>
-	TStateTreeEditorNode<T>& AddEvaluator(TArgs&&... InArgs)
+	TMetaStoryTypedEditorNode<T>& AddEvaluator(TArgs&&... InArgs)
 	{
 		FMetaStoryEditorNode& EditorNode = Evaluators.AddDefaulted_GetRef();
 		EditorNode.ID = FGuid::NewGuid();
@@ -263,7 +263,7 @@ public:
 		{
 			EditorNode.ExecutionRuntimeData.InitializeAs(InstanceType);
 		}
-		return static_cast<TStateTreeEditorNode<T>&>(EditorNode);
+		return static_cast<TMetaStoryTypedEditorNode<T>&>(EditorNode);
 	}
 
 	/**
@@ -271,7 +271,7 @@ public:
 	 * @return reference to the new task. 
 	 */
 	template<typename T, typename... TArgs>
-	TStateTreeEditorNode<T>& AddGlobalTask(TArgs&&... InArgs)
+	TMetaStoryTypedEditorNode<T>& AddGlobalTask(TArgs&&... InArgs)
 	{
 		FMetaStoryEditorNode& EditorNode = GlobalTasks.AddDefaulted_GetRef();
 		EditorNode.ID = FGuid::NewGuid();
@@ -285,7 +285,7 @@ public:
 		{
 			EditorNode.ExecutionRuntimeData.InitializeAs(InstanceType);
 		}
-		return static_cast<TStateTreeEditorNode<T>&>(EditorNode);
+		return static_cast<TMetaStoryTypedEditorNode<T>&>(EditorNode);
 	}
 
 	/**

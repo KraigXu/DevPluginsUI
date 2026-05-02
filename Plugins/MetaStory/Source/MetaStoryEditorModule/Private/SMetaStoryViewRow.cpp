@@ -45,9 +45,9 @@ namespace UE::MetaStory::Editor
 	static constexpr FLinearColor IconTint = FLinearColor(1, 1, 1, 0.5f);
 } // UE:MetaStory::Editor
 
-void SMetaStoryViewRow::Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& InOwnerTableView, TWeakObjectPtr<UMetaStoryState> InState, const TSharedPtr<SScrollBox>& ViewBox, TSharedPtr<FMetaStoryViewModel> InStateTreeViewModel)
+void SMetaStoryViewRow::Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& InOwnerTableView, TWeakObjectPtr<UMetaStoryState> InState, const TSharedPtr<SScrollBox>& ViewBox, TSharedPtr<FMetaStoryViewModel> InMetaStoryViewModel)
 {
-	MetaStoryViewModel = InStateTreeViewModel;
+	MetaStoryViewModel = InMetaStoryViewModel;
 	WeakState = InState;
 	const UMetaStoryState* State = InState.Get();
 	WeakEditorData = State != nullptr ? State->GetTypedOuter<UMetaStoryEditorData>() : nullptr;
@@ -1152,7 +1152,7 @@ void SMetaStoryViewRow::MakeFlagsWidget()
 	FlagsContainer->SetPadding(FMargin(0.0f));
 	FlagsContainer->SetContent(SNullWidget::NullWidget);
 
-	const UMetaStory* MetaStory = MetaStoryViewModel ? MetaStoryViewModel->GetStateTree() : nullptr;
+	const UMetaStory* MetaStory = MetaStoryViewModel ? MetaStoryViewModel->GetMetaStory() : nullptr;
 	const UMetaStoryState* State = WeakState.Get();
 	const bool bDisplayFlags = EnumHasAllFlags(GetDefault<UMetaStoryEditorUserSettings>()->GetStatesViewDisplayNodeType(), EMetaStoryEditorUserSettingsNodeType::Flag);
 	static constexpr FLinearColor IconTint = FLinearColor(1.0f, 1.0f, 1.0f, 0.5f);
@@ -2184,7 +2184,7 @@ bool SMetaStoryViewRow::HandleVerifyNodeLabelTextChanged(const FText& InText, FT
 			return NewName.Len() > 0;
 		}
 	}
-	OutErrorMessage = LOCTEXT("VerifyNodeLabelFailed", "Invalid State Tree");
+	OutErrorMessage = LOCTEXT("VerifyNodeLabelFailed", "Invalid node");
 	return false;
 }
 

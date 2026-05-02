@@ -27,7 +27,7 @@ struct FMetaStoryConditionBase : public FMetaStoryNodeBase
 
 	/**
 	 * Called when a new state is entered and task is part of active states.
-	 * Note: The condition instance data is shared between all the uses a State Tree asset.
+	 * Note: The condition instance data is shared between all the uses a MetaStory asset.
 	 *       You should not modify the instance data in this callback.    
 	 * @param Context Reference to current execution context.
 	 * @param Transition Describes the states involved in the transition
@@ -37,7 +37,7 @@ struct FMetaStoryConditionBase : public FMetaStoryNodeBase
 
 	/**
 	 * Called when a current state is exited and task is part of active states.
-	 * Note: The condition instance data is shared between all the uses a State Tree asset.
+	 * Note: The condition instance data is shared between all the uses a MetaStory asset.
 	 *       You should not modify the instance data in this callback.    
 	 * @param Context Reference to current execution context.
 	 * @param Transition Describes the states involved in the transition
@@ -47,7 +47,7 @@ struct FMetaStoryConditionBase : public FMetaStoryNodeBase
 	/**
 	 * Called right after a state has been completed, but before new state has been selected. StateCompleted is called in reverse order to allow to propagate state to other Tasks that
 	 * are executed earlier in the tree. Note that StateCompleted is not called if conditional transition changes the state.
-	 * Note: The condition instance data is shared between all the uses a State Tree asset.
+	 * Note: The condition instance data is shared between all the uses a MetaStory asset.
 	 *       You should not modify the instance data in this callback.    
 	 * @param Context Reference to current execution context.
 	 * @param CompletionStatus Describes the running status of the completed state (Succeeded/Failed).

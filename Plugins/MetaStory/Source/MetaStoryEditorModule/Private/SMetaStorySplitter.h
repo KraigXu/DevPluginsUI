@@ -12,7 +12,7 @@ namespace UE::MetaStory::Diff
 {
 class FAsyncDiff;
 
-/** Splitter that allows you to provide an FAsyncStateTreeViewDiff to connect like-properties between two or more state tree panels */
+/** Splitter that allows you to provide an FAsyncMetaStoryViewDiff to connect like-properties between two or more MetaStory panels */
 class SDiffSplitter : public SCompoundWidget
 {
 public:

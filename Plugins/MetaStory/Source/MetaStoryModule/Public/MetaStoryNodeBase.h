@@ -109,7 +109,7 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 
 	/**
 	 * Called when the MetaStory asset is linked. Allows to resolve references to other MetaStory data.
-	 * @see TStateTreeExternalDataHandle
+	 * @see TMetaStoryExternalDataHandle
 	 * @param Linker Reference to the linker
 	 * @return true if linking succeeded. 
 	 */
@@ -120,7 +120,7 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 
 #if WITH_EDITOR
 	/**
-	 * Called during State Tree compilation, allows to modify and validate the node and instance data.
+	 * Called during MetaStory compilation, allows to modify and validate the node and instance data.
 	 * The method is called with node and instance that is duplicated during compilation and used at runtime (it's different than the data used in editor).
 	 * @param ValidationMessages Any messages to report during validation. Displayed as errors if the validation result is Invalid, else as warnings.
 	 * @param CompileContext
@@ -132,7 +132,7 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 	}
 
 	/**
-	 * Called during State Tree compilation, allows to modify and validate the node and instance data.
+	 * Called during MetaStory compilation, allows to modify and validate the node and instance data.
 	 * The method is called with node and instance that is duplicated during compilation and used at runtime (it's different than the data used in editor).  
 	 * @param InstanceDataView Pointer to the instance data.
 	 * @param ValidationMessages Any messages to report during validation. Displayed as errors if the validation result is Invalid, else as warnings.
@@ -202,7 +202,7 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 #endif
 
 	/**
-	 * Called after the state tree asset that contains this node is loaded from disk.
+	 * Called after the MetaStory asset that contains this node is loaded from disk.
 	 * @param InstanceDataView view to the instance data, can be struct or class.
 	 */
 	virtual void PostLoad(FMetaStoryDataView InstanceDataView) {}

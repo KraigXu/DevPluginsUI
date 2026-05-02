@@ -7,7 +7,7 @@
 #include "MetaStoryEditorData.h"
 #include "Conditions/MetaStoryCommonConditions.h"
 
-#define LOCTEXT_NAMESPACE "AITestSuite_StateTreeTest"
+#define LOCTEXT_NAMESPACE "AITestSuite_MetaStoryTest"
 
 UE_DISABLE_OPTIMIZATION_SHIP
 
@@ -38,7 +38,7 @@ struct FMetaStoryTest_PropertyPathOffset : FMetaStoryTestBase
 		return true;
 	}
 };
-IMPLEMENT_STATE_TREE_INSTANT_TEST(FMetaStoryTest_PropertyPathOffset, "System.MetaStory.PropertyPath.Offset");
+IMPLEMENT_METASTORY_INSTANT_TEST(FMetaStoryTest_PropertyPathOffset, "System.MetaStory.PropertyPath.Offset");
 
 struct FMetaStoryTest_PropertyPathParseFail : FMetaStoryTestBase
 {
@@ -77,7 +77,7 @@ struct FMetaStoryTest_PropertyPathParseFail : FMetaStoryTestBase
 		return true;
 	}
 };
-IMPLEMENT_STATE_TREE_INSTANT_TEST(FMetaStoryTest_PropertyPathParseFail, "System.MetaStory.PropertyPath.ParseFail");
+IMPLEMENT_METASTORY_INSTANT_TEST(FMetaStoryTest_PropertyPathParseFail, "System.MetaStory.PropertyPath.ParseFail");
 
 struct FMetaStoryTest_PropertyPathOffsetFail : FMetaStoryTestBase
 {
@@ -101,7 +101,7 @@ struct FMetaStoryTest_PropertyPathOffsetFail : FMetaStoryTestBase
 		return true;
 	}
 };
-IMPLEMENT_STATE_TREE_INSTANT_TEST(FMetaStoryTest_PropertyPathOffsetFail, "System.MetaStory.PropertyPath.OffsetFail");
+IMPLEMENT_METASTORY_INSTANT_TEST(FMetaStoryTest_PropertyPathOffsetFail, "System.MetaStory.PropertyPath.OffsetFail");
 
 struct FMetaStoryTest_PropertyPathObject : FMetaStoryTestBase
 {
@@ -125,7 +125,7 @@ struct FMetaStoryTest_PropertyPathObject : FMetaStoryTestBase
 		return true;
 	}
 };
-IMPLEMENT_STATE_TREE_INSTANT_TEST(FMetaStoryTest_PropertyPathObject, "System.MetaStory.PropertyPath.Object");
+IMPLEMENT_METASTORY_INSTANT_TEST(FMetaStoryTest_PropertyPathObject, "System.MetaStory.PropertyPath.Object");
 
 struct FMetaStoryTest_PropertyPathWrongObject : FMetaStoryTestBase
 {
@@ -167,7 +167,7 @@ struct FMetaStoryTest_PropertyPathWrongObject : FMetaStoryTestBase
 		return true;
 	}
 };
-IMPLEMENT_STATE_TREE_INSTANT_TEST(FMetaStoryTest_PropertyPathWrongObject, "System.MetaStory.PropertyPath.WrongObject");
+IMPLEMENT_METASTORY_INSTANT_TEST(FMetaStoryTest_PropertyPathWrongObject, "System.MetaStory.PropertyPath.WrongObject");
 
 struct FMetaStoryTest_PropertyPathArray : FMetaStoryTestBase
 {
@@ -199,7 +199,7 @@ struct FMetaStoryTest_PropertyPathArray : FMetaStoryTestBase
 		return true;
 	}
 };
-IMPLEMENT_STATE_TREE_INSTANT_TEST(FMetaStoryTest_PropertyPathArray, "System.MetaStory.PropertyPath.Array");
+IMPLEMENT_METASTORY_INSTANT_TEST(FMetaStoryTest_PropertyPathArray, "System.MetaStory.PropertyPath.Array");
 
 struct FMetaStoryTest_PropertyPathArrayInvalidIndex : FMetaStoryTestBase
 {
@@ -224,7 +224,7 @@ struct FMetaStoryTest_PropertyPathArrayInvalidIndex : FMetaStoryTestBase
 		return true;
 	}
 };
-IMPLEMENT_STATE_TREE_INSTANT_TEST(FMetaStoryTest_PropertyPathArrayInvalidIndex, "System.MetaStory.PropertyPath.ArrayInvalidIndex");
+IMPLEMENT_METASTORY_INSTANT_TEST(FMetaStoryTest_PropertyPathArrayInvalidIndex, "System.MetaStory.PropertyPath.ArrayInvalidIndex");
 
 struct FMetaStoryTest_PropertyPathArrayOfStructs : FMetaStoryTestBase
 {
@@ -276,7 +276,7 @@ struct FMetaStoryTest_PropertyPathArrayOfStructs : FMetaStoryTestBase
 		return true;
 	}
 };
-IMPLEMENT_STATE_TREE_INSTANT_TEST(FMetaStoryTest_PropertyPathArrayOfStructs, "System.MetaStory.PropertyPath.ArrayOfStructs");
+IMPLEMENT_METASTORY_INSTANT_TEST(FMetaStoryTest_PropertyPathArrayOfStructs, "System.MetaStory.PropertyPath.ArrayOfStructs");
 
 struct FMetaStoryTest_PropertyPathArrayOfInstancedObjects : FMetaStoryTestBase
 {
@@ -329,7 +329,7 @@ struct FMetaStoryTest_PropertyPathArrayOfInstancedObjects : FMetaStoryTestBase
 		return true;
 	}
 };
-IMPLEMENT_STATE_TREE_INSTANT_TEST(FMetaStoryTest_PropertyPathArrayOfInstancedObjects, "System.MetaStory.PropertyPath.ArrayOfInstancedObjects");
+IMPLEMENT_METASTORY_INSTANT_TEST(FMetaStoryTest_PropertyPathArrayOfInstancedObjects, "System.MetaStory.PropertyPath.ArrayOfInstancedObjects");
 
 } // namespace UE::MetaStory::Tests
 

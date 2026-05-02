@@ -197,19 +197,19 @@ void SDiffWidget::HandleAssetEditorRequestClose(UObject* Asset, const EAssetEdit
 	}
 }
 
-TSharedRef<SDiffWidget> SDiffWidget::CreateDiffWindow(const FText WindowTitle, TNotNull<const UMetaStory*> OldStateTree, TNotNull<const UMetaStory*> NewStateTree, const FRevisionInfo& OldRevision, const FRevisionInfo& NewRevision)
+TSharedRef<SDiffWidget> SDiffWidget::CreateDiffWindow(const FText WindowTitle, TNotNull<const UMetaStory*> OldMetaStory, TNotNull<const UMetaStory*> NewMetaStory, const FRevisionInfo& OldRevision, const FRevisionInfo& NewRevision)
 {
 	// sometimes we're comparing different revisions of one single asset (other
 	// times we're comparing two completely separate assets altogether)
-	const bool bIsSingleAsset = (NewStateTree->GetName() == OldStateTree->GetName());
+	const bool bIsSingleAsset = (NewMetaStory->GetName() == OldMetaStory->GetName());
 
 	const TSharedPtr<SWindow> Window = SNew(SWindow)
 		.Title(WindowTitle)
 		.ClientSize(FVector2D(1000.f, 800.f));
 
 	TSharedRef<SDiffWidget> MetaStoryDiff = SNew(SDiffWidget)
-		.OldAsset(OldStateTree)
-		.NewAsset(NewStateTree)
+		.OldAsset(OldMetaStory)
+		.NewAsset(NewMetaStory)
 		.OldRevision(OldRevision)
 		.NewRevision(NewRevision)
 		.ShowAssetNames(!bIsSingleAsset)
@@ -231,24 +231,24 @@ TSharedRef<SDiffWidget> SDiffWidget::CreateDiffWindow(const FText WindowTitle, T
 	return MetaStoryDiff;
 }
 
-TSharedRef<SDiffWidget> SDiffWidget::CreateDiffWindow(TNotNull<const UMetaStory*> OldStateTree, TNotNull<const UMetaStory*> NewStateTree,
+TSharedRef<SDiffWidget> SDiffWidget::CreateDiffWindow(TNotNull<const UMetaStory*> OldMetaStory, TNotNull<const UMetaStory*> NewMetaStory,
 	const FRevisionInfo& OldRevision, const FRevisionInfo& NewRevision, const UClass* MetaStoryClass)
 {
 	// sometimes we're comparing different revisions of one single asset (other
 	// times we're comparing two completely separate assets altogether)
 	//@TODO use pathname instead of asset name.
-	const bool bIsSingleAsset = NewStateTree->GetFName() == OldStateTree->GetFName();
+	const bool bIsSingleAsset = NewMetaStory->GetFName() == OldMetaStory->GetFName();
 
-	FText WindowTitle = FText::Format(LOCTEXT("NamelessStateTreeDiff", "{0} Diff (experimental)"), MetaStoryClass->GetDisplayNameText());
+	FText WindowTitle = FText::Format(LOCTEXT("NamelessMetaStoryDiff", "{0} Diff (experimental)"), MetaStoryClass->GetDisplayNameText());
 	// if we're diffing one asset against itself
 	if (bIsSingleAsset)
 	{
 		// identify the assumed single asset in the window's title
-		const FString STName = NewStateTree->GetName();
-		WindowTitle = FText::Format(LOCTEXT("NamedStateTreeDiff", "{0} - {1} Diff (experimental)"), FText::FromString(STName), MetaStoryClass->GetDisplayNameText());
+		const FString STName = NewMetaStory->GetName();
+		WindowTitle = FText::Format(LOCTEXT("NamedMetaStoryDiff", "{0} - {1} Diff (experimental)"), FText::FromString(STName), MetaStoryClass->GetDisplayNameText());
 	}
 
-	return CreateDiffWindow(WindowTitle, OldStateTree, NewStateTree, OldRevision, NewRevision);
+	return CreateDiffWindow(WindowTitle, OldMetaStory, NewMetaStory, OldRevision, NewRevision);
 }
 
 void SDiffWidget::NextDiff() const
@@ -282,11 +282,11 @@ void SDiffWidget::GenerateDifferencesList()
 
 void SDiffWidget::GenerateDiffPanel()
 {
-	const UMetaStory* OldStateTree = OldAssetPanel.MetaStory.Get();
-	const UMetaStory* NewStateTree = NewAssetPanel.MetaStory.Get();
+	const UMetaStory* OldMetaStory = OldAssetPanel.MetaStory.Get();
+	const UMetaStory* NewMetaStory = NewAssetPanel.MetaStory.Get();
 	MetaStoryPanel.DiffControl = MakeShared<FDiffControl>(
-		OldStateTree,
-		NewStateTree,
+		OldMetaStory,
+		NewMetaStory,
 		FOnDiffEntryFocused{});
 	MetaStoryPanel.DiffControl->GenerateTreeEntries(Differences);
 	MetaStoryPanel.DiffControl->GetOnStateDiffEntryFocused().AddSP(this, &SDiffWidget::HandleStateDiffEntryFocused);
@@ -297,16 +297,16 @@ void SDiffWidget::GenerateDiffPanel()
 		DiffSplitter->AddSlot(
 			SDiffSplitter::Slot()
 			.Value(0.5f)
-			.MetaStoryView(MetaStoryPanel.DiffControl->GetDetailsWidget(OldStateTree))
-			.MetaStory(OldStateTree));
+			.MetaStoryView(MetaStoryPanel.DiffControl->GetDetailsWidget(OldMetaStory))
+			.MetaStory(OldMetaStory));
 	}
 	if (NewAssetPanel.MetaStory)
 	{
 		DiffSplitter->AddSlot(
 			SDiffSplitter::Slot()
 			.Value(0.5f)
-			.MetaStoryView(MetaStoryPanel.DiffControl->GetDetailsWidget(NewStateTree))
-			.MetaStory(NewStateTree));
+			.MetaStoryView(MetaStoryPanel.DiffControl->GetDetailsWidget(NewMetaStory))
+			.MetaStory(NewMetaStory));
 	}
 	MetaStoryPanel.Splitter = DiffSplitter;
 }
@@ -317,23 +317,23 @@ void SDiffWidget::HandleStateDiffEntryFocused(const FSingleDiffEntry& StateDiff)
 	const FStateSoftPath RightStatePath = StateDiff.SecondaryIdentifier ? StateDiff.SecondaryIdentifier : StateDiff.Identifier;
 	MetaStoryPanel.Splitter->HandleSelectionChanged(LeftStatePath, RightStatePath);
 
-	const UMetaStory* OldStateTree = OldAssetPanel.MetaStory.Get();
-	const UMetaStory* NewStateTree = NewAssetPanel.MetaStory.Get();
-	const UMetaStoryState* OldState = OldStateTree != nullptr ? LeftStatePath.ResolvePath(OldStateTree) : nullptr;
-	const UMetaStoryState* NewState = NewStateTree != nullptr ? RightStatePath.ResolvePath(NewStateTree) : nullptr;
+	const UMetaStory* OldMetaStory = OldAssetPanel.MetaStory.Get();
+	const UMetaStory* NewMetaStory = NewAssetPanel.MetaStory.Get();
+	const UMetaStoryState* OldState = OldMetaStory != nullptr ? LeftStatePath.ResolvePath(OldMetaStory) : nullptr;
+	const UMetaStoryState* NewState = NewMetaStory != nullptr ? RightStatePath.ResolvePath(NewMetaStory) : nullptr;
 
-	// If comparing states that exist in both state trees display them in the details diff view
+	// If comparing states that exist in both MetaStorys display them in the details diff view
 	if (OldState && NewState)
 	{
 		SetDetailsDiff(OldState, NewState);
 
 	}
-	// If we clear selection on both state trees we can display an empty details diff view
+	// If we clear selection on both MetaStorys we can display an empty details diff view
 	else if (!OldState && !NewState)
 	{
 		SetDetailsDiff();
 	}
-	// If the state only exists in one of the state trees (either added or removed), details diff view will not work.
+	// If the state only exists in one of the MetaStorys (either added or removed), details diff view will not work.
 	else
 	{
 		// So the states are put into separate details views
@@ -404,12 +404,12 @@ void SDiffWidget::SetDetailsDiff(const UMetaStoryState* OldState, const UMetaSto
 		StateBindingDiffs.Reset(MetaStoryPanel.DiffControl->GetBindingDifferences().Num());
 		for (const FSingleDiffEntry& BindingDiff : MetaStoryPanel.DiffControl->GetBindingDifferences())
 		{
-			const UMetaStory* OldStateTree = OldAssetPanel.MetaStory.Get();
-			const UMetaStory* NewStateTree = NewAssetPanel.MetaStory.Get();
-			if (OldStateTree != nullptr
-				&& NewStateTree != nullptr
-				&& BindingDiff.Identifier.ResolvePath(OldStateTree) == OldState
-				&& BindingDiff.SecondaryIdentifier.ResolvePath(NewStateTree) == NewState)
+			const UMetaStory* OldMetaStory = OldAssetPanel.MetaStory.Get();
+			const UMetaStory* NewMetaStory = NewAssetPanel.MetaStory.Get();
+			if (OldMetaStory != nullptr
+				&& NewMetaStory != nullptr
+				&& BindingDiff.Identifier.ResolvePath(OldMetaStory) == OldState
+				&& BindingDiff.SecondaryIdentifier.ResolvePath(NewMetaStory) == NewState)
 			{
 				StateBindingDiffs.Push(BindingDiff);
 			}
@@ -427,7 +427,7 @@ void SDiffWidget::SetDetailsDiff(const UMetaStoryState* OldState, const UMetaSto
 		.OldRevision(OldAssetPanel.RevisionInfo)
 		.NewRevision(NewAssetPanel.RevisionInfo)
 		.ShowAssetNames(false)
-		.OnCustomizeDetailsWidget_Static(&SDiffWidget::AddStateTreeExtensionToDetailsView)
+		.OnCustomizeDetailsWidget_Static(&SDiffWidget::AddMetaStoryExtensionToDetailsView)
 		.OnGenerateCustomDiffEntries(this, &SDiffWidget::AddBindingDiffToDiffEntries)
 		.OnOrganizeDiffEntries_Static(&SDiffWidget::OrganizeDiffEntries, OldState, NewState)
 		.OnGenerateCustomDiffEntryWidget_Static(&SDiffWidget::GenerateCustomDiffEntryWidget, OldState, NewState)
@@ -653,7 +653,7 @@ FLinearColor SDiffWidget::GetRowHighlightColor(const TUniquePtr<FAsyncDetailView
 	}
 }
 
-void SDiffWidget::AddStateTreeExtensionToDetailsView(const TSharedRef<IDetailsView>& DetailsView)
+void SDiffWidget::AddMetaStoryExtensionToDetailsView(const TSharedRef<IDetailsView>& DetailsView)
 {
 	DetailsView->SetExtensionHandler(MakeShared<FMetaStoryBindingExtension>().ToSharedPtr());
 }

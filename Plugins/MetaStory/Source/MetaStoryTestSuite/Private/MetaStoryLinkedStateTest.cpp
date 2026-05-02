@@ -9,7 +9,7 @@
 #include "MetaStoryCompiler.h"
 #include "Conditions/MetaStoryCommonConditions.h"
 
-#define LOCTEXT_NAMESPACE "AITestSuite_StateTreeTest"
+#define LOCTEXT_NAMESPACE "AITestSuite_MetaStoryTest"
 
 UE_DISABLE_OPTIMIZATION_SHIP
 
@@ -53,15 +53,15 @@ struct FMetaStoryTest_FailEnterLinkedAsset : FMetaStoryTestBase
 		FMetaStoryCompilerLog Log;
 
 		// Asset 2
-		UMetaStory& MetaStory2 = NewStateTree();
+		UMetaStory& MetaStory2 = NewMetaStory();
 		UMetaStoryEditorData& EditorData2 = *Cast<UMetaStoryEditorData>(MetaStory2.EditorData);
 		UMetaStoryState& Root2 = EditorData2.AddSubTree(FName(TEXT("Root2")));
-		TStateTreeEditorNode<FTestTask_Stand>& Task2 = Root2.AddTask<FTestTask_Stand>(FName(TEXT("Task2")));
-		TStateTreeEditorNode<FTestTask_Stand>& GlobalTask2 = EditorData2.AddGlobalTask<FTestTask_Stand>(FName(TEXT("GlobalTask2")));
+		TMetaStoryTypedEditorNode<FTestTask_Stand>& Task2 = Root2.AddTask<FTestTask_Stand>(FName(TEXT("Task2")));
+		TMetaStoryTypedEditorNode<FTestTask_Stand>& GlobalTask2 = EditorData2.AddGlobalTask<FTestTask_Stand>(FName(TEXT("GlobalTask2")));
 		GlobalTask2.GetInstanceData().Value = 123;
 
 		// Always failing enter condition
-		TStateTreeEditorNode<FMetaStoryCompareIntCondition>& IntCond2 = Root2.AddEnterCondition<FMetaStoryCompareIntCondition>();
+		TMetaStoryTypedEditorNode<FMetaStoryCompareIntCondition>& IntCond2 = Root2.AddEnterCondition<FMetaStoryCompareIntCondition>();
 		EditorData2.AddPropertyBinding(GlobalTask2, TEXT("Value"), IntCond2, TEXT("Left"));
 		IntCond2.GetInstanceData().Right = 0;
 
@@ -70,7 +70,7 @@ struct FMetaStoryTest_FailEnterLinkedAsset : FMetaStoryTestBase
 		AITEST_TRUE(TEXT("MetaStory2 should get compiled"), bResult2);
 
 		// Main asset
-		UMetaStory& MetaStory = NewStateTree();
+		UMetaStory& MetaStory = NewMetaStory();
 		UMetaStoryEditorData& EditorData = *Cast<UMetaStoryEditorData>(MetaStory.EditorData);
 
 		UMetaStoryState& Root = EditorData.AddSubTree(FName(TEXT("Root1")));
@@ -78,7 +78,7 @@ struct FMetaStoryTest_FailEnterLinkedAsset : FMetaStoryTestBase
 		A1.SetLinkedStateAsset(&MetaStory2);
 
 		UMetaStoryState& B1 = Root.AddChildState(FName(TEXT("B1")), EMetaStoryStateType::State);
-		TStateTreeEditorNode<FTestTask_Stand>& Task1 = B1.AddTask<FTestTask_Stand>(FName(TEXT("Task1")));
+		TMetaStoryTypedEditorNode<FTestTask_Stand>& Task1 = B1.AddTask<FTestTask_Stand>(FName(TEXT("Task1")));
 
 		FMetaStoryCompiler Compiler(Log);
 		const bool bResult = Compiler.Compile(MetaStory);
@@ -90,7 +90,7 @@ struct FMetaStoryTest_FailEnterLinkedAsset : FMetaStoryTestBase
 		{
 			EMetaStoryRunStatus Status = EMetaStoryRunStatus::Unset;
 			FMetaStoryInstanceData InstanceData;
-			FTestStateTreeExecutionContext Exec(MetaStory, MetaStory, InstanceData);
+			FTestMetaStoryExecutionContext Exec(MetaStory, MetaStory, InstanceData);
 			const bool bInitSucceeded = Exec.IsValid();
 			AITEST_TRUE(TEXT("MetaStory should init"), bInitSucceeded);
 
@@ -107,7 +107,7 @@ struct FMetaStoryTest_FailEnterLinkedAsset : FMetaStoryTestBase
 		return true;
 	}
 };
-IMPLEMENT_STATE_TREE_INSTANT_TEST(FMetaStoryTest_FailEnterLinkedAsset, "System.MetaStory.LinkedAsset.FailEnter");
+IMPLEMENT_METASTORY_INSTANT_TEST(FMetaStoryTest_FailEnterLinkedAsset, "System.MetaStory.LinkedAsset.FailEnter");
 
 struct FMetaStoryTest_EnterAndExitLinkedAsset : FMetaStoryTestBase
 {
@@ -123,12 +123,12 @@ struct FMetaStoryTest_EnterAndExitLinkedAsset : FMetaStoryTestBase
 		//  Root2 Task2 => 1 tick
 
 		// Asset 2
-		UMetaStory& MetaStory2 = NewStateTree();
+		UMetaStory& MetaStory2 = NewMetaStory();
 		UMetaStoryEditorData& EditorData2 = *Cast<UMetaStoryEditorData>(MetaStory2.EditorData);
 		UMetaStoryState& Root2 = EditorData2.AddSubTree(FName(TEXT("Root2")));
-		TStateTreeEditorNode<FTestTask_Stand>& Task2 = Root2.AddTask<FTestTask_Stand>(FName(TEXT("Task2")));
+		TMetaStoryTypedEditorNode<FTestTask_Stand>& Task2 = Root2.AddTask<FTestTask_Stand>(FName(TEXT("Task2")));
 		Task2.GetNode().TicksToCompletion = 1;
-		TStateTreeEditorNode<FTestTask_Stand>& GlobalTask2 = EditorData2.AddGlobalTask<FTestTask_Stand>(FName(TEXT("GlobalTask2")));
+		TMetaStoryTypedEditorNode<FTestTask_Stand>& GlobalTask2 = EditorData2.AddGlobalTask<FTestTask_Stand>(FName(TEXT("GlobalTask2")));
 		GlobalTask2.GetNode().TicksToCompletion = 2;
 		{
 			FMetaStoryCompiler Compiler2(Log);
@@ -137,7 +137,7 @@ struct FMetaStoryTest_EnterAndExitLinkedAsset : FMetaStoryTestBase
 		}
 
 		// Main asset
-		UMetaStory& MetaStory = NewStateTree();
+		UMetaStory& MetaStory = NewMetaStory();
 		UMetaStoryEditorData& EditorData = *Cast<UMetaStoryEditorData>(MetaStory.EditorData);
 
 		UMetaStoryState& Root = EditorData.AddSubTree(FName(TEXT("Root1")));
@@ -146,7 +146,7 @@ struct FMetaStoryTest_EnterAndExitLinkedAsset : FMetaStoryTestBase
 		A1.SetLinkedStateAsset(&MetaStory2);
 
 		UMetaStoryState& B1 = Root.AddChildState(FName(TEXT("B1")), EMetaStoryStateType::State);
-		TStateTreeEditorNode<FTestTask_Stand>& Task1 = B1.AddTask<FTestTask_Stand>(FName(TEXT("Task1")));
+		TMetaStoryTypedEditorNode<FTestTask_Stand>& Task1 = B1.AddTask<FTestTask_Stand>(FName(TEXT("Task1")));
 		Task1.GetNode().TicksToCompletion = 1;
 		{
 			FMetaStoryCompiler Compiler(Log);
@@ -165,7 +165,7 @@ struct FMetaStoryTest_EnterAndExitLinkedAsset : FMetaStoryTestBase
 
 		{
 			FMetaStoryInstanceData InstanceData;
-			FTestStateTreeExecutionContext Exec(MetaStory, MetaStory, InstanceData);
+			FTestMetaStoryExecutionContext Exec(MetaStory, MetaStory, InstanceData);
 			const bool bInitSucceeded = Exec.IsValid();
 			AITEST_TRUE(TEXT("MetaStory should init"), bInitSucceeded);
 			{
@@ -234,7 +234,7 @@ struct FMetaStoryTest_EnterAndExitLinkedAsset : FMetaStoryTestBase
 		return true;
 	}
 };
-IMPLEMENT_STATE_TREE_INSTANT_TEST(FMetaStoryTest_EnterAndExitLinkedAsset, "System.MetaStory.LinkedAsset.EnterAndExit");
+IMPLEMENT_METASTORY_INSTANT_TEST(FMetaStoryTest_EnterAndExitLinkedAsset, "System.MetaStory.LinkedAsset.EnterAndExit");
 
 struct FMetaStoryTest_EnterAndExitLinkedAsset2 : FMetaStoryTestBase
 {
@@ -250,12 +250,12 @@ struct FMetaStoryTest_EnterAndExitLinkedAsset2 : FMetaStoryTestBase
 		//  Root2 Task2 => 1 tick
 
 		// Asset 2
-		UMetaStory& MetaStory2 = NewStateTree();
+		UMetaStory& MetaStory2 = NewMetaStory();
 		UMetaStoryEditorData& EditorData2 = *Cast<UMetaStoryEditorData>(MetaStory2.EditorData);
 		UMetaStoryState& Root2 = EditorData2.AddSubTree(FName(TEXT("Root2")));
-		TStateTreeEditorNode<FTestTask_Stand>& Task2 = Root2.AddTask<FTestTask_Stand>(FName(TEXT("Task2")));
+		TMetaStoryTypedEditorNode<FTestTask_Stand>& Task2 = Root2.AddTask<FTestTask_Stand>(FName(TEXT("Task2")));
 		Task2.GetNode().TicksToCompletion = 1;
-		TStateTreeEditorNode<FTestTask_Stand>& GlobalTask2 = EditorData2.AddGlobalTask<FTestTask_Stand>(FName(TEXT("GlobalTask2")));
+		TMetaStoryTypedEditorNode<FTestTask_Stand>& GlobalTask2 = EditorData2.AddGlobalTask<FTestTask_Stand>(FName(TEXT("GlobalTask2")));
 		GlobalTask2.GetNode().TicksToCompletion = 2;
 		{
 			FMetaStoryCompiler Compiler2(Log);
@@ -264,18 +264,18 @@ struct FMetaStoryTest_EnterAndExitLinkedAsset2 : FMetaStoryTestBase
 		}
 
 		// Main asset
-		UMetaStory& MetaStory = NewStateTree();
+		UMetaStory& MetaStory = NewMetaStory();
 		UMetaStoryEditorData& EditorData = *Cast<UMetaStoryEditorData>(MetaStory.EditorData);
 
 		UMetaStoryState& Root = EditorData.AddSubTree(FName(TEXT("Root1")));
-		TStateTreeEditorNode<FTestTask_Stand>& Task0 = Root.AddTask<FTestTask_Stand>(FName(TEXT("Task0")));
+		TMetaStoryTypedEditorNode<FTestTask_Stand>& Task0 = Root.AddTask<FTestTask_Stand>(FName(TEXT("Task0")));
 		Task0.GetNode().TicksToCompletion = 999999;
 
 		UMetaStoryState& A1 = Root.AddChildState(FName(TEXT("A1")), EMetaStoryStateType::LinkedAsset);
 		A1.SetLinkedStateAsset(&MetaStory2);
 
 		UMetaStoryState& B1 = Root.AddChildState(FName(TEXT("B1")), EMetaStoryStateType::State);
-		TStateTreeEditorNode<FTestTask_Stand>& Task1 = B1.AddTask<FTestTask_Stand>(FName(TEXT("Task1")));
+		TMetaStoryTypedEditorNode<FTestTask_Stand>& Task1 = B1.AddTask<FTestTask_Stand>(FName(TEXT("Task1")));
 		Task1.GetNode().TicksToCompletion = 1;
 		{
 			FMetaStoryCompiler Compiler(Log);
@@ -294,7 +294,7 @@ struct FMetaStoryTest_EnterAndExitLinkedAsset2 : FMetaStoryTestBase
 
 		{
 			FMetaStoryInstanceData InstanceData;
-			FTestStateTreeExecutionContext Exec(MetaStory, MetaStory, InstanceData);
+			FTestMetaStoryExecutionContext Exec(MetaStory, MetaStory, InstanceData);
 			const bool bInitSucceeded = Exec.IsValid();
 			AITEST_TRUE(TEXT("MetaStory should init"), bInitSucceeded);
 			{
@@ -372,7 +372,7 @@ struct FMetaStoryTest_EnterAndExitLinkedAsset2 : FMetaStoryTestBase
 		return true;
 	}
 };
-IMPLEMENT_STATE_TREE_INSTANT_TEST(FMetaStoryTest_EnterAndExitLinkedAsset2, "System.MetaStory.LinkedAsset.EnterAndExit2");
+IMPLEMENT_METASTORY_INSTANT_TEST(FMetaStoryTest_EnterAndExitLinkedAsset2, "System.MetaStory.LinkedAsset.EnterAndExit2");
 
 struct FMetaStoryTest_MultipleSameLinkedAsset : FMetaStoryTestBase
 {
@@ -394,7 +394,7 @@ struct FMetaStoryTest_MultipleSameLinkedAsset : FMetaStoryTestBase
 		FMetaStoryCompilerLog Log;
 
 		// Asset 2
-		UMetaStory& MetaStory2 = NewStateTree();
+		UMetaStory& MetaStory2 = NewMetaStory();
 		FGuid RootParameter_ValueID;
 		{
 			UMetaStoryEditorData& EditorData2 = *Cast<UMetaStoryEditorData>(MetaStory2.EditorData);
@@ -405,14 +405,14 @@ struct FMetaStoryTest_MultipleSameLinkedAsset : FMetaStoryTestBase
 				RootPropertyBag.SetValueInt32("Value", -111);
 				RootParameter_ValueID = RootPropertyBag.FindPropertyDescByName("Value")->ID;
 
-				TStateTreeEditorNode<FTestTask_PrintValue>& GlobalTask = EditorData2.AddGlobalTask<FTestTask_PrintValue>("Tree2GlobalTaskA");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue>& GlobalTask = EditorData2.AddGlobalTask<FTestTask_PrintValue>("Tree2GlobalTaskA");
 				GlobalTask.GetInstanceData().Value = -1;
 				EditorData2.AddPropertyBinding(FPropertyBindingPath(EditorData2.GetRootParametersGuid(), TEXT("Value")), FPropertyBindingPath(GlobalTask.ID, TEXT("Value")));
 			}
 
 			UMetaStoryState& Root = EditorData2.AddSubTree("Tree2StateRoot");
 			{
-				TStateTreeEditorNode<FTestTask_PrintValue>& Task1 = Root.AddTask<FTestTask_PrintValue>("Tree2StateRootTaskA");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue>& Task1 = Root.AddTask<FTestTask_PrintValue>("Tree2StateRootTaskA");
 				Task1.GetInstanceData().Value = -2;
 				EditorData2.AddPropertyBinding(FPropertyBindingPath(EditorData2.GetRootParametersGuid(), TEXT("Value")), FPropertyBindingPath(Task1.ID, TEXT("Value")));
 			}
@@ -422,7 +422,7 @@ struct FMetaStoryTest_MultipleSameLinkedAsset : FMetaStoryTestBase
 				Transition.bDelayTransition = true;
 				Transition.DelayDuration = 1.0;
 
-				TStateTreeEditorNode<FTestTask_PrintValue>& Task1 = State.AddTask<FTestTask_PrintValue>("Tree2StateATaskA");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue>& Task1 = State.AddTask<FTestTask_PrintValue>("Tree2StateATaskA");
 				Task1.GetInstanceData().Value = -2;
 				EditorData2.AddPropertyBinding(FPropertyBindingPath(EditorData2.GetRootParametersGuid(), TEXT("Value")), FPropertyBindingPath(Task1.ID, TEXT("Value")));
 			}
@@ -433,22 +433,22 @@ struct FMetaStoryTest_MultipleSameLinkedAsset : FMetaStoryTestBase
 		}
 
 		// Main asset
-		UMetaStory& MetaStory1 = NewStateTree();
+		UMetaStory& MetaStory1 = NewMetaStory();
 		{
 			UMetaStoryEditorData& EditorData = *Cast<UMetaStoryEditorData>(MetaStory1.EditorData);
 			{
-				TStateTreeEditorNode<FTestTask_PrintValue>& GlobalTask = EditorData.AddGlobalTask<FTestTask_PrintValue>("Tree1GlobalTaskA");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue>& GlobalTask = EditorData.AddGlobalTask<FTestTask_PrintValue>("Tree1GlobalTaskA");
 				GlobalTask.GetInstanceData().Value = 99;
 			}
 
 			UMetaStoryState& Root = EditorData.AddSubTree("Tree1StateRoot");
 			{
-				TStateTreeEditorNode<FTestTask_PrintValue>& Task1 = Root.AddTask<FTestTask_PrintValue>("Tree1StateRootTaskA");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue>& Task1 = Root.AddTask<FTestTask_PrintValue>("Tree1StateRootTaskA");
 				Task1.GetInstanceData().Value = 88;
 			}
 			{
 				UMetaStoryState& StateB = Root.AddChildState("Tree1StateA", EMetaStoryStateType::State);
-				TStateTreeEditorNode<FTestTask_PrintValue>& Task = StateB.AddTask<FTestTask_PrintValue>("Tree1StateATaskA");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue>& Task = StateB.AddTask<FTestTask_PrintValue>("Tree1StateATaskA");
 				Task.GetInstanceData().Value = 1;
 				FMetaStoryTransition& Transition = StateB.AddTransition(EMetaStoryTransitionTrigger::OnTick, EMetaStoryTransitionType::NextState);
 				Transition.bDelayTransition = true;
@@ -456,7 +456,7 @@ struct FMetaStoryTest_MultipleSameLinkedAsset : FMetaStoryTestBase
 			}
 			{
 				UMetaStoryState& StateB = Root.AddChildState("Tree1StateB", EMetaStoryStateType::State);
-				TStateTreeEditorNode<FTestTask_PrintValue>& Task = StateB.AddTask<FTestTask_PrintValue>("Tree1StateBTaskA");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue>& Task = StateB.AddTask<FTestTask_PrintValue>("Tree1StateBTaskA");
 				Task.GetInstanceData().Value = 2;
 				FMetaStoryTransition& Transition = StateB.AddTransition(EMetaStoryTransitionTrigger::OnTick, EMetaStoryTransitionType::NextState);
 				Transition.bDelayTransition = true;
@@ -485,7 +485,7 @@ struct FMetaStoryTest_MultipleSameLinkedAsset : FMetaStoryTestBase
 			}
 			{
 				UMetaStoryState& StateC = Root.AddChildState("Tree1StateC", EMetaStoryStateType::State);
-				TStateTreeEditorNode<FTestTask_PrintValue>& Task = StateC.AddTask<FTestTask_PrintValue>("Tree1StateCTaskA");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue>& Task = StateC.AddTask<FTestTask_PrintValue>("Tree1StateCTaskA");
 				Task.GetInstanceData().Value = 3;
 				FMetaStoryTransition& Transition = StateC.AddTransition(EMetaStoryTransitionTrigger::OnTick, EMetaStoryTransitionType::GotoState, &Root);
 				Transition.bDelayTransition = true;
@@ -504,7 +504,7 @@ struct FMetaStoryTest_MultipleSameLinkedAsset : FMetaStoryTestBase
 			CVarTickGlobalNodesWithHierarchy.Set(bTickGlobalNodesWithHierarchy);
 
 			FMetaStoryInstanceData InstanceData;
-			FTestStateTreeExecutionContext Exec(MetaStory1, MetaStory1, InstanceData);
+			FTestMetaStoryExecutionContext Exec(MetaStory1, MetaStory1, InstanceData);
 			{
 				const bool bInitSucceeded = Exec.IsValid();
 				AITEST_TRUE(TEXT("MetaStory should init"), bInitSucceeded);
@@ -513,7 +513,7 @@ struct FMetaStoryTest_MultipleSameLinkedAsset : FMetaStoryTestBase
 				EMetaStoryRunStatus Status = Exec.Start();
 				AITEST_EQUAL(TEXT("Start should complete with Running"), Status, EMetaStoryRunStatus::Running);
 				AITEST_TRUE(TEXT("Start should be in the correct states"), Exec.ExpectInActiveStates("Tree1StateRoot", "Tree1StateA"));
-				FTestStateTreeExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1GlobalTaskA", TEXT("EnterState99"));
+				FTestMetaStoryExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1GlobalTaskA", TEXT("EnterState99"));
 				AITEST_TRUE(TEXT("Start should enter Tree1GlobalTaskA"), LogOrder);
 				LogOrder = LogOrder.Then("Tree1StateRootTaskA", TEXT("EnterState88"));
 				AITEST_TRUE(TEXT("Start should enter Tree1StateRootTaskA"), LogOrder);
@@ -525,7 +525,7 @@ struct FMetaStoryTest_MultipleSameLinkedAsset : FMetaStoryTestBase
 				EMetaStoryRunStatus Status = Exec.Tick(1.5f); // over tick, should trigger
 				AITEST_EQUAL(TEXT("1st Tick should complete with Running"), Status, EMetaStoryRunStatus::Running);
 				AITEST_TRUE(TEXT("1st Tick should be in the correct states"), Exec.ExpectInActiveStates("Tree1StateRoot", "Tree1StateA"));
-				FTestStateTreeExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1GlobalTaskA", TEXT("Tick99"));
+				FTestMetaStoryExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1GlobalTaskA", TEXT("Tick99"));
 				AITEST_TRUE(TEXT("1st should tick tasks Tree1GlobalTaskA"), LogOrder);
 				LogOrder = LogOrder.Then("Tree1StateRootTaskA", TEXT("Tick88"));
 				AITEST_TRUE(TEXT("1st should tick tasks Tree1StateRootTaskA"), LogOrder);
@@ -537,7 +537,7 @@ struct FMetaStoryTest_MultipleSameLinkedAsset : FMetaStoryTestBase
 				EMetaStoryRunStatus Status = Exec.Tick(1.0f);
 				AITEST_EQUAL(TEXT("2nd Tick should complete with Running"), Status, EMetaStoryRunStatus::Running);
 				AITEST_TRUE(TEXT("2nd Tick should be in the correct states"), Exec.ExpectInActiveStates("Tree1StateRoot", "Tree1StateB"));
-				FTestStateTreeExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1GlobalTaskA", TEXT("Tick99"));
+				FTestMetaStoryExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1GlobalTaskA", TEXT("Tick99"));
 				AITEST_TRUE(TEXT("2nd Tick should tick Tree1GlobalTaskA"), LogOrder);
 				LogOrder = LogOrder.Then("Tree1StateRootTaskA", TEXT("Tick88"));
 				AITEST_TRUE(TEXT("2nd Tick should tick Tree1StateRootTaskA"), LogOrder);
@@ -553,7 +553,7 @@ struct FMetaStoryTest_MultipleSameLinkedAsset : FMetaStoryTestBase
 				EMetaStoryRunStatus Status = Exec.Tick(1.0f);
 				AITEST_EQUAL(TEXT("3rd Tick should complete with Running"), Status, EMetaStoryRunStatus::Running);
 				AITEST_TRUE(TEXT("3rd Tick should be in the correct states"), Exec.ExpectInActiveStates("Tree1StateRoot", "Tree1StateB"));
-				FTestStateTreeExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1GlobalTaskA", TEXT("Tick99"));
+				FTestMetaStoryExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1GlobalTaskA", TEXT("Tick99"));
 				AITEST_TRUE(TEXT("3rd should tick Tree1GlobalTaskA"), LogOrder);
 				LogOrder = LogOrder.Then("Tree1StateRootTaskA", TEXT("Tick88"));
 				AITEST_TRUE(TEXT("3rd should tick Tree1StateRootTaskA"), LogOrder);
@@ -565,7 +565,7 @@ struct FMetaStoryTest_MultipleSameLinkedAsset : FMetaStoryTestBase
 				EMetaStoryRunStatus Status = Exec.Tick(1.0f);
 				AITEST_EQUAL(TEXT("4th Tick should complete with Running"), Status, EMetaStoryRunStatus::Running);
 				AITEST_TRUE(TEXT("4th Tick should be in the correct states"), Exec.ExpectInActiveStates("Tree1StateRoot", "Tree1StateLinkedTreeA", "Tree2StateRoot", "Tree2StateA"));
-				FTestStateTreeExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1GlobalTaskA", TEXT("Tick99"));
+				FTestMetaStoryExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1GlobalTaskA", TEXT("Tick99"));
 				AITEST_TRUE(TEXT("4th Tick should tick Tree1GlobalTaskA"), LogOrder);
 				LogOrder = LogOrder.Then("Tree1StateRootTaskA", TEXT("Tick88"));
 				AITEST_TRUE(TEXT("4th Tick should tick Tree1StateRootTaskA"), LogOrder);
@@ -586,7 +586,7 @@ struct FMetaStoryTest_MultipleSameLinkedAsset : FMetaStoryTestBase
 				AITEST_TRUE(TEXT("5th Tick should be in the correct states"), Exec.ExpectInActiveStates("Tree1StateRoot", "Tree1StateLinkedTreeA", "Tree2StateRoot", "Tree2StateA"));
 				if (bTickGlobalNodesWithHierarchy)
 				{
-					FTestStateTreeExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1GlobalTaskA", TEXT("Tick99"));
+					FTestMetaStoryExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1GlobalTaskA", TEXT("Tick99"));
 					AITEST_TRUE(TEXT("5h Tick should tick Tree1GlobalTaskA"), LogOrder);
 					LogOrder = LogOrder.Then("Tree1StateRootTaskA", TEXT("Tick88"));
 					AITEST_TRUE(TEXT("5h Tick should tick Tree1StateRootTaskA"), LogOrder);
@@ -599,7 +599,7 @@ struct FMetaStoryTest_MultipleSameLinkedAsset : FMetaStoryTestBase
 				}
 				else
 				{
-					FTestStateTreeExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1GlobalTaskA", TEXT("Tick99"));
+					FTestMetaStoryExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1GlobalTaskA", TEXT("Tick99"));
 					AITEST_TRUE(TEXT("5h Tick should tick Tree1GlobalTaskA"), LogOrder);
 					LogOrder = LogOrder.Then("Tree2GlobalTaskA", TEXT("Tick111"));
 					AITEST_TRUE(TEXT("5h Tick should tick Tree2GlobalTaskA"), LogOrder);
@@ -618,7 +618,7 @@ struct FMetaStoryTest_MultipleSameLinkedAsset : FMetaStoryTestBase
 				AITEST_TRUE(TEXT("6th Tick should be in the correct states"), Exec.ExpectInActiveStates("Tree1StateRoot", "Tree1StateLinkedTreeB", "Tree2StateRoot", "Tree2StateA"));
 				if (bTickGlobalNodesWithHierarchy)
 				{
-					FTestStateTreeExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1GlobalTaskA", TEXT("Tick99"));
+					FTestMetaStoryExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1GlobalTaskA", TEXT("Tick99"));
 					AITEST_TRUE(TEXT("6th Tick should tick Tree1GlobalTaskA"), LogOrder);
 					LogOrder = LogOrder.Then("Tree1StateRootTaskA", TEXT("Tick88"));
 					AITEST_TRUE(TEXT("6th Tick should tick Tree1StateRootTaskA"), LogOrder);
@@ -642,7 +642,7 @@ struct FMetaStoryTest_MultipleSameLinkedAsset : FMetaStoryTestBase
 				}
 				else
 				{
-					FTestStateTreeExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1GlobalTaskA", TEXT("Tick99"));
+					FTestMetaStoryExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1GlobalTaskA", TEXT("Tick99"));
 					AITEST_TRUE(TEXT("6th Tick should tick Tree1GlobalTaskA"), LogOrder);
 					LogOrder = LogOrder.Then("Tree2GlobalTaskA", TEXT("Tick111"));
 					AITEST_TRUE(TEXT("6th Tick should tick Tree2GlobalTaskA"), LogOrder);
@@ -672,7 +672,7 @@ struct FMetaStoryTest_MultipleSameLinkedAsset : FMetaStoryTestBase
 		return true;
 	}
 };
-IMPLEMENT_STATE_TREE_INSTANT_TEST(FMetaStoryTest_MultipleSameLinkedAsset, "System.MetaStory.LinkedAsset.MultipleSameTree");
+IMPLEMENT_METASTORY_INSTANT_TEST(FMetaStoryTest_MultipleSameLinkedAsset, "System.MetaStory.LinkedAsset.MultipleSameTree");
 
 struct FMetaStoryTest_EmptyStateWithTickTransitionLinkedAsset : FMetaStoryTestBase
 {
@@ -692,15 +692,15 @@ struct FMetaStoryTest_EmptyStateWithTickTransitionLinkedAsset : FMetaStoryTestBa
 		FMetaStoryCompilerLog Log;
 
 		// Asset 2
-		UMetaStory& MetaStory2 = NewStateTree();
+		UMetaStory& MetaStory2 = NewMetaStory();
 		{
 			UMetaStoryEditorData& EditorData = *Cast<UMetaStoryEditorData>(MetaStory2.EditorData);
-			TStateTreeEditorNode<FTestTask_PrintValue>& GlobalTask = EditorData.AddGlobalTask<FTestTask_PrintValue>("Tree2GlobalTaskA");
+			TMetaStoryTypedEditorNode<FTestTask_PrintValue>& GlobalTask = EditorData.AddGlobalTask<FTestTask_PrintValue>("Tree2GlobalTaskA");
 			GlobalTask.GetInstanceData().Value = 21;
 
 			UMetaStoryState& Root = EditorData.AddSubTree("Tree2StateRoot");
 			{
-				TStateTreeEditorNode<FTestTask_PrintValue>& Task = Root.AddTask<FTestTask_PrintValue>("Tree2StateRootTaskA");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue>& Task = Root.AddTask<FTestTask_PrintValue>("Tree2StateRootTaskA");
 				Task.GetInstanceData().Value = 22;
 			}
 			{
@@ -710,7 +710,7 @@ struct FMetaStoryTest_EmptyStateWithTickTransitionLinkedAsset : FMetaStoryTestBa
 				Condition.GetInstanceData().bSuccess = false;
 
 				// Should never see
-				TStateTreeEditorNode<FTestTask_PrintValue>& Task = State.AddTask<FTestTask_PrintValue>("Tree2StateFailTaskA");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue>& Task = State.AddTask<FTestTask_PrintValue>("Tree2StateFailTaskA");
 				Task.GetInstanceData().Value = 23;
 			}
 			{
@@ -732,22 +732,22 @@ struct FMetaStoryTest_EmptyStateWithTickTransitionLinkedAsset : FMetaStoryTestBa
 		}
 
 		// Main asset
-		UMetaStory& MetaStory1 = NewStateTree();
+		UMetaStory& MetaStory1 = NewMetaStory();
 		{
 			UMetaStoryEditorData& EditorData = *Cast<UMetaStoryEditorData>(MetaStory1.EditorData);
 
 			{
-				TStateTreeEditorNode<FTestTask_PrintValue>& GlobalTask = EditorData.AddGlobalTask<FTestTask_PrintValue>("Tree1GlobalTaskA");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue>& GlobalTask = EditorData.AddGlobalTask<FTestTask_PrintValue>("Tree1GlobalTaskA");
 				GlobalTask.GetInstanceData().Value = 11;
 			}
 			UMetaStoryState& Root = EditorData.AddSubTree("Tree1StateRoot");
 			{
-				TStateTreeEditorNode<FTestTask_PrintValue>& Task = Root.AddTask<FTestTask_PrintValue>("Tree1StateRootTaskA");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue>& Task = Root.AddTask<FTestTask_PrintValue>("Tree1StateRootTaskA");
 				Task.GetInstanceData().Value = 12;
 			}
 			{
 				UMetaStoryState& State = Root.AddChildState("Tree1StateA", EMetaStoryStateType::State);
-				TStateTreeEditorNode<FTestTask_PrintValue>& Task = State.AddTask<FTestTask_PrintValue>("Tree1StateATaskA");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue>& Task = State.AddTask<FTestTask_PrintValue>("Tree1StateATaskA");
 				Task.GetInstanceData().Value = 13;
 
 				FMetaStoryTransition& Transition = State.AddTransition(EMetaStoryTransitionTrigger::OnTick, EMetaStoryTransitionType::NextState);
@@ -761,7 +761,7 @@ struct FMetaStoryTest_EmptyStateWithTickTransitionLinkedAsset : FMetaStoryTestBa
 			}
 			{
 				UMetaStoryState& State = Root.AddChildState("Tree1StateB", EMetaStoryStateType::State);
-				TStateTreeEditorNode<FTestTask_PrintValue>& Task = State.AddTask<FTestTask_PrintValue>("Tree1StateBTaskA");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue>& Task = State.AddTask<FTestTask_PrintValue>("Tree1StateBTaskA");
 				Task.GetInstanceData().Value = 14;
 				FMetaStoryTransition& Transition = State.AddTransition(EMetaStoryTransitionTrigger::OnTick, EMetaStoryTransitionType::GotoState, &Root);
 				Transition.bDelayTransition = true;
@@ -780,7 +780,7 @@ struct FMetaStoryTest_EmptyStateWithTickTransitionLinkedAsset : FMetaStoryTestBa
 			CVarTickGlobalNodesWithHierarchy.Set(bTickGlobalNodesWithHierarchy);
 
 			FMetaStoryInstanceData InstanceData;
-			FTestStateTreeExecutionContext Exec(MetaStory1, MetaStory1, InstanceData);
+			FTestMetaStoryExecutionContext Exec(MetaStory1, MetaStory1, InstanceData);
 			{
 				const bool bInitSucceeded = Exec.IsValid();
 				AITEST_TRUE(TEXT("MetaStory should init"), bInitSucceeded);
@@ -788,7 +788,7 @@ struct FMetaStoryTest_EmptyStateWithTickTransitionLinkedAsset : FMetaStoryTestBa
 			{
 				EMetaStoryRunStatus Status = Exec.Start();
 				AITEST_EQUAL(TEXT("Start should complete with Running"), Status, EMetaStoryRunStatus::Running);
-				FTestStateTreeExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1GlobalTaskA", TEXT("EnterState11"));
+				FTestMetaStoryExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1GlobalTaskA", TEXT("EnterState11"));
 				AITEST_TRUE(TEXT("Start enters in the correct order Tree1GlobalTaskA"), LogOrder);
 				LogOrder = LogOrder.Then("Tree1StateRootTaskA", TEXT("EnterState12"));
 				AITEST_TRUE(TEXT("Start enters in the correct order Tree1StateRootTaskA"), LogOrder);
@@ -800,7 +800,7 @@ struct FMetaStoryTest_EmptyStateWithTickTransitionLinkedAsset : FMetaStoryTestBa
 			{
 				EMetaStoryRunStatus Status = Exec.Tick(1.5f); // over tick, should trigger
 				AITEST_EQUAL(TEXT("1st Tick should complete with Running"), Status, EMetaStoryRunStatus::Running);
-				FTestStateTreeExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1GlobalTaskA", TEXT("Tick11"));
+				FTestMetaStoryExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1GlobalTaskA", TEXT("Tick11"));
 				AITEST_TRUE(TEXT("1st Tick should tick Tree1GlobalTaskA"), LogOrder);
 				LogOrder = LogOrder.Then("Tree1StateRootTaskA", TEXT("Tick12"));
 				AITEST_TRUE(TEXT("1st Tick should tick Tree1StateRootTaskA"), LogOrder);
@@ -812,7 +812,7 @@ struct FMetaStoryTest_EmptyStateWithTickTransitionLinkedAsset : FMetaStoryTestBa
 			{
 				EMetaStoryRunStatus Status = Exec.Tick(1.0f);
 				AITEST_EQUAL(TEXT("2nd Tick should complete with Running"), Status, EMetaStoryRunStatus::Running);
-				FTestStateTreeExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1GlobalTaskA", TEXT("Tick11"));
+				FTestMetaStoryExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1GlobalTaskA", TEXT("Tick11"));
 				AITEST_TRUE(TEXT("2nd Tick should tick Tree1GlobalTaskA"), LogOrder);
 				LogOrder = LogOrder.Then("Tree1StateRootTaskA", TEXT("Tick12"));
 				AITEST_TRUE(TEXT("2nd Tick should tick Tree1StateRootTaskA"), LogOrder);
@@ -820,9 +820,9 @@ struct FMetaStoryTest_EmptyStateWithTickTransitionLinkedAsset : FMetaStoryTestBa
 				AITEST_TRUE(TEXT("2nd Tick should tick Tree1StateATaskA"), LogOrder);
 				LogOrder = LogOrder.Then("Tree2GlobalTaskA", TEXT("EnterState21"));
 				AITEST_TRUE(TEXT("2nd Tick should enter Tree2GlobalTaskA"), LogOrder);
-				LogOrder = LogOrder.Then("State Tree Test Boolean Condition", TEXT("TestCondition=0"));
+				LogOrder = LogOrder.Then("MetaStory Test Boolean Condition", TEXT("TestCondition=0"));
 				AITEST_TRUE(TEXT("2nd Tick should test Bool"), LogOrder);
-				LogOrder = LogOrder.Then("State Tree Test Boolean Condition", TEXT("TestCondition=1"));
+				LogOrder = LogOrder.Then("MetaStory Test Boolean Condition", TEXT("TestCondition=1"));
 				AITEST_TRUE(TEXT("2nd Tick should test Bool"), LogOrder);
 				LogOrder = LogOrder.Then("Tree1StateATaskA", TEXT("ExitState13"));
 				AITEST_TRUE(TEXT("2nd Tick should exit Tree1StateATaskA"), LogOrder);
@@ -838,7 +838,7 @@ struct FMetaStoryTest_EmptyStateWithTickTransitionLinkedAsset : FMetaStoryTestBa
 				AITEST_TRUE(TEXT("3rd Tick should be in the correct states"), Exec.ExpectInActiveStates("Tree1StateRoot", "Tree1StateLinkedTree", "Tree2StateRoot", "Tree2StateB"));
 				if (bTickGlobalNodesWithHierarchy)
 				{
-					FTestStateTreeExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1GlobalTaskA", TEXT("Tick11"));
+					FTestMetaStoryExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1GlobalTaskA", TEXT("Tick11"));
 					AITEST_TRUE(TEXT("3rd Tick should tick Tree1GlobalTaskA"), LogOrder);
 					LogOrder = LogOrder.Then("Tree1StateRootTaskA", TEXT("Tick12"));
 					AITEST_TRUE(TEXT("3rd Tick should tick Tree1StateRootTaskA"), LogOrder);
@@ -849,7 +849,7 @@ struct FMetaStoryTest_EmptyStateWithTickTransitionLinkedAsset : FMetaStoryTestBa
 				}
 				else
 				{
-					FTestStateTreeExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1GlobalTaskA", TEXT("Tick11"));
+					FTestMetaStoryExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1GlobalTaskA", TEXT("Tick11"));
 					AITEST_TRUE(TEXT("3rd Tick should tick Tree1GlobalTaskA"), LogOrder);
 					LogOrder = LogOrder.Then("Tree2GlobalTaskA", TEXT("Tick21"));
 					AITEST_TRUE(TEXT("3rd Tick should tick Tree2GlobalTaskA"), LogOrder);
@@ -865,7 +865,7 @@ struct FMetaStoryTest_EmptyStateWithTickTransitionLinkedAsset : FMetaStoryTestBa
 				AITEST_EQUAL(TEXT("4th Tick should complete with Running"), Status, EMetaStoryRunStatus::Running);
 				if (bTickGlobalNodesWithHierarchy)
 				{
-					FTestStateTreeExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1GlobalTaskA", TEXT("Tick11"));
+					FTestMetaStoryExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1GlobalTaskA", TEXT("Tick11"));
 					AITEST_TRUE(TEXT("4th Tick should tick Tree1GlobalTaskA"), LogOrder);
 					LogOrder = LogOrder.Then("Tree1StateRootTaskA", TEXT("Tick12"));
 					AITEST_TRUE(TEXT("4th Tick should tick Tree1StateRootTaskA"), LogOrder);
@@ -882,7 +882,7 @@ struct FMetaStoryTest_EmptyStateWithTickTransitionLinkedAsset : FMetaStoryTestBa
 				}
 				else
 				{
-					FTestStateTreeExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1GlobalTaskA", TEXT("Tick11"));
+					FTestMetaStoryExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1GlobalTaskA", TEXT("Tick11"));
 					AITEST_TRUE(TEXT("4th Tick should tick Tree1GlobalTaskA"), LogOrder);
 					LogOrder = LogOrder.Then("Tree2GlobalTaskA", TEXT("Tick21"));
 					AITEST_TRUE(TEXT("4th Tick should tick Tree2GlobalTaskA"), LogOrder);
@@ -903,7 +903,7 @@ struct FMetaStoryTest_EmptyStateWithTickTransitionLinkedAsset : FMetaStoryTestBa
 			{
 				EMetaStoryRunStatus Status = Exec.Tick(0.001f);
 				AITEST_EQUAL(TEXT("5th Tick should complete with Running"), Status, EMetaStoryRunStatus::Running);
-				FTestStateTreeExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1GlobalTaskA", TEXT("Tick11"));
+				FTestMetaStoryExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1GlobalTaskA", TEXT("Tick11"));
 				AITEST_TRUE(TEXT("5th Tick should tick Tree1GlobalTaskA"), LogOrder);
 				LogOrder = LogOrder.Then("Tree1StateRootTaskA", TEXT("Tick12"));
 				AITEST_TRUE(TEXT("5th Tick should tick Tree1StateRootTaskA"), LogOrder);
@@ -918,7 +918,7 @@ struct FMetaStoryTest_EmptyStateWithTickTransitionLinkedAsset : FMetaStoryTestBa
 		return true;
 	}
 };
-IMPLEMENT_STATE_TREE_INSTANT_TEST(FMetaStoryTest_EmptyStateWithTickTransitionLinkedAsset, "System.MetaStory.LinkedAsset.EmptyStateWithTickTransition");
+IMPLEMENT_METASTORY_INSTANT_TEST(FMetaStoryTest_EmptyStateWithTickTransitionLinkedAsset, "System.MetaStory.LinkedAsset.EmptyStateWithTickTransition");
 
 struct FMetaStoryTest_RecursiveLinkedAsset : FMetaStoryTestBase
 {
@@ -933,7 +933,7 @@ struct FMetaStoryTest_RecursiveLinkedAsset : FMetaStoryTestBase
 		//		StateLinkedTreeA (Tree1) -> Next
 		//		StateA -> Succeeded
 
-		UMetaStory& MetaStory1 = NewStateTree();
+		UMetaStory& MetaStory1 = NewMetaStory();
 		UMetaStoryState* Root1 = nullptr;
 		// Asset 1 definition
 		{
@@ -946,7 +946,7 @@ struct FMetaStoryTest_RecursiveLinkedAsset : FMetaStoryTestBase
 			AITEST_TRUE(TEXT("MetaStory 1 should get compiled"), bResult);
 		}
 
-		UMetaStory& MetaStory2 = NewStateTree();
+		UMetaStory& MetaStory2 = NewMetaStory();
 		UMetaStoryState* Root2 = nullptr;
 		// Asset 2 definition
 		{
@@ -961,7 +961,7 @@ struct FMetaStoryTest_RecursiveLinkedAsset : FMetaStoryTestBase
 		// Asset 1 implementation
 		{
 			{
-				TStateTreeEditorNode<FTestTask_PrintValue>& Task1 = Root1->AddTask<FTestTask_PrintValue>("Tree1StateRootTaskA");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue>& Task1 = Root1->AddTask<FTestTask_PrintValue>("Tree1StateRootTaskA");
 				Task1.GetInstanceData().Value = 101;
 			}
 			{
@@ -972,7 +972,7 @@ struct FMetaStoryTest_RecursiveLinkedAsset : FMetaStoryTestBase
 			}
 			{
 				UMetaStoryState& StateA = Root1->AddChildState("Tree1StateA", EMetaStoryStateType::State);
-				TStateTreeEditorNode<FTestTask_PrintValue>& Task = StateA.AddTask<FTestTask_PrintValue>("Tree1StateA");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue>& Task = StateA.AddTask<FTestTask_PrintValue>("Tree1StateA");
 				Task.GetInstanceData().Value = 102;
 				FMetaStoryTransition& Transition = StateA.AddTransition(EMetaStoryTransitionTrigger::OnTick, EMetaStoryTransitionType::GotoState, Root1);
 				Transition.bDelayTransition = true;
@@ -988,7 +988,7 @@ struct FMetaStoryTest_RecursiveLinkedAsset : FMetaStoryTestBase
 		UMetaStoryState* Tree2StateLinkedTree1 = nullptr;
 		{
 			{
-				TStateTreeEditorNode<FTestTask_PrintValue>& Task1 = Root2->AddTask<FTestTask_PrintValue>("Tree2StateRootTaskA");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue>& Task1 = Root2->AddTask<FTestTask_PrintValue>("Tree2StateRootTaskA");
 				Task1.GetInstanceData().Value = 201;
 			}
 			{
@@ -1000,7 +1000,7 @@ struct FMetaStoryTest_RecursiveLinkedAsset : FMetaStoryTestBase
 			}
 			{
 				UMetaStoryState& StateD = Root2->AddChildState("Tree2StateA", EMetaStoryStateType::State);
-				TStateTreeEditorNode<FTestTask_PrintValue>& Task = StateD.AddTask<FTestTask_PrintValue>("Tree2StateA");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue>& Task = StateD.AddTask<FTestTask_PrintValue>("Tree2StateA");
 				Task.GetInstanceData().Value = 202;
 				FMetaStoryTransition& Transition = StateD.AddTransition(EMetaStoryTransitionTrigger::OnTick, EMetaStoryTransitionType::GotoState, Root2);
 				Transition.bDelayTransition = true;
@@ -1024,7 +1024,7 @@ struct FMetaStoryTest_RecursiveLinkedAsset : FMetaStoryTestBase
 		// Run test
 		{
 			FMetaStoryInstanceData InstanceData;
-			FTestStateTreeExecutionContext Exec(MetaStory1, MetaStory1, InstanceData);
+			FTestMetaStoryExecutionContext Exec(MetaStory1, MetaStory1, InstanceData);
 			{
 				const bool bInitSucceeded = Exec.IsValid();
 				AITEST_TRUE(TEXT("MetaStory should init"), bInitSucceeded);
@@ -1035,7 +1035,7 @@ struct FMetaStoryTest_RecursiveLinkedAsset : FMetaStoryTestBase
 
 				EMetaStoryRunStatus Status = Exec.Start();
 				AITEST_EQUAL(TEXT("Start should complete with Running"), Status, EMetaStoryRunStatus::Running);
-				FTestStateTreeExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1StateRootTaskA", TEXT("EnterState101"));
+				FTestMetaStoryExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1StateRootTaskA", TEXT("EnterState101"));
 				AITEST_TRUE(TEXT("Start should enter Tree1StateRootTaskA"), LogOrder);
 				LogOrder = LogOrder.Then("Tree2StateRootTaskA", TEXT("EnterState201"));
 				AITEST_TRUE(TEXT("Start should enter Tree2StateRootTaskA"), LogOrder);
@@ -1051,7 +1051,7 @@ struct FMetaStoryTest_RecursiveLinkedAsset : FMetaStoryTestBase
 	}
 };
 // This test invokes editor-only methods which aren't AutoRTFM-safe, so we skip it when AutoRTFM is on.
-IMPLEMENT_STATE_TREE_INSTANT_TEST(FMetaStoryTest_RecursiveLinkedAsset, "System.MetaStory.LinkedAsset.RecursiveLinkedAsset");
+IMPLEMENT_METASTORY_INSTANT_TEST(FMetaStoryTest_RecursiveLinkedAsset, "System.MetaStory.LinkedAsset.RecursiveLinkedAsset");
 
 struct FMetaStoryTest_LinkedAssetTransitionSameTick : FMetaStoryTestBase
 {
@@ -1066,7 +1066,7 @@ struct FMetaStoryTest_LinkedAssetTransitionSameTick : FMetaStoryTestBase
 		//	Root
 		//		State1 -> Succeeded
 
-		UMetaStory& MetaStory2 = NewStateTree();
+		UMetaStory& MetaStory2 = NewMetaStory();
 		UMetaStoryState* Root2 = nullptr;
 		// Asset 2
 		{
@@ -1083,7 +1083,7 @@ struct FMetaStoryTest_LinkedAssetTransitionSameTick : FMetaStoryTestBase
 			AITEST_TRUE(TEXT("MetaStory should not compiled"), bResult);
 		}
 		// Asset 1
-		UMetaStory& MetaStory1 = NewStateTree();
+		UMetaStory& MetaStory1 = NewMetaStory();
 		{
 			UMetaStoryState* Root1 = nullptr;
 			{
@@ -1096,12 +1096,12 @@ struct FMetaStoryTest_LinkedAssetTransitionSameTick : FMetaStoryTestBase
 				AITEST_TRUE(TEXT("MetaStory 1 should get compiled"), bResult);
 			}
 			{
-				TStateTreeEditorNode<FTestTask_PrintValue>& Task1 = Root1->AddTask<FTestTask_PrintValue>("Tree1StateRootTask1");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue>& Task1 = Root1->AddTask<FTestTask_PrintValue>("Tree1StateRootTask1");
 				Task1.GetInstanceData().Value = 100;
 			}
 			{
 				UMetaStoryState& State1 = Root1->AddChildState("Tree1State1", EMetaStoryStateType::State);
-				TStateTreeEditorNode<FTestTask_PrintValue>& Task = State1.AddTask<FTestTask_PrintValue>("Tree1State1Task1");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue>& Task = State1.AddTask<FTestTask_PrintValue>("Tree1State1Task1");
 				Task.GetInstanceData().Value = 101;
 				Task.GetInstanceData().TickRunStatus = EMetaStoryRunStatus::Succeeded;
 				State1.AddTransition(EMetaStoryTransitionTrigger::OnStateCompleted, EMetaStoryTransitionType::NextState);
@@ -1113,7 +1113,7 @@ struct FMetaStoryTest_LinkedAssetTransitionSameTick : FMetaStoryTestBase
 			}
 			{
 				UMetaStoryState& State3 = Root1->AddChildState("Tree1State3", EMetaStoryStateType::State);
-				TStateTreeEditorNode<FTestTask_PrintValue>& Task = State3.AddTask<FTestTask_PrintValue>("Tree1State3Task1");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue>& Task = State3.AddTask<FTestTask_PrintValue>("Tree1State3Task1");
 				Task.GetInstanceData().Value = 103;
 				FMetaStoryTransition& Transition = State3.AddTransition(EMetaStoryTransitionTrigger::OnTick, EMetaStoryTransitionType::GotoState, Root1);
 				Transition.bDelayTransition = true;
@@ -1129,7 +1129,7 @@ struct FMetaStoryTest_LinkedAssetTransitionSameTick : FMetaStoryTestBase
 		// Run test
 		{
 			FMetaStoryInstanceData InstanceData;
-			FTestStateTreeExecutionContext Exec(MetaStory1, MetaStory1, InstanceData);
+			FTestMetaStoryExecutionContext Exec(MetaStory1, MetaStory1, InstanceData);
 			{
 				const bool bInitSucceeded = Exec.IsValid();
 				AITEST_TRUE(TEXT("MetaStory should init"), bInitSucceeded);
@@ -1139,7 +1139,7 @@ struct FMetaStoryTest_LinkedAssetTransitionSameTick : FMetaStoryTestBase
 				EMetaStoryRunStatus Status = Exec.Start();
 				AITEST_EQUAL(TEXT("Start should complete with Running"), Status, EMetaStoryRunStatus::Running);
 				AITEST_TRUE(TEXT("In correct states"), Exec.ExpectInActiveStates("Tree1StateRoot", "Tree1State1"));
-				FTestStateTreeExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1StateRootTask1", TEXT("EnterState100"));
+				FTestMetaStoryExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1StateRootTask1", TEXT("EnterState100"));
 				AITEST_TRUE(TEXT("Start should enter Tree1StateRootTask1"), LogOrder);
 				LogOrder = LogOrder.Then("Tree1State1Task1", TEXT("EnterState101"));
 				AITEST_TRUE(TEXT("Start should enter Tree1State1"), LogOrder);
@@ -1149,7 +1149,7 @@ struct FMetaStoryTest_LinkedAssetTransitionSameTick : FMetaStoryTestBase
 				EMetaStoryRunStatus Status = Exec.Tick(1.01f);
 				AITEST_EQUAL(TEXT("Tick should complete with Running"), Status, EMetaStoryRunStatus::Running);
 				AITEST_TRUE(TEXT("In correct states"), Exec.ExpectInActiveStates("Tree1StateRoot", "Tree1State2LinkedTree2", "Tree2StateRoot", "Tree2State1"));
-				FTestStateTreeExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1StateRootTask1", TEXT("Tick100"));
+				FTestMetaStoryExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1StateRootTask1", TEXT("Tick100"));
 				AITEST_TRUE(TEXT("Start should tick Tree1StateRootTask1"), LogOrder);
 				LogOrder = LogOrder.Then("Tree1State1Task1", TEXT("Tick101"));
 				AITEST_TRUE(TEXT("Start should tick Tree1State1"), LogOrder);
@@ -1162,7 +1162,7 @@ struct FMetaStoryTest_LinkedAssetTransitionSameTick : FMetaStoryTestBase
 				EMetaStoryRunStatus Status = Exec.Tick(1.01f);
 				AITEST_EQUAL(TEXT("Tick should complete with Running"), Status, EMetaStoryRunStatus::Running);
 				AITEST_TRUE(TEXT("In correct states"), Exec.ExpectInActiveStates("Tree1StateRoot", "Tree1State3"));
-				FTestStateTreeExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1StateRootTask1", TEXT("Tick100"));
+				FTestMetaStoryExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1StateRootTask1", TEXT("Tick100"));
 				AITEST_TRUE(TEXT("Start should tick Tree1StateRootTask1"), LogOrder);
 				LogOrder = LogOrder.Then("Tree1State3Task1", TEXT("EnterState103"));
 				AITEST_TRUE(TEXT("Start should enter Tree1State3"), LogOrder);
@@ -1178,7 +1178,7 @@ struct FMetaStoryTest_LinkedAssetTransitionSameTick : FMetaStoryTestBase
 				EMetaStoryRunStatus Status = Exec.Tick(1.01f);
 				AITEST_EQUAL(TEXT("Tick should complete with Running"), Status, EMetaStoryRunStatus::Running);
 				AITEST_TRUE(TEXT("In correct states"), Exec.ExpectInActiveStates("Tree1StateRoot", "Tree1State1"));
-				FTestStateTreeExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1StateRootTask1", TEXT("Tick100"));
+				FTestMetaStoryExecutionContext::FLogOrder LogOrder = Exec.Expect("Tree1StateRootTask1", TEXT("Tick100"));
 				AITEST_TRUE(TEXT("Start should tick Tree1StateRootTask1"), LogOrder);
 				LogOrder = LogOrder.Then("Tree1State3Task1", TEXT("ExitState103"));
 				AITEST_TRUE(TEXT("Start should exit Tree1State3"), LogOrder);
@@ -1192,7 +1192,7 @@ struct FMetaStoryTest_LinkedAssetTransitionSameTick : FMetaStoryTestBase
 		return true;
 	}
 };
-IMPLEMENT_STATE_TREE_INSTANT_TEST(FMetaStoryTest_LinkedAssetTransitionSameTick, "System.MetaStory.LinkedAsset.TransitionSameTick");
+IMPLEMENT_METASTORY_INSTANT_TEST(FMetaStoryTest_LinkedAssetTransitionSameTick, "System.MetaStory.LinkedAsset.TransitionSameTick");
 
 struct FMetaStoryTest_Linked_GlobalParameter : FMetaStoryTestBase
 {
@@ -1226,7 +1226,7 @@ struct FMetaStoryTest_Linked_GlobalParameter : FMetaStoryTestBase
 		FGuid Tree2GlobalParameter_ValueID_Int;
 
 		// Tree 2
-		UMetaStory& MetaStory2 = NewStateTree();
+		UMetaStory& MetaStory2 = NewMetaStory();
 		{
 			UMetaStoryEditorData& EditorData2 = *Cast<UMetaStoryEditorData>(MetaStory2.EditorData);
 			
@@ -1235,13 +1235,13 @@ struct FMetaStoryTest_Linked_GlobalParameter : FMetaStoryTestBase
 			Tree2GlobalParameter_ValueID_Int = AddInt(GetRootPropertyBag(EditorData2), "Tree2GlobalInt");
 
 			// Global tasks
-			TStateTreeEditorNode<FTestTask_PrintValue>& GlobalTask1 = EditorData2.AddGlobalTask<FTestTask_PrintValue>("Tree2GlobalTask1");
+			TMetaStoryTypedEditorNode<FTestTask_PrintValue>& GlobalTask1 = EditorData2.AddGlobalTask<FTestTask_PrintValue>("Tree2GlobalTask1");
 			{
 				GlobalTask1.GetInstanceData().Value = -1;
 				EditorData2.AddPropertyBinding(FPropertyBindingPath(EditorData2.GetRootParametersGuid(), "Tree2GlobalInt"), FPropertyBindingPath(GlobalTask1.ID, "Value"));
 			}
 			{
-				TStateTreeEditorNode<FTestTask_PrintValue>& GlobalTask2 = EditorData2.AddGlobalTask<FTestTask_PrintValue>("Tree2GlobalTask2");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue>& GlobalTask2 = EditorData2.AddGlobalTask<FTestTask_PrintValue>("Tree2GlobalTask2");
 				GlobalTask2.GetInstanceData().Value = -2;
 				EditorData2.AddPropertyBinding(FPropertyBindingPath(GlobalTask1.ID, "Value"), FPropertyBindingPath(GlobalTask2.ID, "Value"));
 			}
@@ -1253,15 +1253,15 @@ struct FMetaStoryTest_Linked_GlobalParameter : FMetaStoryTestBase
 				EditorData2.AddPropertyBinding(FPropertyBindingPath(EditorData2.GetRootParametersGuid(), "Tree2GlobalInt"), FPropertyBindingPath(Root.Parameters.ID, "Tree2StateRootParametersInt"));
 			}
 			{
-				TStateTreeEditorNode<FTestTask_PrintValue>& Task1 = Root.AddTask<FTestTask_PrintValue>("Tree2StateRootTask1");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue>& Task1 = Root.AddTask<FTestTask_PrintValue>("Tree2StateRootTask1");
 				Task1.GetInstanceData().Value = -1;
 				EditorData2.AddPropertyBinding(FPropertyBindingPath(EditorData2.GetRootParametersGuid(), "Tree2GlobalInt"), FPropertyBindingPath(Task1.ID, "Value"));
 
-				TStateTreeEditorNode<FTestTask_PrintValue>& Task2 = Root.AddTask<FTestTask_PrintValue>("Tree2StateRootTask2");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue>& Task2 = Root.AddTask<FTestTask_PrintValue>("Tree2StateRootTask2");
 				Task2.GetInstanceData().Value = -2;
 				EditorData2.AddPropertyBinding(FPropertyBindingPath(Root.Parameters.ID, "Tree2StateRootParametersInt"), FPropertyBindingPath(Task2.ID, "Value"));
 				
-				TStateTreeEditorNode<FTestTask_PrintValue>& Task3 = Root.AddTask<FTestTask_PrintValue>("Tree2StateRootTask3");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue>& Task3 = Root.AddTask<FTestTask_PrintValue>("Tree2StateRootTask3");
 				Task3.GetInstanceData().Value = -3;
 				EditorData2.AddPropertyBinding(FPropertyBindingPath(GlobalTask1.ID, "Value"), FPropertyBindingPath(Task3.ID, "Value"));
 			}
@@ -1273,19 +1273,19 @@ struct FMetaStoryTest_Linked_GlobalParameter : FMetaStoryTestBase
 					EditorData2.AddPropertyBinding(FPropertyBindingPath(Root.Parameters.ID, "Tree2StateRootParametersInt"), FPropertyBindingPath(State1.Parameters.ID, "Tree2State1ParametersInt"));
 				}
 
-				TStateTreeEditorNode<FTestTask_PrintValue>& Task1 = State1.AddTask<FTestTask_PrintValue>("Tree2State1Task1");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue>& Task1 = State1.AddTask<FTestTask_PrintValue>("Tree2State1Task1");
 				Task1.GetInstanceData().Value = -1;
 				EditorData2.AddPropertyBinding(FPropertyBindingPath(EditorData2.GetRootParametersGuid(), "Tree2GlobalInt"), FPropertyBindingPath(Task1.ID, TEXT("Value")));
 
-				TStateTreeEditorNode<FTestTask_PrintValue>& Task2 = State1.AddTask<FTestTask_PrintValue>("Tree2State1Task2");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue>& Task2 = State1.AddTask<FTestTask_PrintValue>("Tree2State1Task2");
 				Task2.GetInstanceData().Value = -2;
 				EditorData2.AddPropertyBinding(FPropertyBindingPath(Root.Parameters.ID, "Tree2StateRootParametersInt"), FPropertyBindingPath(Task2.ID, TEXT("Value")));
 
-				TStateTreeEditorNode<FTestTask_PrintValue>& Task3 = State1.AddTask<FTestTask_PrintValue>("Tree2State1Task3");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue>& Task3 = State1.AddTask<FTestTask_PrintValue>("Tree2State1Task3");
 				Task3.GetInstanceData().Value = -3;
 				EditorData2.AddPropertyBinding(FPropertyBindingPath(GlobalTask1.ID, "Value"), FPropertyBindingPath(Task3.ID, "Value"));
 
-				TStateTreeEditorNode<FTestTask_PrintValue>& Task4 = State1.AddTask<FTestTask_PrintValue>("Tree2State1Task4");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue>& Task4 = State1.AddTask<FTestTask_PrintValue>("Tree2State1Task4");
 				Task3.GetInstanceData().Value = -4;
 				EditorData2.AddPropertyBinding(FPropertyBindingPath(State1.Parameters.ID, "Tree2State1ParametersInt"), FPropertyBindingPath(Task4.ID, "Value"));
 
@@ -1299,7 +1299,7 @@ struct FMetaStoryTest_Linked_GlobalParameter : FMetaStoryTestBase
 		}
 
 		// Tree 1
-		UMetaStory& MetaStory1 = NewStateTree();
+		UMetaStory& MetaStory1 = NewMetaStory();
 		FGuid Tree1GlobalParameter_ValueID_Int;
 		{
 			UMetaStoryEditorData& EditorData1 = *Cast<UMetaStoryEditorData>(MetaStory1.EditorData);
@@ -1308,13 +1308,13 @@ struct FMetaStoryTest_Linked_GlobalParameter : FMetaStoryTestBase
 			AddDouble(GetRootPropertyBag(EditorData1), "Tree1GlobalDouble");
 
 			// Global tasks
-			TStateTreeEditorNode<FTestTask_PrintValue>& GlobalTask1 = EditorData1.AddGlobalTask<FTestTask_PrintValue>("Tree1GlobalTask1");
+			TMetaStoryTypedEditorNode<FTestTask_PrintValue>& GlobalTask1 = EditorData1.AddGlobalTask<FTestTask_PrintValue>("Tree1GlobalTask1");
 			{
 				GlobalTask1.GetInstanceData().Value = -1;
 				EditorData1.AddPropertyBinding(FPropertyBindingPath(EditorData1.GetRootParametersGuid(), "Tree1GlobalInt"), FPropertyBindingPath(GlobalTask1.ID, "Value"));
 			}
 			{
-				TStateTreeEditorNode<FTestTask_PrintValue>& GlobalTask2 = EditorData1.AddGlobalTask<FTestTask_PrintValue>("Tree1GlobalTask2");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue>& GlobalTask2 = EditorData1.AddGlobalTask<FTestTask_PrintValue>("Tree1GlobalTask2");
 				GlobalTask2.GetInstanceData().Value = -2;
 				EditorData1.AddPropertyBinding(FPropertyBindingPath(GlobalTask1.ID, "Value"), FPropertyBindingPath(GlobalTask2.ID, "Value"));
 			}
@@ -1326,15 +1326,15 @@ struct FMetaStoryTest_Linked_GlobalParameter : FMetaStoryTestBase
 				EditorData1.AddPropertyBinding(FPropertyBindingPath(EditorData1.GetRootParametersGuid(), "Tree1GlobalInt"), FPropertyBindingPath(Root.Parameters.ID, "Tree1StateRootParametersInt"));
 			}
 			{
-				TStateTreeEditorNode<FTestTask_PrintValue>& Task1 = Root.AddTask<FTestTask_PrintValue>("Tree1StateRootTask1");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue>& Task1 = Root.AddTask<FTestTask_PrintValue>("Tree1StateRootTask1");
 				Task1.GetInstanceData().Value = -1;
 				EditorData1.AddPropertyBinding(FPropertyBindingPath(EditorData1.GetRootParametersGuid(), "Tree1GlobalInt"), FPropertyBindingPath(Task1.ID, "Value"));
 
-				TStateTreeEditorNode<FTestTask_PrintValue>& Task2 = Root.AddTask<FTestTask_PrintValue>("Tree1StateRootTask2");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue>& Task2 = Root.AddTask<FTestTask_PrintValue>("Tree1StateRootTask2");
 				Task2.GetInstanceData().Value = -2;
 				EditorData1.AddPropertyBinding(FPropertyBindingPath(Root.Parameters.ID, "Tree1StateRootParametersInt"), FPropertyBindingPath(Task2.ID, "Value"));
 
-				TStateTreeEditorNode<FTestTask_PrintValue>& Task3 = Root.AddTask<FTestTask_PrintValue>("Tree1StateRootTask3");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue>& Task3 = Root.AddTask<FTestTask_PrintValue>("Tree1StateRootTask3");
 				Task3.GetInstanceData().Value = -3;
 				EditorData1.AddPropertyBinding(FPropertyBindingPath(GlobalTask1.ID, "Value"), FPropertyBindingPath(Task3.ID, "Value"));
 			}
@@ -1358,7 +1358,7 @@ struct FMetaStoryTest_Linked_GlobalParameter : FMetaStoryTestBase
 				AddDouble(Sub1.Parameters.Parameters, "Tree1StateSub1ParametersDouble");
 				Tree1Sub1Parameter_ValueID_Int = AddInt(Sub1.Parameters.Parameters, "Tree1StateSub1ParametersInt");
 
-				TStateTreeEditorNode<FTestTask_PrintValue>& Sub1Task1 = Sub1.AddTask<FTestTask_PrintValue>("Tree1StateSub1Task1");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue>& Sub1Task1 = Sub1.AddTask<FTestTask_PrintValue>("Tree1StateSub1Task1");
 				Sub1Task1.GetInstanceData().Value = -1;
 				EditorData1.AddPropertyBinding(FPropertyBindingPath(Sub1.Parameters.ID, "Tree1StateSub1ParametersInt"), FPropertyBindingPath(Sub1Task1.ID, "Value"));
 
@@ -1371,19 +1371,19 @@ struct FMetaStoryTest_Linked_GlobalParameter : FMetaStoryTestBase
 						EditorData1.AddPropertyBinding(FPropertyBindingPath(Sub1.Parameters.ID, "Tree1StateSub1ParametersInt"), FPropertyBindingPath(State3.Parameters.ID, "Tree1State3ParametersInt"));
 					}
 
-					TStateTreeEditorNode<FTestTask_PrintValue>& Task1 = State3.AddTask<FTestTask_PrintValue>("Tree1State3Task1");
+					TMetaStoryTypedEditorNode<FTestTask_PrintValue>& Task1 = State3.AddTask<FTestTask_PrintValue>("Tree1State3Task1");
 					Task1.GetInstanceData().Value = -1;
 					EditorData1.AddPropertyBinding(FPropertyBindingPath(EditorData1.GetRootParametersGuid(), "Tree1GlobalInt"), FPropertyBindingPath(Task1.ID, TEXT("Value")));
 
-					TStateTreeEditorNode<FTestTask_PrintValue>& Task2 = State3.AddTask<FTestTask_PrintValue>("Tree1State3Task2");
+					TMetaStoryTypedEditorNode<FTestTask_PrintValue>& Task2 = State3.AddTask<FTestTask_PrintValue>("Tree1State3Task2");
 					Task2.GetInstanceData().Value = -2;
 					EditorData1.AddPropertyBinding(FPropertyBindingPath(Sub1.Parameters.ID, "Tree1StateSub1ParametersInt"), FPropertyBindingPath(Task2.ID, TEXT("Value")));
 
-					TStateTreeEditorNode<FTestTask_PrintValue>& Task3 = State3.AddTask<FTestTask_PrintValue>("Tree1State3Task3");
+					TMetaStoryTypedEditorNode<FTestTask_PrintValue>& Task3 = State3.AddTask<FTestTask_PrintValue>("Tree1State3Task3");
 					Task3.GetInstanceData().Value = -3;
 					EditorData1.AddPropertyBinding(FPropertyBindingPath(GlobalTask1.ID, "Value"), FPropertyBindingPath(Task3.ID, "Value"));
 
-					TStateTreeEditorNode<FTestTask_PrintValue>& Task4 = State3.AddTask<FTestTask_PrintValue>("Tree1State3Task4");
+					TMetaStoryTypedEditorNode<FTestTask_PrintValue>& Task4 = State3.AddTask<FTestTask_PrintValue>("Tree1State3Task4");
 					Task3.GetInstanceData().Value = -4;
 					EditorData1.AddPropertyBinding(FPropertyBindingPath(Task1.ID, "Value"), FPropertyBindingPath(Task4.ID, "Value"));
 
@@ -1409,16 +1409,16 @@ struct FMetaStoryTest_Linked_GlobalParameter : FMetaStoryTestBase
 
 		FMetaStoryInstanceData InstanceData;
 		{
-			FTestStateTreeExecutionContext Exec(MetaStory1, MetaStory1, InstanceData);
+			FTestMetaStoryExecutionContext Exec(MetaStory1, MetaStory1, InstanceData);
 			const bool bInitSucceeded = Exec.IsValid();
 			AITEST_TRUE(TEXT("MetaStory should init"), bInitSucceeded);
 		}
 		{
 			FMetaStoryReference MetaStoryRef;
-			MetaStoryRef.SetStateTree(&MetaStory1);
+			MetaStoryRef.SetMetaStory(&MetaStory1);
 			MetaStoryRef.SetPropertyOverridden(Tree1GlobalParameter_ValueID_Int, true);
 			MetaStoryRef.GetMutableParameters().SetValueInt32("Tree1GlobalInt", 5);
-			FTestStateTreeExecutionContext Exec(MetaStory1, MetaStory1, InstanceData);
+			FTestMetaStoryExecutionContext Exec(MetaStory1, MetaStory1, InstanceData);
 			const EMetaStoryRunStatus Status = Exec.Start(FMetaStoryExecutionContext::FStartParameters
 				{
 					.GlobalParameters = &MetaStoryRef.GetParameters(),
@@ -1443,11 +1443,11 @@ struct FMetaStoryTest_Linked_GlobalParameter : FMetaStoryTestBase
 		}
 		{
 			FMetaStoryReference MetaStoryRef;
-			MetaStoryRef.SetStateTree(&MetaStory1);
+			MetaStoryRef.SetMetaStory(&MetaStory1);
 			MetaStoryRef.SetPropertyOverridden(Tree1GlobalParameter_ValueID_Int, true);
 			MetaStoryRef.GetMutableParameters().SetValueInt32("Tree1GlobalInt", 6);
 
-			FTestStateTreeExecutionContext Exec(MetaStory1, MetaStory1, InstanceData);
+			FTestMetaStoryExecutionContext Exec(MetaStory1, MetaStory1, InstanceData);
 			InstanceData.GetMutableStorage().SetGlobalParameters(MetaStoryRef.GetParameters());
 
 			const EMetaStoryRunStatus Status = Exec.Tick(1.0f);
@@ -1480,14 +1480,14 @@ struct FMetaStoryTest_Linked_GlobalParameter : FMetaStoryTestBase
 			AITEST_TRUE(TEXT("Tick should enter Tree1State3Task4"), Exec.Expect("Tree1State3Task4", TEXT("EnterState6")));
 		}
 		{
-			FTestStateTreeExecutionContext Exec(MetaStory1, MetaStory1, InstanceData);
+			FTestMetaStoryExecutionContext Exec(MetaStory1, MetaStory1, InstanceData);
 			Exec.Stop();
 		}
 
 		return true;
 	}
 };
-IMPLEMENT_STATE_TREE_INSTANT_TEST(FMetaStoryTest_Linked_GlobalParameter, "System.MetaStory.LinkedAsset.GlobalParameter");
+IMPLEMENT_METASTORY_INSTANT_TEST(FMetaStoryTest_Linked_GlobalParameter, "System.MetaStory.LinkedAsset.GlobalParameter");
 
 struct FMetaStoryTest_Linked_FinishGlobalTasks : FMetaStoryTestBase
 {
@@ -1507,7 +1507,7 @@ struct FMetaStoryTest_Linked_FinishGlobalTasks : FMetaStoryTestBase
 
 
 		// Tree 2
-		UMetaStory& MetaStory2 = NewStateTree();
+		UMetaStory& MetaStory2 = NewMetaStory();
 		{
 			UMetaStoryEditorData& EditorData2 = *Cast<UMetaStoryEditorData>(MetaStory2.EditorData);
 
@@ -1515,7 +1515,7 @@ struct FMetaStoryTest_Linked_FinishGlobalTasks : FMetaStoryTestBase
 			{
 				EditorData2.GlobalTasksCompletion = EMetaStoryTaskCompletionType::Any;
 
-				TStateTreeEditorNode<FTestTask_PrintValue>& GlobalTask1 = EditorData2.AddGlobalTask<FTestTask_PrintValue>("Tree2GlobalTask1");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue>& GlobalTask1 = EditorData2.AddGlobalTask<FTestTask_PrintValue>("Tree2GlobalTask1");
 				GlobalTask1.GetInstanceData().Value = 1;
 
 				EditorData2.AddGlobalTask<FTestTask_Stand>("Tree2GlobalTask2").GetNode().TicksToCompletion = 99;
@@ -1524,14 +1524,14 @@ struct FMetaStoryTest_Linked_FinishGlobalTasks : FMetaStoryTestBase
 				EditorData2.AddGlobalTask<FTestTask_Stand>("Tree2GlobalTask5").GetNode().TicksToCompletion = 99;
 				EditorData2.AddGlobalTask<FTestTask_Stand>("Tree2GlobalTask6").GetNode().TicksToCompletion = 99;
 
-				TStateTreeEditorNode<FTestTask_Stand>& GlobalTask2 = EditorData2.AddGlobalTask<FTestTask_Stand>("Tree2GlobalTask7");
+				TMetaStoryTypedEditorNode<FTestTask_Stand>& GlobalTask2 = EditorData2.AddGlobalTask<FTestTask_Stand>("Tree2GlobalTask7");
 				GlobalTask2.GetNode().TicksToCompletion = 2;
 				GlobalTask2.GetNode().TickCompletionResult = EMetaStoryRunStatus::Succeeded;
 			}
 
 			UMetaStoryState& Root = EditorData2.AddSubTree("Tree2StateRoot");
 			{
-				TStateTreeEditorNode<FTestTask_PrintValue>& Task1 = Root.AddTask<FTestTask_PrintValue>("Tree2StateRootTask1");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue>& Task1 = Root.AddTask<FTestTask_PrintValue>("Tree2StateRootTask1");
 				Task1.GetInstanceData().Value = 1;
 			}
 
@@ -1542,23 +1542,23 @@ struct FMetaStoryTest_Linked_FinishGlobalTasks : FMetaStoryTestBase
 		}
 
 		// Tree 1
-		UMetaStory& MetaStory1 = NewStateTree();
+		UMetaStory& MetaStory1 = NewMetaStory();
 		{
 			UMetaStoryEditorData& EditorData1 = *Cast<UMetaStoryEditorData>(MetaStory1.EditorData);
 
 			// Global tasks
 			{
-				TStateTreeEditorNode<FTestTask_PrintValue>& GlobalTask1 = EditorData1.AddGlobalTask<FTestTask_PrintValue>("Tree1GlobalTask1");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue>& GlobalTask1 = EditorData1.AddGlobalTask<FTestTask_PrintValue>("Tree1GlobalTask1");
 				GlobalTask1.GetInstanceData().Value = 1;
 
-				TStateTreeEditorNode<FTestTask_Stand>& GlobalTask2 = EditorData1.AddGlobalTask<FTestTask_Stand>("Tree1GlobalTask2");
+				TMetaStoryTypedEditorNode<FTestTask_Stand>& GlobalTask2 = EditorData1.AddGlobalTask<FTestTask_Stand>("Tree1GlobalTask2");
 				GlobalTask2.GetNode().TicksToCompletion = 4;
 				GlobalTask2.GetNode().TickCompletionResult = EMetaStoryRunStatus::Succeeded;
 			}
 
 			UMetaStoryState& Root = EditorData1.AddSubTree("Tree1StateRoot");
 			{
-				TStateTreeEditorNode<FTestTask_PrintValue>& Task1 = Root.AddTask<FTestTask_PrintValue>("Tree1StateRootTask1");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue>& Task1 = Root.AddTask<FTestTask_PrintValue>("Tree1StateRootTask1");
 				Task1.GetInstanceData().Value = 1;
 			}
 			{
@@ -1570,7 +1570,7 @@ struct FMetaStoryTest_Linked_FinishGlobalTasks : FMetaStoryTestBase
 				UMetaStoryState& State2 = Root.AddChildState("Tree1State2", EMetaStoryStateType::State);
 				State2.AddTransition(EMetaStoryTransitionTrigger::OnStateSucceeded, EMetaStoryTransitionType::Succeeded);
 
-				TStateTreeEditorNode<FTestTask_Stand>& Task1 = State2.AddTask<FTestTask_Stand>("Tree1State2Task1");
+				TMetaStoryTypedEditorNode<FTestTask_Stand>& Task1 = State2.AddTask<FTestTask_Stand>("Tree1State2Task1");
 				Task1.GetNode().TicksToCompletion = 10;
 				Task1.GetNode().TickCompletionResult = EMetaStoryRunStatus::Succeeded;
 			}
@@ -1593,12 +1593,12 @@ struct FMetaStoryTest_Linked_FinishGlobalTasks : FMetaStoryTestBase
 
 			FMetaStoryInstanceData InstanceData;
 			{
-				FTestStateTreeExecutionContext Exec(MetaStory1, MetaStory1, InstanceData);
+				FTestMetaStoryExecutionContext Exec(MetaStory1, MetaStory1, InstanceData);
 				const bool bInitSucceeded = Exec.IsValid();
 				AITEST_TRUE(TEXT("MetaStory should init"), bInitSucceeded);
 			}
 			{
-				FTestStateTreeExecutionContext Exec(MetaStory1, MetaStory1, InstanceData);
+				FTestMetaStoryExecutionContext Exec(MetaStory1, MetaStory1, InstanceData);
 				const EMetaStoryRunStatus Status = Exec.Start();
 				AITEST_EQUAL(TEXT("Start should complete with Running"), Status, EMetaStoryRunStatus::Running);
 				AITEST_TRUE(TEXT("In correct states"), Exec.ExpectInActiveStates("Tree1StateRoot", "Tree1State1", "Tree2StateRoot"));
@@ -1611,7 +1611,7 @@ struct FMetaStoryTest_Linked_FinishGlobalTasks : FMetaStoryTestBase
 				Exec.LogClear();
 			}
 			{
-				FTestStateTreeExecutionContext Exec(MetaStory1, MetaStory1, InstanceData);
+				FTestMetaStoryExecutionContext Exec(MetaStory1, MetaStory1, InstanceData);
 				const EMetaStoryRunStatus Status = Exec.Tick(1.0f);
 				AITEST_EQUAL(TEXT("Tick should complete with Running"), Status, EMetaStoryRunStatus::Running);
 				AITEST_TRUE(TEXT("In correct states"), Exec.ExpectInActiveStates("Tree1StateRoot", "Tree1State1", "Tree2StateRoot"));
@@ -1626,7 +1626,7 @@ struct FMetaStoryTest_Linked_FinishGlobalTasks : FMetaStoryTestBase
 			if (bGlobalTasksCompleteOwningFrame)
 			{
 				{
-					FTestStateTreeExecutionContext Exec(MetaStory1, MetaStory1, InstanceData);
+					FTestMetaStoryExecutionContext Exec(MetaStory1, MetaStory1, InstanceData);
 					const EMetaStoryRunStatus Status = Exec.Tick(1.0f);
 					AITEST_EQUAL(TEXT("Tick should complete with Running"), Status, EMetaStoryRunStatus::Running);
 					AITEST_TRUE(TEXT("In correct states"), Exec.ExpectInActiveStates("Tree1StateRoot", "Tree1State2"));
@@ -1643,20 +1643,20 @@ struct FMetaStoryTest_Linked_FinishGlobalTasks : FMetaStoryTestBase
 						AITEST_FALSE(TEXT("Tick not should tick Tree2StateRootTask1"), Exec.Expect("Tree2StateRootTask1", TEXT("Tick1")));
 					}
 
-					AITEST_TRUE(TEXT("Tick should ExitState Tree2StateRootTask1"), Exec.Expect("Tree2StateRootTask1", TEXT("ExitState1")));
-					AITEST_TRUE(TEXT("Tick should ExitState Tree2GlobalTask7"), Exec.Expect("Tree2GlobalTask7", TEXT("ExitState")));
-					AITEST_TRUE(TEXT("Tick should ExitState Tree2GlobalTask1"), Exec.Expect("Tree2GlobalTask1", TEXT("ExitState1")));
+					AITEST_TRUE(TEXT("Tick should ExitMetaStory2StateRootTask1"), Exec.Expect("Tree2StateRootTask1", TEXT("ExitState1")));
+					AITEST_TRUE(TEXT("Tick should ExitMetaStory2GlobalTask7"), Exec.Expect("Tree2GlobalTask7", TEXT("ExitState")));
+					AITEST_TRUE(TEXT("Tick should ExitMetaStory2GlobalTask1"), Exec.Expect("Tree2GlobalTask1", TEXT("ExitState1")));
 					AITEST_TRUE(TEXT("Start should enter Tree2State2Task1"), Exec.Expect("Tree1State2Task1", TEXT("EnterState")));
 					Exec.LogClear();
 				}
 				{
-					FTestStateTreeExecutionContext Exec(MetaStory1, MetaStory1, InstanceData);
+					FTestMetaStoryExecutionContext Exec(MetaStory1, MetaStory1, InstanceData);
 					const EMetaStoryRunStatus Status = Exec.Tick(1.0f);
 					AITEST_EQUAL(TEXT("Tick should complete with Running"), Status, EMetaStoryRunStatus::Running);
 					Exec.LogClear();
 				}
 				{
-					FTestStateTreeExecutionContext Exec(MetaStory1, MetaStory1, InstanceData);
+					FTestMetaStoryExecutionContext Exec(MetaStory1, MetaStory1, InstanceData);
 					const EMetaStoryRunStatus Status = Exec.Tick(1.0f);
 					AITEST_EQUAL(TEXT("Tick should complete with Running"), Status, EMetaStoryRunStatus::Succeeded);
 					Exec.LogClear();
@@ -1664,13 +1664,13 @@ struct FMetaStoryTest_Linked_FinishGlobalTasks : FMetaStoryTestBase
 			}
 			else
 			{
-				FTestStateTreeExecutionContext Exec(MetaStory1, MetaStory1, InstanceData);
+				FTestMetaStoryExecutionContext Exec(MetaStory1, MetaStory1, InstanceData);
 				const EMetaStoryRunStatus Status = Exec.Tick(1.0f);
 				AITEST_EQUAL(TEXT("Tick should complete with Running"), Status, EMetaStoryRunStatus::Succeeded);
 				Exec.LogClear();
 			}
 			{
-				FTestStateTreeExecutionContext Exec(MetaStory1, MetaStory1, InstanceData);
+				FTestMetaStoryExecutionContext Exec(MetaStory1, MetaStory1, InstanceData);
 				Exec.Stop();
 			}
 		}
@@ -1678,7 +1678,7 @@ struct FMetaStoryTest_Linked_FinishGlobalTasks : FMetaStoryTestBase
 		return true;
 	}
 };
-IMPLEMENT_STATE_TREE_INSTANT_TEST(FMetaStoryTest_Linked_FinishGlobalTasks, "System.MetaStory.LinkedAsset.FinishGlobalTasks");
+IMPLEMENT_METASTORY_INSTANT_TEST(FMetaStoryTest_Linked_FinishGlobalTasks, "System.MetaStory.LinkedAsset.FinishGlobalTasks");
 
 } // namespace UE::MetaStory::Tests
 

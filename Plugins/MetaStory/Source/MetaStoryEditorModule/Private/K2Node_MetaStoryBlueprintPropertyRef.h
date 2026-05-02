@@ -5,7 +5,7 @@
 #include "KismetCompilerMisc.h"
 #include "K2Node_MetaStoryBlueprintPropertyRef.generated.h"
 
-class FKCHandler_StateTreeBlueprintPropertyRefGet : public FNodeHandlingFunctor
+class FKCHandler_MetaStoryBlueprintPropertyRefGet : public FNodeHandlingFunctor
 {
 public:
 	using FNodeHandlingFunctor::FNodeHandlingFunctor;
@@ -34,7 +34,7 @@ public:
 
 	virtual FNodeHandlingFunctor* CreateNodeHandler(class FKismetCompilerContext& CompilerContext) const override
 	{
-		return new FKCHandler_StateTreeBlueprintPropertyRefGet(CompilerContext);
+		return new FKCHandler_MetaStoryBlueprintPropertyRefGet(CompilerContext);
 	}
 
 protected:

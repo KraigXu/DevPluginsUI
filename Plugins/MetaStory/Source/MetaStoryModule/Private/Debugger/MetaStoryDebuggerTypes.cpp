@@ -12,9 +12,9 @@ namespace UE::MetaStoryDebugger
 //----------------------------------------------------------------//
 // FInstanceDescriptor
 //----------------------------------------------------------------//
-FInstanceDescriptor::FInstanceDescriptor(const UMetaStory* InStateTree, const FMetaStoryInstanceDebugId InId, const FString& InName, const TRange<double>& InLifetime)
+FInstanceDescriptor::FInstanceDescriptor(const UMetaStory* InMetaStory, const FMetaStoryInstanceDebugId InId, const FString& InName, const TRange<double>& InLifetime)
 	: Lifetime(InLifetime)
-	, MetaStory(InStateTree)
+	, MetaStory(InMetaStory)
 	, Name(InName)
 	, Id(InId)
 {

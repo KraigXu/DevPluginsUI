@@ -30,11 +30,11 @@
 #define LOCTEXT_NAMESPACE "UMetaStoryEditorMode"
 
 class FUObjectToken;
-const FEditorModeID UMetaStoryEditorMode::EM_StateTree("MetaStoryEditorMode");
+const FEditorModeID UMetaStoryEditorMode::EM_MetaStory("MetaStoryEditorMode");
 
 UMetaStoryEditorMode::UMetaStoryEditorMode()
 {
-	Info = FEditorModeInfo(UMetaStoryEditorMode::EM_StateTree,
+	Info = FEditorModeInfo(UMetaStoryEditorMode::EM_MetaStory,
 		LOCTEXT("MetaStoryEditorModeName", "MetaStoryEditorMode"),
 		FSlateIcon(),
 		false);
@@ -52,7 +52,7 @@ void UMetaStoryEditorMode::Enter()
 		if (const UMetaStoryEditorContext* Context = ContextObjectStore->FindContext<UMetaStoryEditorContext>())
 		{
 			TSharedRef<IMetaStoryEditorHost> Host = Context->EditorHostInterface.ToSharedRef();
-			Host->OnStateTreeChanged().AddUObject(this, &UMetaStoryEditorMode::OnStateTreeChanged);
+			Host->OnMetaStoryChanged().AddUObject(this, &UMetaStoryEditorMode::OnMetaStoryChanged);
 
 			if (TSharedPtr<IMessageLogListing> MessageLogListing = GetMessageLogListing())
 			{
@@ -84,27 +84,27 @@ void UMetaStoryEditorMode::Enter()
 	UE::MetaStory::Delegates::OnGlobalDataChanged.AddUObject(this, &UMetaStoryEditorMode::OnRefreshDetailsView);
 	UE::MetaStory::Delegates::OnStateParametersChanged.AddUObject(this, &UMetaStoryEditorMode::OnStateParametersChanged);
 	UE::MetaStory::PropertyBinding::OnMetaStoryPropertyBindingChanged.AddUObject(this, &UMetaStoryEditorMode::OnPropertyBindingChanged);
-	OnStateTreeChanged();
+	OnMetaStoryChanged();
 }
 
 
-void UMetaStoryEditorMode::OnIdentifierChanged(const UMetaStory& InStateTree)
+void UMetaStoryEditorMode::OnIdentifierChanged(const UMetaStory& InMetaStory)
 {
-	if (GetStateTree() == &InStateTree)
+	if (GetMetaStory() == &InMetaStory)
 	{
 		UpdateAsset();
 	}
 }
 
-void UMetaStoryEditorMode::OnSchemaChanged(const UMetaStory& InStateTree)
+void UMetaStoryEditorMode::OnSchemaChanged(const UMetaStory& InMetaStory)
 {
-	if (GetStateTree() == &InStateTree)
+	if (GetMetaStory() == &InMetaStory)
 	{
 		UpdateAsset();
 
 		if(UMetaStoryEditingSubsystem* MetaStoryEditingSubsystem = GEditor->GetEditorSubsystem<UMetaStoryEditingSubsystem>())
 		{
-			TSharedRef<FMetaStoryViewModel> ViewModel = MetaStoryEditingSubsystem->FindOrAddViewModel(GetStateTree());
+			TSharedRef<FMetaStoryViewModel> ViewModel = MetaStoryEditingSubsystem->FindOrAddViewModel(GetMetaStory());
 			ViewModel->NotifyAssetChangedExternally();
 		}
 		
@@ -123,9 +123,9 @@ void UMetaStoryEditorMode::ForceRefreshDetailsView() const
 	}
 }
 
-void UMetaStoryEditorMode::OnRefreshDetailsView(const UMetaStory& InStateTree) const
+void UMetaStoryEditorMode::OnRefreshDetailsView(const UMetaStory& InMetaStory) const
 {
-	if (GetStateTree() == &InStateTree)
+	if (GetMetaStory() == &InMetaStory)
 	{
 		// Accessible structs might be different after modifying parameters so forcing refresh
 		// so the FMetaStoryBindingExtension can rebuild the list of bindable structs
@@ -133,10 +133,10 @@ void UMetaStoryEditorMode::OnRefreshDetailsView(const UMetaStory& InStateTree) c
 	}
 }
 
-void UMetaStoryEditorMode::OnStateParametersChanged(const UMetaStory& InStateTree, const FGuid ChangedStateID) const
+void UMetaStoryEditorMode::OnStateParametersChanged(const UMetaStory& InMetaStory, const FGuid ChangedStateID) const
 {
-	UMetaStory* MetaStory = GetStateTree(); 
-	if (MetaStory == &InStateTree)
+	UMetaStory* MetaStory = GetMetaStory(); 
+	if (MetaStory == &InMetaStory)
 	{
 		if (const UMetaStoryEditorData* TreeData = Cast<UMetaStoryEditorData>(MetaStory->EditorData))
 		{
@@ -166,7 +166,7 @@ void UMetaStoryEditorMode::HandleMessageTokenClicked(const TSharedRef<IMessageTo
 		{
 			if(UMetaStoryEditingSubsystem* MetaStoryEditingSubsystem = GEditor->GetEditorSubsystem<UMetaStoryEditingSubsystem>())
 			{
-				MetaStoryEditingSubsystem->FindOrAddViewModel(GetStateTree())->SetSelection(State);
+				MetaStoryEditingSubsystem->FindOrAddViewModel(GetMetaStory())->SetSelection(State);
 			}
 			
 		}
@@ -185,7 +185,7 @@ void UMetaStoryEditorMode::Exit()
 	{
 		if (const UMetaStoryEditorContext* Context = ContextObjectStore->FindContext<UMetaStoryEditorContext>())
 		{
-			Context->EditorHostInterface->OnStateTreeChanged().RemoveAll(this);
+			Context->EditorHostInterface->OnMetaStoryChanged().RemoveAll(this);
 			
 			if (TSharedPtr<IMessageLogListing> MessageLogListing = GetMessageLogListing())
 			{
@@ -209,11 +209,11 @@ void UMetaStoryEditorMode::Exit()
 		}
 	}
 
-	if (CachedStateTree.IsValid())
+	if (CachedMetaStory.IsValid())
 	{
 		if (UMetaStoryEditingSubsystem* MetaStoryEditingSubsystem = GEditor->GetEditorSubsystem<UMetaStoryEditingSubsystem>())
 		{		
-			TSharedRef<FMetaStoryViewModel> ViewModel = MetaStoryEditingSubsystem->FindOrAddViewModel(CachedStateTree.Get());
+			TSharedRef<FMetaStoryViewModel> ViewModel = MetaStoryEditingSubsystem->FindOrAddViewModel(CachedMetaStory.Get());
 			{
 				ViewModel->GetOnAssetChanged().RemoveAll(this);
 				ViewModel->GetOnStateAdded().RemoveAll(this);
@@ -240,16 +240,16 @@ void UMetaStoryEditorMode::CreateToolkit()
 	Toolkit = MakeShareable(new FMetaStoryEditorModeToolkit(this));
 }
 
-void UMetaStoryEditorMode::OnStateTreeChanged()
+void UMetaStoryEditorMode::OnMetaStoryChanged()
 {
 	UContextObjectStore* ContextStore = GetInteractiveToolsContext()->ToolManager->GetContextObjectStore();
 	if (const UMetaStoryEditorContext* Context = ContextStore->FindContext<UMetaStoryEditorContext>())
 	{
 		if (UMetaStoryEditingSubsystem* MetaStoryEditingSubsystem = GEditor->GetEditorSubsystem<UMetaStoryEditingSubsystem>())
 		{
-			if (CachedStateTree.IsValid())
+			if (CachedMetaStory.IsValid())
 			{
-				TSharedRef<FMetaStoryViewModel> OldViewModel = MetaStoryEditingSubsystem->FindOrAddViewModel(CachedStateTree.Get());
+				TSharedRef<FMetaStoryViewModel> OldViewModel = MetaStoryEditingSubsystem->FindOrAddViewModel(CachedMetaStory.Get());
 				{
 					OldViewModel->GetOnAssetChanged().RemoveAll(this);
 					OldViewModel->GetOnStateAdded().RemoveAll(this);
@@ -262,8 +262,8 @@ void UMetaStoryEditorMode::OnStateTreeChanged()
 			}
 		}
 
-		UMetaStory* MetaStory = Context->EditorHostInterface->GetStateTree();
-		CachedStateTree = MetaStory;
+		UMetaStory* MetaStory = Context->EditorHostInterface->GetMetaStory();
+		CachedMetaStory = MetaStory;
 		UpdateAsset();
 
 		if (TSharedPtr<IDetailsView> AssetDetailsView = GetAssetDetailsView())
@@ -292,7 +292,7 @@ void UMetaStoryEditorMode::OnStateTreeChanged()
 
 	if (Toolkit)
 	{
-		StaticCastSharedPtr<FMetaStoryEditorModeToolkit>(Toolkit)->OnStateTreeChanged();
+		StaticCastSharedPtr<FMetaStoryEditorModeToolkit>(Toolkit)->OnMetaStoryChanged();
 	}
 }
 
@@ -372,21 +372,21 @@ void UMetaStoryEditorMode::BindToolkitCommands(const TSharedRef<FUICommandList>&
 		FExecuteAction::CreateStatic(&UE::MetaStory::Editor::Internal::SetSaveOnCompileSetting, EMetaStorySaveOnCompile::Never),
 		FCanExecuteAction(),
 		FIsActionChecked::CreateStatic(&UE::MetaStory::Editor::Internal::IsSaveOnCompileOptionSet, EMetaStorySaveOnCompile::Never),
-		FIsActionButtonVisible::CreateUObject(this, &UMetaStoryEditorMode::HasValidStateTree)
+		FIsActionButtonVisible::CreateUObject(this, &UMetaStoryEditorMode::HasValidMetaStory)
 	);
 	ToolkitCommands->MapAction(
 		FMetaStoryEditorCommands::Get().SaveOnCompile_SuccessOnly,
 		FExecuteAction::CreateStatic(&UE::MetaStory::Editor::Internal::SetSaveOnCompileSetting, EMetaStorySaveOnCompile::SuccessOnly),
 		FCanExecuteAction(),
 		FIsActionChecked::CreateStatic(&UE::MetaStory::Editor::Internal::IsSaveOnCompileOptionSet,  EMetaStorySaveOnCompile::SuccessOnly),
-		FIsActionButtonVisible::CreateUObject(this, &UMetaStoryEditorMode::HasValidStateTree)
+		FIsActionButtonVisible::CreateUObject(this, &UMetaStoryEditorMode::HasValidMetaStory)
 	);
 	ToolkitCommands->MapAction(
 		FMetaStoryEditorCommands::Get().SaveOnCompile_Always,
 		FExecuteAction::CreateStatic(&UE::MetaStory::Editor::Internal::SetSaveOnCompileSetting, EMetaStorySaveOnCompile::Always),
 		FCanExecuteAction(),
 		FIsActionChecked::CreateStatic(&UE::MetaStory::Editor::Internal::IsSaveOnCompileOptionSet,  EMetaStorySaveOnCompile::Always),
-		FIsActionButtonVisible::CreateUObject(this, &UMetaStoryEditorMode::HasValidStateTree)
+		FIsActionButtonVisible::CreateUObject(this, &UMetaStoryEditorMode::HasValidMetaStory)
 	);
 	ToolkitCommands->MapAction(
 		FMetaStoryEditorCommands::Get().LogCompilationResult,
@@ -416,7 +416,7 @@ void UMetaStoryEditorMode::BindCommands()
 
 void UMetaStoryEditorMode::Compile()
 {
-	UMetaStory* MetaStory = GetStateTree();
+	UMetaStory* MetaStory = GetMetaStory();
 
 	if (!MetaStory)
 	{
@@ -431,7 +431,7 @@ void UMetaStoryEditorMode::Compile()
 	}
 	
 	FMetaStoryCompilerLog Log;
-	bLastCompileSucceeded = UMetaStoryEditingSubsystem::CompileStateTree(MetaStory, Log);
+	bLastCompileSucceeded = UMetaStoryEditingSubsystem::CompileMetaStory(MetaStory, Log);
 
 	if (TSharedPtr<IMessageLogListing> Listing = GetMessageLogListing())
 	{					
@@ -458,7 +458,7 @@ void UMetaStoryEditorMode::Compile()
 
 bool UMetaStoryEditorMode::CanCompile() const
 {
-	if (GetStateTree() == nullptr)
+	if (GetMetaStory() == nullptr)
 	{
 		return false;
 	}
@@ -474,7 +474,7 @@ bool UMetaStoryEditorMode::CanCompile() const
 
 bool UMetaStoryEditorMode::IsCompileVisible() const
 {
-	if(!HasValidStateTree())
+	if(!HasValidMetaStory())
 	{
 		return false;
 	}
@@ -489,9 +489,9 @@ bool UMetaStoryEditorMode::IsCompileVisible() const
 	return true;
 }
 
-bool UMetaStoryEditorMode::HasValidStateTree() const
+bool UMetaStoryEditorMode::HasValidMetaStory() const
 {
-	return GetStateTree() != nullptr;
+	return GetMetaStory() != nullptr;
 }
 
 void UMetaStoryEditorMode::HandleModelAssetChanged()
@@ -611,7 +611,7 @@ void UMetaStoryEditorMode::HandleModelBringNodeToFocus(const UMetaStoryState* St
 	}
 	else
 	{
-		UMetaStory* MetaStory = GetStateTree();
+		UMetaStory* MetaStory = GetMetaStory();
 		if (MetaStory == nullptr)
 		{
 			return;
@@ -662,14 +662,14 @@ void UMetaStoryEditorMode::HandleModelBringNodeToFocus(const UMetaStoryState* St
 
 void UMetaStoryEditorMode::UpdateAsset()
 {
-	UMetaStory* MetaStory = GetStateTree();
+	UMetaStory* MetaStory = GetMetaStory();
 	if (!MetaStory)
 	{
 		return;
 	}
 
-	UMetaStoryEditingSubsystem::ValidateStateTree(MetaStory);
-	EditorDataHash = UMetaStoryEditingSubsystem::CalculateStateTreeHash(MetaStory);
+	UMetaStoryEditingSubsystem::ValidateMetaStory(MetaStory);
+	EditorDataHash = UMetaStoryEditingSubsystem::CalculateMetaStoryHash(MetaStory);
 }
 
 TSharedPtr<IDetailsView> UMetaStoryEditorMode::GetDetailsView() const
@@ -726,9 +726,9 @@ void UMetaStoryEditorMode::ShowCompilerTab() const
 	}
 }
 
-UMetaStory* UMetaStoryEditorMode::GetStateTree() const
+UMetaStory* UMetaStoryEditorMode::GetMetaStory() const
 {
-	return CachedStateTree.Get();
+	return CachedMetaStory.Get();
 }
 
 void UMetaStoryEditorMode::OnAssetFinishedChangingProperties(const FPropertyChangedEvent& PropertyChangedEvent) const
@@ -747,9 +747,9 @@ void UMetaStoryEditorMode::OnAssetFinishedChangingProperties(const FPropertyChan
 				{
 					if (const UMetaStory* MetaStory = Cast<UMetaStory>(EditorData->GetOuter()))
 					{
-						if (GetStateTree() == MetaStory)
+						if (GetMetaStory() == MetaStory)
 						{
-							MetaStoryEditingSubsystem->FindOrAddViewModel(GetStateTree())->NotifyAssetChangedExternally();
+							MetaStoryEditingSubsystem->FindOrAddViewModel(GetMetaStory())->NotifyAssetChangedExternally();
 							break;
 						}
 					}
@@ -780,7 +780,7 @@ void UMetaStoryEditorMode::OnSelectionFinishedChangingProperties(const FProperty
 			}
 			if (ChangedStates.Num() > 0)
 			{
-				MetaStoryEditingSubsystem->FindOrAddViewModel(GetStateTree())->NotifyStatesChangedExternally(ChangedStates, PropertyChangedEvent);
+				MetaStoryEditingSubsystem->FindOrAddViewModel(GetMetaStory())->NotifyStatesChangedExternally(ChangedStates, PropertyChangedEvent);
 				UpdateAsset();
 			}
 		}

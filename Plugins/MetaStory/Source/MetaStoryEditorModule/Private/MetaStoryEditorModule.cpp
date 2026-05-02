@@ -50,7 +50,7 @@ namespace UE::MetaStory::Editor
 	static bool CompileMetaStory(UMetaStory& MetaStory)
 	{
 		FMetaStoryCompilerLog Log;
-		return UMetaStoryEditingSubsystem::CompileStateTree(&MetaStory, Log);
+		return UMetaStoryEditingSubsystem::CompileMetaStory(&MetaStory, Log);
 	}
 
 	static TSharedRef<FMetaStoryNodeClassCache> InitNodeClassCache()
@@ -83,7 +83,7 @@ FMetaStoryEditorModule* FMetaStoryEditorModule::GetModulePtr()
 
 void FMetaStoryEditorModule::StartupModule()
 {
-	UE::MetaStory::Delegates::OnRequestEditorHash.BindLambda([](const UMetaStory& InMetaStory) -> uint32 { return UMetaStoryEditingSubsystem::CalculateStateTreeHash(&InMetaStory); });
+	UE::MetaStory::Delegates::OnRequestEditorHash.BindLambda([](const UMetaStory& InMetaStory) -> uint32 { return UMetaStoryEditingSubsystem::CalculateMetaStoryHash(&InMetaStory); });
 	UE::MetaStory::Compiler::FCompilerManager::Startup();
 
 	OnPostEngineInitHandle = FCoreDelegates::OnPostEngineInit.AddLambda([this]()

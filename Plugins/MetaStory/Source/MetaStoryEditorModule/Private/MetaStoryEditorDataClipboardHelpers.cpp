@@ -202,26 +202,26 @@ private:
 	uint8 bShouldReinstantiateInstanceData : 1;
 };
 
-void FMetaStoryClipboardEditorData::Append(TNotNull<const UMetaStoryEditorData*> InStateTree, TConstArrayView<FMetaStoryEditorNode> InEditorNodes)
+void FMetaStoryClipboardEditorData::Append(TNotNull<const UMetaStoryEditorData*> InMetaStory, TConstArrayView<FMetaStoryEditorNode> InEditorNodes)
 {
 	bBufferProcessed = false;
 	EditorNodesBuffer.Append(InEditorNodes);
 	
-	CollectBindingsForEditorNodes(InStateTree, InEditorNodes);
+	CollectBindingsForEditorNodes(InMetaStory, InEditorNodes);
 }
 
-void FMetaStoryClipboardEditorData::Append(TNotNull<const UMetaStoryEditorData*> InStateTree, TConstArrayView<FMetaStoryTransition> InTransitions)
+void FMetaStoryClipboardEditorData::Append(TNotNull<const UMetaStoryEditorData*> InMetaStory, TConstArrayView<FMetaStoryTransition> InTransitions)
 {
 	bBufferProcessed = false;
 	TransitionsBuffer.Append(InTransitions);
 
 	for (const FMetaStoryTransition& Transition : InTransitions)
 	{
-		CollectBindingsForEditorNodes(InStateTree, Transition.Conditions);
+		CollectBindingsForEditorNodes(InMetaStory, Transition.Conditions);
 	}
 }
 
-void FMetaStoryClipboardEditorData::Append(TNotNull<const UMetaStoryEditorData*> InStateTree, TConstArrayView<const FPropertyBindingBinding*> InBindingPtrs)
+void FMetaStoryClipboardEditorData::Append(TNotNull<const UMetaStoryEditorData*> InMetaStory, TConstArrayView<const FPropertyBindingBinding*> InBindingPtrs)
 {
 	bBufferProcessed = false;
 	for (const FPropertyBindingBinding* BindingPtr : InBindingPtrs)
@@ -238,7 +238,7 @@ void FMetaStoryClipboardEditorData::Append(TNotNull<const UMetaStoryEditorData*>
 		const FConstStructView FunctionNodeView = BindingPtr->GetPropertyFunctionNode();
 		if (const FMetaStoryEditorNode* FunctionNode = FunctionNodeView.GetPtr<const FMetaStoryEditorNode>())
 		{
-			CollectBindingsForEditorNodes(InStateTree, { FunctionNode, 1 });
+			CollectBindingsForEditorNodes(InMetaStory, { FunctionNode, 1 });
 		}
 	}
 }
@@ -251,21 +251,21 @@ void FMetaStoryClipboardEditorData::Reset()
 	bBufferProcessed = false;
 }
 
-void FMetaStoryClipboardEditorData::CollectBindingsForEditorNodes(TNotNull<const UMetaStoryEditorData*> InStateTree, TConstArrayView<FMetaStoryEditorNode> InEditorNodes)
+void FMetaStoryClipboardEditorData::CollectBindingsForEditorNodes(TNotNull<const UMetaStoryEditorData*> InMetaStory, TConstArrayView<FMetaStoryEditorNode> InEditorNodes)
 {
 	TArray<const FPropertyBindingBinding*> TempBindingPtrs;
 	
 	for (const FMetaStoryEditorNode& EditorNode : InEditorNodes)
 	{
-		InStateTree->GetPropertyEditorBindings()->GetBindingsFor(EditorNode.ID, TempBindingPtrs);
+		InMetaStory->GetPropertyEditorBindings()->GetBindingsFor(EditorNode.ID, TempBindingPtrs);
 
 		// recursively collect property function node bindings
 		constexpr auto EmptyStatePath = TEXT("");
-		InStateTree->VisitStructBoundPropertyFunctions(EditorNode.ID, EmptyStatePath, 
-			[InStateTree, &TempBindingPtrs](const FMetaStoryEditorNode& EditorNode, const FMetaStoryBindableStructDesc& Desc, const FMetaStoryDataView Value)
+		InMetaStory->VisitStructBoundPropertyFunctions(EditorNode.ID, EmptyStatePath, 
+			[InMetaStory, &TempBindingPtrs](const FMetaStoryEditorNode& EditorNode, const FMetaStoryBindableStructDesc& Desc, const FMetaStoryDataView Value)
 			{
 				TArray<const FPropertyBindingBinding*> StructBindingsPtr;
-				InStateTree->GetPropertyEditorBindings()->GetBindingsFor(Desc.ID, StructBindingsPtr);
+				InMetaStory->GetPropertyEditorBindings()->GetBindingsFor(Desc.ID, StructBindingsPtr);
 				TempBindingPtrs.Append(MoveTemp(StructBindingsPtr));
 
 				return EMetaStoryVisitor::Continue;

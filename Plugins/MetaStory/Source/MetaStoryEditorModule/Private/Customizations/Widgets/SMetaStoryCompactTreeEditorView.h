@@ -45,7 +45,7 @@ namespace CompactTreeView
 } // CompactTreeView
 
 /**
- * Widget that displays a list of State Tree nodes which match base types and specified schema.
+ * Widget that displays a list of MetaStory nodes which match base types and specified schema.
  * Can be used e.g. in popup menus to select node types.
  */
 class SCompactTreeEditorView : public SCompactTreeView
@@ -70,18 +70,18 @@ public:
 
 	void Construct(const FArguments& InArgs, const TSharedPtr<FMetaStoryViewModel>& InViewModel = nullptr);
 
-	void Refresh(const UMetaStoryEditorData* NewStateTreeEditorData = nullptr);
+	void Refresh(const UMetaStoryEditorData* NewMetaStoryEditorData = nullptr);
 
 private:
 
-	//~ Begin SCompactStateTreeView interface
+	//~ Begin SCompactMetaStoryView interface
 	virtual TSharedRef<FStateItem> CreateStateItemInternal() const override;
 	virtual void CacheStatesInternal() override;
 	virtual TSharedRef<STableRow<TSharedPtr<FStateItem>>> GenerateStateItemRowInternal(TSharedPtr<FStateItem> Item, const TSharedRef<STableViewBase>& OwnerTable, TSharedRef<SHorizontalBox> Container) override;
 
 	virtual void OnSelectionChangedInternal(TConstArrayView<TSharedPtr<FStateItem>> SelectedStates) override;
 	virtual void OnUpdatingFilteredRootInternal() override;
-	//~ End SCompactStateTreeView interface
+	//~ End SCompactMetaStoryView interface
 
 	void CacheState(TSharedPtr<FStateItem> ParentNode, const UMetaStoryState* State);
 	void ResetLinkedStates();
@@ -91,7 +91,7 @@ private:
 	TOptional<EItemDropZone> HandleCanAcceptDrop(const FDragDropEvent& DragDropEvent, EItemDropZone DropZone, TSharedPtr<FStateItem> TargetState) const;
 	FReply HandleAcceptDrop(const FDragDropEvent& DragDropEvent, EItemDropZone DropZone, TSharedPtr<FStateItem> TargetState) const;
 
-	TWeakObjectPtr<const UMetaStoryEditorData> WeakStateTreeEditorData = nullptr;
+	TWeakObjectPtr<const UMetaStoryEditorData> WeakMetaStoryEditorData = nullptr;
 	TSharedPtr<FMetaStoryViewModel> MetaStoryViewModel;
 	TArray<TWeakPtr<FStateItem>> PreviousLinkedStates;
 

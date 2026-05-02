@@ -30,7 +30,7 @@ public:
 	 * Use FinishTask() to set the task execution completed. State completion is controlled by completed tasks.
 	 *
 	 * GameplayTasks and other latent actions should be generally triggered on EnterState. When using a GameplayTasks it's required
-	 * to manually cancel active tasks on ExitState if the GameplayTask's lifetime is tied to the State Tree task.
+	 * to manually cancel active tasks on ExitState if the GameplayTask's lifetime is tied to the MetaStory task.
 	 *
 	 * @param Transition Describes the states involved in the transition
 	 */
@@ -54,7 +54,7 @@ public:
 	UE_API void ReceiveStateCompleted(const EMetaStoryRunStatus CompletionStatus, const FMetaStoryActiveStates CompletedActiveStates);
 
 	/**
-	 * Called during state tree tick when the task is on active state.
+	 * Called during MetaStory tick when the task is on active state.
 	 * Use FinishTask() to set the task execution completed. State completion is controlled by completed tasks.
 	 *
 	 * Triggering GameplayTasks and other latent action should generally be done on EnterState. Tick is called on each update (or event)

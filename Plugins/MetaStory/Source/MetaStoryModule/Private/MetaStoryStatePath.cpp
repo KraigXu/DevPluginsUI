@@ -10,8 +10,8 @@ namespace UE::MetaStory
 	const FActiveFrameID FActiveFrameID::Invalid = FActiveFrameID();
 	const FActiveStateID FActiveStateID::Invalid = FActiveStateID();
 
-	FActiveStatePath::FActiveStatePath(TNotNull<const UMetaStory*> InStateTree, const TArrayView<const FActiveState> InElements)
-		: MetaStory(InStateTree)
+	FActiveStatePath::FActiveStatePath(TNotNull<const UMetaStory*> InMetaStory, const TArrayView<const FActiveState> InElements)
+		: MetaStory(InMetaStory)
 		, States(InElements)
 	{
 #if WITH_METASTORY_DEBUG
@@ -28,8 +28,8 @@ namespace UE::MetaStory
 #endif
 	}
 
-	FActiveStatePath::FActiveStatePath(TNotNull<const UMetaStory*> InStateTree, TArray<FActiveState> InElements)
-		: MetaStory(InStateTree)
+	FActiveStatePath::FActiveStatePath(TNotNull<const UMetaStory*> InMetaStory, TArray<FActiveState> InElements)
+		: MetaStory(InMetaStory)
 		, States(MoveTemp(InElements))
 	{
 #if WITH_METASTORY_DEBUG

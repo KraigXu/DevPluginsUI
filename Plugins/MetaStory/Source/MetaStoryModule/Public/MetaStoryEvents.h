@@ -69,7 +69,7 @@ struct FMetaStoryEvent
 };
 
 /**
- * A struct wrapping FMetaStoryEvent in shared struct, used to make it easier to refer to the events during State Tree update.
+ * A struct wrapping FMetaStoryEvent in shared struct, used to make it easier to refer to the events during MetaStory update.
  */
 USTRUCT()
 struct FMetaStorySharedEvent
@@ -144,7 +144,7 @@ struct TStructOpsTypeTraits<FMetaStorySharedEvent> : public TStructOpsTypeTraits
 };
 
 /**
- * Event queue buffering all the events to be processed by a State Tree.
+ * Event queue buffering all the events to be processed by a MetaStory.
  */
 USTRUCT()
 struct FMetaStoryEventQueue
@@ -179,7 +179,7 @@ struct FMetaStoryEventQueue
 	}
 	
 	/**
-	 * Buffers and event to be sent to the State Tree.
+	 * Buffers and event to be sent to the MetaStory.
 	 * @param Owner Optional pointer to an owner UObject that is used for logging errors.
 	 * @param Tag tag identifying the event.
 	 * @param Payload Optional reference to the payload struct.

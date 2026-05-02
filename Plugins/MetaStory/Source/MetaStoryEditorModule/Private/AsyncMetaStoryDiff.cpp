@@ -66,7 +66,7 @@ static bool AreNodeArraysEqual(const TArray<FMetaStoryEditorNode>& ArrayA, const
 	}
 	return true;
 }
-static bool AreStateTreeStatePropertyBagsEqual(const FInstancedPropertyBag& ParametersA, const FInstancedPropertyBag& ParametersB)
+static bool AreMetaStoryStatePropertyBagsEqual(const FInstancedPropertyBag& ParametersA, const FInstancedPropertyBag& ParametersB)
 {
 	if (ParametersA.GetNumPropertiesInBag() != ParametersB.GetNumPropertiesInBag())
 	{
@@ -112,9 +112,9 @@ static bool AreStateTreeStatePropertyBagsEqual(const FInstancedPropertyBag& Para
 	return true;
 }
 
-static bool AreStateTreeStateParametersEqual(const FMetaStoryStateParameters& ParametersA, const FMetaStoryStateParameters& ParametersB)
+static bool AreMetaStoryStateParametersEqual(const FMetaStoryStateParameters& ParametersA, const FMetaStoryStateParameters& ParametersB)
 {
-	if (!AreStateTreeStatePropertyBagsEqual(ParametersA.Parameters, ParametersB.Parameters))
+	if (!AreMetaStoryStatePropertyBagsEqual(ParametersA.Parameters, ParametersB.Parameters))
 	{
 		return false;
 	}
@@ -142,7 +142,7 @@ static bool ArePropertiesEqual(const UMetaStoryState* StateA, const UMetaStorySt
 
 static bool AreParametersEqual(const UMetaStoryState* StateA, const UMetaStoryState* StateB)
 {
-	return AreStateTreeStateParametersEqual(StateA->Parameters, StateB->Parameters);
+	return AreMetaStoryStateParametersEqual(StateA->Parameters, StateB->Parameters);
 }
 
 static bool AreConditionsEqual(const UMetaStoryState* StateA, const UMetaStoryState* StateB)
@@ -185,7 +185,7 @@ static bool AreTransitionsEqual(const UMetaStoryState* StateA, const UMetaStoryS
 	return true;
 }
 
-static bool AreStateTreePropertiesEqual(const UMetaStoryEditorData* MetaStoryDataA, const UMetaStoryEditorData* MetaStoryDataB)
+static bool AreMetaStoryPropertiesEqual(const UMetaStoryEditorData* MetaStoryDataA, const UMetaStoryEditorData* MetaStoryDataB)
 {
 	// Check the differences in Bindings
 	bool bBindingsEqual = MetaStoryDataA->EditorBindings.GetBindings().Num() == MetaStoryDataB->EditorBindings.GetBindings().Num();
@@ -225,7 +225,7 @@ static bool AreStateTreePropertiesEqual(const UMetaStoryEditorData* MetaStoryDat
 	}
 
 	// Check the differences in MetaStory root level parameters
-	if (!AreStateTreeStatePropertyBagsEqual(MetaStoryDataA->GetRootParametersPropertyBag(), MetaStoryDataB->GetRootParametersPropertyBag()))
+	if (!AreMetaStoryStatePropertyBagsEqual(MetaStoryDataA->GetRootParametersPropertyBag(), MetaStoryDataB->GetRootParametersPropertyBag()))
 	{
 		return false;
 	}
@@ -465,7 +465,7 @@ void FAsyncDiff::GetStatesDifferences(TArray<FSingleDiffEntry>& OutDiffEntries) 
 	});
 }
 
-void FAsyncDiff::GetStateTreeDifferences(TArray<FSingleDiffEntry>& OutDiffEntries) const
+void FAsyncDiff::GetMetaStoryDifferences(TArray<FSingleDiffEntry>& OutDiffEntries) const
 {
 	if (LeftView && RightView)
 	{
@@ -473,9 +473,9 @@ void FAsyncDiff::GetStateTreeDifferences(TArray<FSingleDiffEntry>& OutDiffEntrie
 		const FMetaStoryViewModel* RightViewModel = RightView->GetViewModel().Get();
 		if (LeftViewModel && RightViewModel)
 		{
-			UMetaStoryEditorData* LeftEditorData = Cast<UMetaStoryEditorData>(LeftViewModel->GetStateTree()->EditorData);
-			UMetaStoryEditorData* RightEditorData = Cast<UMetaStoryEditorData>(RightViewModel->GetStateTree()->EditorData);
-			if (!AreStateTreePropertiesEqual(LeftEditorData, RightEditorData))
+			UMetaStoryEditorData* LeftEditorData = Cast<UMetaStoryEditorData>(LeftViewModel->GetMetaStory()->EditorData);
+			UMetaStoryEditorData* RightEditorData = Cast<UMetaStoryEditorData>(RightViewModel->GetMetaStory()->EditorData);
+			if (!AreMetaStoryPropertiesEqual(LeftEditorData, RightEditorData))
 			{
 				OutDiffEntries.Add(FSingleDiffEntry(
 					/*Identifier*/FStateSoftPath(),
@@ -489,7 +489,7 @@ void FAsyncDiff::GetStateTreeDifferences(TArray<FSingleDiffEntry>& OutDiffEntrie
 	}
 }
 
-} // UE::AsyncStateTreeDiff
+} // UE::AsyncMetaStoryDiff
 
 
 bool TTreeDiffSpecification<TWeakObjectPtr<UMetaStoryState>>::AreValuesEqual(const TWeakObjectPtr<UMetaStoryState>& MetaStoryNodeA, const TWeakObjectPtr<UMetaStoryState>& MetaStoryNodeB, TArray<FPropertySoftPath>*) const

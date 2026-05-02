@@ -9,7 +9,7 @@
 #include "MetaStoryCompiler.h"
 #include "Conditions/MetaStoryCommonConditions.h"
 
-#define LOCTEXT_NAMESPACE "AITestSuite_StateTreeTask"
+#define LOCTEXT_NAMESPACE "AITestSuite_MetaStoryTask"
 
 UE_DISABLE_OPTIMIZATION_SHIP
 
@@ -19,7 +19,7 @@ namespace UE::MetaStory::Tests
 struct FMetaStoryTest_ForceTransition_All : FMetaStoryTestBase
 {
 	int32 AddStateTaskIndex = 0;
-	int32 AddStateTreeIndex = 0;
+	int32 AddMetaStoryIndex = 0;
 
 	int32 TransitionIfTaskIndex = INDEX_NONE;
 	int32 TransitionIfTreeIndex = INDEX_NONE;
@@ -30,8 +30,8 @@ struct FMetaStoryTest_ForceTransition_All : FMetaStoryTestBase
 		UMetaStoryState& State = EditorData.AddSubTree(StateName);
 		State.Type = StateType;
 		State.SelectionBehavior = EMetaStoryStateSelectionBehavior::TryEnterState;
-		TStateTreeEditorNode<FTestTask_PrintValue>& Task = State.AddTask<FTestTask_PrintValue>(StateName);
-		Task.GetInstanceData().Value = AddStateTaskIndex + (AddStateTreeIndex*100);
+		TMetaStoryTypedEditorNode<FTestTask_PrintValue>& Task = State.AddTask<FTestTask_PrintValue>(StateName);
+		Task.GetInstanceData().Value = AddStateTaskIndex + (AddMetaStoryIndex*100);
 		++AddStateTaskIndex;
 		Task.GetNode().CustomTickFunc = [this](FMetaStoryExecutionContext& Context, const FTestTask_PrintValue* Task)
 			{
@@ -49,7 +49,7 @@ struct FMetaStoryTest_ForceTransition_All : FMetaStoryTestBase
 	{
 		UMetaStoryState& State = ParentState.AddChildState(StateName, StateType);
 		State.SelectionBehavior = EMetaStoryStateSelectionBehavior::TryEnterState;
-		TStateTreeEditorNode<FTestTask_PrintValue>& Task = State.AddTask<FTestTask_PrintValue>(StateName);
+		TMetaStoryTypedEditorNode<FTestTask_PrintValue>& Task = State.AddTask<FTestTask_PrintValue>(StateName);
 		Task.GetInstanceData().Value = AddStateTaskIndex++;
 		Task.GetNode().CustomTickFunc = [this](FMetaStoryExecutionContext& Context, const FTestTask_PrintValue* Task)
 			{
@@ -81,11 +81,11 @@ struct FMetaStoryTest_ForceTransition_All : FMetaStoryTestBase
 		//  StateLinkedT -> X
 		// StateX
 		//  StateY
-		UMetaStory& MetaStory = NewStateTree();
+		UMetaStory& MetaStory = NewMetaStory();
 		UMetaStoryEditorData& EditorData = *Cast<UMetaStoryEditorData>(MetaStory.EditorData);
 
 		AddStateTaskIndex = 0;
-		AddStateTreeIndex = 0;
+		AddMetaStoryIndex = 0;
 		UMetaStoryState& StateA = AddSubTree(EditorData, "Tree1StateA", EMetaStoryStateType::State);
 		UMetaStoryState& StateB = AddChildState(StateA, "Tree1StateB", EMetaStoryStateType::State);
 		UMetaStoryState& StateC = AddChildState(StateB, "Tree1StateC", EMetaStoryStateType::State);
@@ -127,11 +127,11 @@ struct FMetaStoryTest_ForceTransition_All : FMetaStoryTestBase
 		//  StateLinkedT -> X
 		// StateX
 		//  StateY
-		UMetaStory& MetaStory = NewStateTree();
+		UMetaStory& MetaStory = NewMetaStory();
 		UMetaStoryEditorData& EditorData = *Cast<UMetaStoryEditorData>(MetaStory.EditorData);
 
 		AddStateTaskIndex = 0;
-		AddStateTreeIndex = 1;
+		AddMetaStoryIndex = 1;
 		UMetaStoryState& StateA = AddSubTree(EditorData, "Tree2StateA", EMetaStoryStateType::State);
 		UMetaStoryState& StateB = AddChildState(StateA, "Tree2StateB", EMetaStoryStateType::State);
 		UMetaStoryState& StateC = AddChildState(StateB, "Tree2StateC", EMetaStoryStateType::State);
@@ -158,11 +158,11 @@ struct FMetaStoryTest_ForceTransition_All : FMetaStoryTestBase
 		//Tree3
 		// StateA
 		//  StateB
-		UMetaStory& MetaStory = NewStateTree();
+		UMetaStory& MetaStory = NewMetaStory();
 		UMetaStoryEditorData& EditorData = *Cast<UMetaStoryEditorData>(MetaStory.EditorData);
 
 		AddStateTaskIndex = 0;
-		AddStateTreeIndex = 2;
+		AddMetaStoryIndex = 2;
 		UMetaStoryState& StateA = AddSubTree(EditorData, "Tree3StateA", EMetaStoryStateType::Subtree);
 		UMetaStoryState& StateB = AddChildState(StateA, "Tree3StateB", EMetaStoryStateType::State);
 
@@ -190,7 +190,7 @@ struct FMetaStoryTest_ForceTransition_All : FMetaStoryTestBase
 		FMetaStoryInstanceData InstanceData;
 		FMetaStoryInstanceData OldForceInstanceData;
 		{
-			FTestStateTreeExecutionContext Exec(*MetaStory1, *MetaStory1, InstanceData); //-C6011
+			FTestMetaStoryExecutionContext Exec(*MetaStory1, *MetaStory1, InstanceData); //-C6011
 			const bool bInitSucceeded = Exec.IsValid();
 			AITEST_TRUE(TEXT("MetaStory should init"), bInitSucceeded);
 		}
@@ -269,7 +269,7 @@ struct FMetaStoryTest_ForceTransition_All : FMetaStoryTestBase
 					TArray<FMetaStoryRecordedTransitionResult> RecordedTransitions;
 					TArray<UE::MetaStory::ExecutionContext::FStateHandleContext> ActiveStateHandles;
 					{
-						FTestStateTreeExecutionContext Exec(*MetaStory1, *MetaStory1, InstanceData, {}, EMetaStoryRecordTransitions::Yes);
+						FTestMetaStoryExecutionContext Exec(*MetaStory1, *MetaStory1, InstanceData, {}, EMetaStoryRecordTransitions::Yes);
 
 						if (bUseRoot && TreeTransitionsToTest[TransitionIndex].ActiveStateSourceIndex == 0)
 						{
@@ -296,11 +296,11 @@ struct FMetaStoryTest_ForceTransition_All : FMetaStoryTestBase
 						const FMetaStoryExecutionState* ExecState = InstanceData.GetExecutionState();
 						for (const FMetaStoryExecutionFrame& CurrentFrame : ExecState->ActiveFrames)
 						{
-							const UMetaStory* CurrentStateTree = CurrentFrame.MetaStory;
+							const UMetaStory* CurrentMetaStory = CurrentFrame.MetaStory;
 							for (int32 Index = 0; Index < CurrentFrame.ActiveStates.Num(); Index++)
 							{
 								const FMetaStoryStateHandle Handle = CurrentFrame.ActiveStates[Index];
-								ActiveStateHandles.Emplace(CurrentStateTree, Handle);
+								ActiveStateHandles.Emplace(CurrentMetaStory, Handle);
 							}
 						}
 
@@ -311,7 +311,7 @@ struct FMetaStoryTest_ForceTransition_All : FMetaStoryTestBase
 						Exec.LogClear();
 					}
 					{
-						FTestStateTreeExecutionContext Exec(*MetaStory1, *MetaStory1, OldForceInstanceData);
+						FTestMetaStoryExecutionContext Exec(*MetaStory1, *MetaStory1, OldForceInstanceData);
 						for(const FMetaStoryRecordedTransitionResult& ForcedTransition : RecordedTransitions)
 						{
 							AITEST_TRUE(FString::Printf(TEXT("Old Force transition %d:%d"), TreeIndex, TransitionIndex), Exec.ForceTransition(ForcedTransition) != EMetaStoryRunStatus::Unset);
@@ -373,22 +373,22 @@ struct FMetaStoryTest_ForceTransition_All : FMetaStoryTestBase
 			AITEST_TRUE("MetaStory1 should get compiled", CompileTree(MetaStory1));
 
 			{
-				FTestStateTreeExecutionContext Exec(*MetaStory1, *MetaStory1, InstanceData);
+				FTestMetaStoryExecutionContext Exec(*MetaStory1, *MetaStory1, InstanceData);
 				Exec.Start();
 				AITEST_TRUE(TEXT("In correct states"), Exec.ExpectInActiveStates("Tree1StateA"));
 			}
 			{
-				FTestStateTreeExecutionContext Exec(*MetaStory1, *MetaStory1, OldForceInstanceData);
+				FTestMetaStoryExecutionContext Exec(*MetaStory1, *MetaStory1, OldForceInstanceData);
 				Exec.Start();
 				AITEST_TRUE(TEXT("In correct states"), Exec.ExpectInActiveStates("Tree1StateA"));
 			}
 			bool bCurrentResult = TestAllTransitions(TestAllTransitions, 0, TArray<FName>(), true);
 			{
-				FTestStateTreeExecutionContext Exec(*MetaStory1, *MetaStory1, InstanceData);
+				FTestMetaStoryExecutionContext Exec(*MetaStory1, *MetaStory1, InstanceData);
 				Exec.Stop();
 			}
 			{
-				FTestStateTreeExecutionContext Exec(*MetaStory1, *MetaStory1, OldForceInstanceData);
+				FTestMetaStoryExecutionContext Exec(*MetaStory1, *MetaStory1, OldForceInstanceData);
 				Exec.Stop();
 			}
 
@@ -398,7 +398,7 @@ struct FMetaStoryTest_ForceTransition_All : FMetaStoryTestBase
 		return true;
 	}
 };
-IMPLEMENT_STATE_TREE_INSTANT_TEST(FMetaStoryTest_ForceTransition_All, "System.MetaStory.ForceTransition.All");
+IMPLEMENT_METASTORY_INSTANT_TEST(FMetaStoryTest_ForceTransition_All, "System.MetaStory.ForceTransition.All");
 
 } // namespace UE::MetaStory::Tests
 

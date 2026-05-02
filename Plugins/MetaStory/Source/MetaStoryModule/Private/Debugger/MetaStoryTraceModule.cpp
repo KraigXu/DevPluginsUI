@@ -8,7 +8,7 @@
 #include "Debugger/MetaStoryDebugger.h"  // Required to compile TArray<UE::MetaStoryDebugger::FInstanceDescriptor> from MetaStoryTraceProvider
 #include "TraceServices/Model/AnalysisSession.h"
 
-FName FMetaStoryTraceModule::ModuleName("TraceModule_StateTree");
+FName FMetaStoryTraceModule::ModuleName("TraceModule_MetaStory");
 
 void FMetaStoryTraceModule::GetModuleInfo(TraceServices::FModuleInfo& OutModuleInfo)
 {

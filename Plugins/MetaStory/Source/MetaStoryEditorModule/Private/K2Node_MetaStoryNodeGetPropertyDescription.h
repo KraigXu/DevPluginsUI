@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 #include "K2Node.h"
@@ -35,5 +35,5 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Node", meta=(PropertyReference, AllowOnlyVisibleProperties))
 	FMemberReference Variable;
 
-	friend class FKCHandler_StateTreeNodeGetPropertyDescription;
+	friend class FKCHandler_MetaStoryNodeGetPropertyDescription;
 };

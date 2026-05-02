@@ -1,4 +1,4 @@
-﻿// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -40,7 +40,7 @@ private:
 	bool bFixedLayout = false;
 
 	TWeakObjectPtr<UMetaStoryEditorData> WeakEditorData = nullptr;
-	TWeakObjectPtr<UMetaStory> WeakStateTree = nullptr;
+	TWeakObjectPtr<UMetaStory> WeakMetaStory = nullptr;
 	TWeakObjectPtr<UMetaStoryState> WeakState = nullptr;
 };
 

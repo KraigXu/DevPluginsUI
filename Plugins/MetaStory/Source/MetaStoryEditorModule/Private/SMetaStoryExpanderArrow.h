@@ -1,4 +1,4 @@
-﻿// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -15,7 +15,7 @@ class SButton;
 class SImage;
 
 /**
- * Bespoke implementation of expander arrow for State Tree.
+ * Bespoke implementation of expander arrow for MetaStory.
  */
 class SMetaStoryExpanderArrow : public SCompoundWidget
 {

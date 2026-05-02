@@ -44,5 +44,5 @@ class UMetaStoryTestSchema2 : public UMetaStorySchema
 	GENERATED_BODY()
 };
 
-#define IMPLEMENT_STATE_TREE_INSTANT_TEST(TestClass, PrettyName) \
+#define IMPLEMENT_METASTORY_INSTANT_TEST(TestClass, PrettyName) \
 	IMPLEMENT_AI_INSTANT_TEST_WITH_FLAGS(TestClass, PrettyName, EAutomationTestFlags::ClientContext | EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter | EAutomationTestFlags::SupportsAutoRTFM)

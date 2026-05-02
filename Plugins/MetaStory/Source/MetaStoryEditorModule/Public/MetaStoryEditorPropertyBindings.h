@@ -35,7 +35,7 @@ struct FMetaStoryEditorPropertyBindings : public FPropertyBindingBindingCollecti
 		return PropertyBindings;
 	}
 
-	void AddStateTreeBinding(FMetaStoryPropertyPathBinding&& InBinding)
+	void AddMetaStoryBinding(FMetaStoryPropertyPathBinding&& InBinding)
 	{
 		RemoveBindings(InBinding.GetTargetPath(), ESearchMode::Exact);
 		PropertyBindings.Add(MoveTemp(InBinding));

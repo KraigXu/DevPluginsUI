@@ -25,10 +25,10 @@ struct FSingleDiffEntry;
 class FDiffWidgets
 {
 public:
-	UE_API explicit FDiffWidgets(const UMetaStory* InStateTree);
+	UE_API explicit FDiffWidgets(const UMetaStory* InMetaStory);
 
 	/** Returns actual widget that is used to display trees */
-	UE_API TSharedRef<SMetaStoryView> GetStateTreeWidget() const;
+	UE_API TSharedRef<SMetaStoryView> GetMetaStoryViewWidget() const;
 
 private:
 	TSharedPtr<SMetaStoryView> MetaStoryTreeView;

@@ -19,7 +19,7 @@ namespace UE::MetaStory::InstanceData
 	{
 		GENERATED_BODY()
 
-		/** The state tree of the instances. */
+		/** The MetaStory of the instances. */
 		TObjectKey<UMetaStory> MetaStory;
 
 		UPROPERTY()

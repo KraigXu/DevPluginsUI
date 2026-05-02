@@ -305,7 +305,7 @@ struct FMetaStoryTraceActiveStates
 	{
 		bool operator==(const FAssetActiveStates& Other) const = default;
 
-		TWeakObjectPtr<const UMetaStory> WeakStateTree;
+		TWeakObjectPtr<const UMetaStory> WeakMetaStory;
 		TArray<FMetaStoryStateHandle> ActiveStates;
 	};
 
@@ -334,10 +334,10 @@ struct FMetaStoryTraceInstanceFrameEvent : FMetaStoryTraceBaseEvent
 	METASTORYMODULE_API FString GetValueString(const UMetaStory& MetaStory) const;
 	METASTORYMODULE_API FString GetTypeString(const UMetaStory& MetaStory) const;
 
-	TWeakObjectPtr<const UMetaStory> WeakStateTree;
+	TWeakObjectPtr<const UMetaStory> WeakMetaStory;
 };
 
-/** Type aliases for statetree trace events */
+/** Type aliases for MetaStory trace events */
 using FMetaStoryTraceEventVariantType = TVariant<FMetaStoryTracePhaseEvent,
 												FMetaStoryTraceLogEvent,
 												FMetaStoryTracePropertyEvent,

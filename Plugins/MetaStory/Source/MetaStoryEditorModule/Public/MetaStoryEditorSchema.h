@@ -37,8 +37,8 @@ public:
 
 
 	/**
-	 * Handle compilation for the owning state tree asset.
-	 * The state tree asset compiled successfully.
+	 * Handle compilation for the owning MetaStory asset.
+	 * The MetaStory asset compiled successfully.
 	 */
 	virtual bool HandlePostInternalCompile(const UE::MetaStory::Compiler::FPostInternalContext& Context)
 	{

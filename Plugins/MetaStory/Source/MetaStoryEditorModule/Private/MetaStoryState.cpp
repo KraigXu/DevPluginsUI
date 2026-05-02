@@ -274,13 +274,13 @@ void UMetaStoryState::PostLoad()
 
 #if WITH_EDITORONLY_DATA
 PRAGMA_DISABLE_DEPRECATION_WARNINGS
-	const int32 CurrentStateTreeCustomVersion = UE::MetaStory::CustomVersions::GetEffectiveAssetLinkerVersion(this);
+	const int32 CurrentMetaStoryCustomVersion = UE::MetaStory::CustomVersions::GetEffectiveAssetLinkerVersion(this);
 	constexpr int32 AddedTransitionIdsVersion = FMetaStoryCustomVersion::AddedTransitionIds;
 	constexpr int32 OverridableStateParametersVersion = FMetaStoryCustomVersion::OverridableStateParameters;
 	constexpr int32 AddedCheckingParentsPrerequisitesVersion = FMetaStoryCustomVersion::AddedCheckingParentsPrerequisites;
 PRAGMA_ENABLE_DEPRECATION_WARNINGS
 
-	if (CurrentStateTreeCustomVersion < AddedTransitionIdsVersion)
+	if (CurrentMetaStoryCustomVersion < AddedTransitionIdsVersion)
 	{
 		// Make guids for transitions. These need to be deterministic when upgrading because of cooking.
 		for (int32 Index = 0; Index < Transitions.Num(); Index++)
@@ -290,7 +290,7 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 		}
 	}
 
-	if (CurrentStateTreeCustomVersion < OverridableStateParametersVersion)
+	if (CurrentMetaStoryCustomVersion < OverridableStateParametersVersion)
 	{
 		// In earlier versions, all parameters were overwritten.
 		if (const UPropertyBag* Bag = Parameters.Parameters.GetPropertyBagStruct())
@@ -302,7 +302,7 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 		}
 	}
 
-	if (CurrentStateTreeCustomVersion < AddedCheckingParentsPrerequisitesVersion)
+	if (CurrentMetaStoryCustomVersion < AddedCheckingParentsPrerequisitesVersion)
 	{
 		bCheckPrerequisitesWhenActivatingChildDirectly = false;
 	}

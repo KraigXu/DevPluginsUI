@@ -28,7 +28,7 @@ bool bUseDependenciesToTriggerCompilation = true;
 FAutoConsoleVariableRef CVarLogMetaStoryUseDependenciesToTriggerCompilation(
 	TEXT("MetaStory.Compiler.UseDependenciesToTriggerCompilation"),
 	bUseDependenciesToTriggerCompilation,
-	TEXT("Use the build dependencies to detect when a state tree needs to be linked or compiled.")
+	TEXT("Use the build dependencies to detect when a MetaStory needs to be linked or compiled.")
 );
 
 struct FMetaStoryDependencies
@@ -70,7 +70,7 @@ public:
 
 	bool IsSupportedObject(TNotNull<const UStruct*> Struct)
 	{
-		/** As an optimization, do not include basic structures like FVector and state tree internal types. */
+		/** As an optimization, do not include basic structures like FVector and MetaStory internal types. */
 		return !Struct->IsInPackage(MetaStoryModulePackage)
 			&& !Struct->IsInPackage(MetaStoryEditorModulePackage)
 			&& !Struct->IsInPackage(CoreUObjectModulePackage);
@@ -131,10 +131,10 @@ public:
 	FCompilerManagerImpl(const FCompilerManagerImpl&) = delete;
 	FCompilerManagerImpl& operator=(const FCompilerManagerImpl&) = delete;
 
-	bool CompileInternalSynchronously(TNotNull<UMetaStory*> InStateTree, FMetaStoryCompilerLog& InOutLog);
+	bool CompileInternalSynchronously(TNotNull<UMetaStory*> InMetaStory, FMetaStoryCompilerLog& InOutLog);
 
 private:
-	bool HandleCompileStateTree(UMetaStory& MetaStory);
+	bool HandleCompileMetaStory(UMetaStory& MetaStory);
 	void UpdateBindingsInstanceStructsIfNeeded(TSet<const UStruct*>& Structs, TNotNull<UMetaStoryEditorData*> EditorData);
 	void GatherDependencies(TNotNull<UMetaStory*> MetaStory);
 	void LogDependencies(TNotNull<UMetaStory*> MetaStory) const;
@@ -150,13 +150,13 @@ private:
 	FDelegateHandle PreBeginPIEHandle;
 
 	TMap<TObjectKey<UMetaStory>, TSharedPtr<FMetaStoryDependencies>> MetaStoryToDependencies;
-	TMap<FObjectKey, TArray<TObjectKey<UMetaStory>>> DependenciesToStateTree;
+	TMap<FObjectKey, TArray<TObjectKey<UMetaStory>>> DependenciesToMetaStory;
 };
 static TUniquePtr<FCompilerManagerImpl> CompilerManagerImpl;
 
 FCompilerManagerImpl::FCompilerManagerImpl()
 {
-	UE::MetaStory::Delegates::OnRequestCompile.BindRaw(this, &FCompilerManagerImpl::HandleCompileStateTree);
+	UE::MetaStory::Delegates::OnRequestCompile.BindRaw(this, &FCompilerManagerImpl::HandleCompileMetaStory);
 	ObjectsReinstancedHandle = FCoreUObjectDelegates::OnObjectsReinstanced.AddRaw(this, &FCompilerManagerImpl::HandleObjectsReinstanced);
 	UserDefinedStructReinstancedHandle = UE::StructUtils::Delegates::OnUserDefinedStructReinstanced.AddRaw(this, &FCompilerManagerImpl::HandleUserDefinedStructReinstanced);
 	PreBeginPIEHandle = FEditorDelegates::PreBeginPIE.AddRaw(this, &FCompilerManagerImpl::HandlePreBeginPIE);
@@ -172,12 +172,12 @@ FCompilerManagerImpl::~FCompilerManagerImpl()
 
 bool FCompilerManagerImpl::CompileInternalSynchronously(TNotNull<UMetaStory*> MetaStory, FMetaStoryCompilerLog& Log)
 {
-	UMetaStoryEditingSubsystem::ValidateStateTree(MetaStory);
+	UMetaStoryEditingSubsystem::ValidateMetaStory(MetaStory);
 	FMetaStoryCompiler Compiler(Log);
 	const bool bCompilationResult = Compiler.Compile(MetaStory);
 	if (bCompilationResult)
 	{
-		const uint32 EditorDataHash = UMetaStoryEditingSubsystem::CalculateStateTreeHash(MetaStory);
+		const uint32 EditorDataHash = UMetaStoryEditingSubsystem::CalculateMetaStoryHash(MetaStory);
 
 		// Success
 		MetaStory->LastCompiledEditorDataHash = EditorDataHash;
@@ -229,7 +229,7 @@ void FCompilerManagerImpl::UpdateBindingsInstanceStructsIfNeeded(TSet<const UStr
 	}
 }
 
-bool FCompilerManagerImpl::HandleCompileStateTree(UMetaStory& MetaStory)
+bool FCompilerManagerImpl::HandleCompileMetaStory(UMetaStory& MetaStory)
 {
 	FMetaStoryCompilerLog Log;
 	return CompileInternalSynchronously(&MetaStory, Log);
@@ -282,7 +282,7 @@ void FCompilerManagerImpl::HandleObjectsReinstanced(const FReplacementObjectMap&
 		for (const UStruct* StructToBeReplaced : StructsToBeReplaced)
 		{
 			const FObjectKey StructToReplacedKey = StructToBeReplaced;
-			TArray<TObjectKey<UMetaStory>>* Dependencies = DependenciesToStateTree.Find(StructToReplacedKey);
+			TArray<TObjectKey<UMetaStory>>* Dependencies = DependenciesToMetaStory.Find(StructToReplacedKey);
 			if (Dependencies)
 			{
 				for (const TObjectKey<UMetaStory>& MetaStoryKey : *Dependencies)
@@ -375,7 +375,7 @@ void FCompilerManagerImpl::HandleUserDefinedStructReinstanced(const UUserDefined
 	{
 		TSet<TNotNull<UMetaStory*>> MetaStoryToLink;
 		const FObjectKey StructToReplacedKey = &UserDefinedStruct;
-		TArray<TObjectKey<UMetaStory>>* Dependencies = DependenciesToStateTree.Find(StructToReplacedKey);
+		TArray<TObjectKey<UMetaStory>>* Dependencies = DependenciesToMetaStory.Find(StructToReplacedKey);
 		if (Dependencies)
 		{
 			for (const TObjectKey<UMetaStory>& MetaStoryKey : *Dependencies)
@@ -426,12 +426,12 @@ void FCompilerManagerImpl::GatherDependencies(TNotNull<UMetaStory*> MetaStory)
 	const TObjectKey<UMetaStory> MetaStoryKey = MetaStory;
 	TSharedPtr<FMetaStoryDependencies>& FoundDependencies = MetaStoryToDependencies.FindOrAdd(MetaStoryKey);
 	
-	// Remove all from DependenciesToStateTree
+	// Remove all from DependenciesToMetaStory
 	if (FoundDependencies)
 	{
 		for (FMetaStoryDependencies::FItem& Item : FoundDependencies->Dependencies)
 		{
-			TArray<TObjectKey<UMetaStory>>* FoundKey = DependenciesToStateTree.Find(Item.Key);
+			TArray<TObjectKey<UMetaStory>>* FoundKey = DependenciesToMetaStory.Find(Item.Key);
 			if (FoundKey)
 			{
 				FoundKey->RemoveSingleSwap(MetaStoryKey);
@@ -447,7 +447,7 @@ void FCompilerManagerImpl::GatherDependencies(TNotNull<UMetaStory*> MetaStory)
 	auto AddDependency = [this, MetaStoryKey, FoundDependencies](TNotNull<const UStruct*> Object, FMetaStoryDependencies::EDependencyType DependencyType)
 		{
 			const FObjectKey ObjectKey = Object;
-			DependenciesToStateTree.FindOrAdd(ObjectKey).AddUnique(MetaStoryKey);
+			DependenciesToMetaStory.FindOrAdd(ObjectKey).AddUnique(MetaStoryKey);
 
 			if (FMetaStoryDependencies::FItem* FoundItem = FoundDependencies->Dependencies.FindByPredicate([ObjectKey](const FMetaStoryDependencies::FItem& Other)
 				{

@@ -20,7 +20,7 @@ namespace UE::MetaStoryDebugger
 struct FFrameEventTreeElement : TSharedFromThis<FFrameEventTreeElement>
 {
 	explicit FFrameEventTreeElement(const TraceServices::FFrame& Frame, const FMetaStoryTraceEventVariantType& Event, const UMetaStory* MetaStory)
-		: Frame(Frame), Event(Event), WeakStateTree(MetaStory)
+		: Frame(Frame), Event(Event), WeakMetaStory(MetaStory)
 	{
 	}
 
@@ -28,7 +28,7 @@ struct FFrameEventTreeElement : TSharedFromThis<FFrameEventTreeElement>
 	FMetaStoryTraceEventVariantType Event;
 	TArray<TSharedPtr<FFrameEventTreeElement>> Children;
 	FString Description;
-	TWeakObjectPtr<const UMetaStory> WeakStateTree;
+	TWeakObjectPtr<const UMetaStory> WeakMetaStory;
 };
 
 

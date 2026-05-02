@@ -48,9 +48,9 @@ void FMetaStoryStateLinkDetails::CustomizeHeader(TSharedRef<class IPropertyHandl
 	{
 		if (Object)
 		{
-			if (const UMetaStory* OuterStateTree = Object->GetTypedOuter<UMetaStory>())
+			if (const UMetaStory* OuterMetaStory = Object->GetTypedOuter<UMetaStory>())
 			{
-				WeakEditorData = Cast<UMetaStoryEditorData>(OuterStateTree->EditorData);
+				WeakEditorData = Cast<UMetaStoryEditorData>(OuterMetaStory->EditorData);
 				if (WeakEditorData.IsValid())
 				{
 					break;

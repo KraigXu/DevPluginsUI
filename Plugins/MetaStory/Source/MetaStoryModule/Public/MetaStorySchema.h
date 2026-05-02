@@ -118,7 +118,7 @@ public:
 		return true;
 	}
 
-	/** @return True if global parameters for the State Tree are allowed. */
+	/** @return True if global parameters for the MetaStory are allowed. */
 	virtual bool AllowGlobalParameters() const
 	{
 		return true;

@@ -17,7 +17,7 @@ namespace UE::MetaStory::Tests
 struct FMetaStoryTestBase : public FAITestBase
 {
 protected:
-	UMetaStory& NewStateTree() const;
+	UMetaStory& NewMetaStory() const;
 	static FMetaStoryPropertyPathBinding MakeBinding(const FGuid& SourceID, const FStringView Source, const FGuid& TargetID, const FStringView Target, const bool bInIsOutputBinding = false);
 	static FGameplayTag GetTestTag1();
 	static FGameplayTag GetTestTag2();

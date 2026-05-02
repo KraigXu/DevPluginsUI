@@ -11,7 +11,7 @@ class FTimeSliderController;
 
 
 /**
- * Displays a sequence of points and windows for a statetree debugger instance timeline.
+ * Displays a sequence of points and windows for a MetaStory debugger instance timeline.
  * This is a slightly modified version of the SEventTimelineView used by RewindDebugger
  * so it should make it easier to eventually merge the tools.
  */

@@ -401,13 +401,13 @@ void FMetaStoryViewModel::Init(UMetaStoryEditorData* InTreeData)
 	UE::MetaStory::Delegates::OnBreakpointsChanged.AddSP(this, &FMetaStoryViewModel::HandleBreakpointsChanged);
 	UE::MetaStory::Delegates::OnPostCompile.AddSP(this, &FMetaStoryViewModel::HandlePostCompile);
 
-	Debugger->SetAsset(GetStateTree());
+	Debugger->SetAsset(GetMetaStory());
 	BindToDebuggerDelegates();
 	RefreshDebuggerBreakpoints();
 #endif // WITH_METASTORY_TRACE_DEBUGGER
 }
 
-const UMetaStory* FMetaStoryViewModel::GetStateTree() const
+const UMetaStory* FMetaStoryViewModel::GetMetaStory() const
 {
 	if (const UMetaStoryEditorData* TreeData = TreeDataWeak.Get())
 	{
@@ -417,7 +417,7 @@ const UMetaStory* FMetaStoryViewModel::GetStateTree() const
 	return nullptr;
 }
 
-const UMetaStoryEditorData* FMetaStoryViewModel::GetStateTreeEditorData() const
+const UMetaStoryEditorData* FMetaStoryViewModel::GetMetaStoryEditorData() const
 {
 	return TreeDataWeak.Get();
 }
@@ -442,7 +442,7 @@ UMetaStoryState* FMetaStoryViewModel::GetMutableStateByID(const FGuid StateID) c
 
 void FMetaStoryViewModel::HandleIdentifierChanged(const UMetaStory& MetaStory) const
 {
-	if (GetStateTree() == &MetaStory)
+	if (GetMetaStory() == &MetaStory)
 	{
 		OnAssetChanged.Broadcast();
 	}
@@ -662,7 +662,7 @@ UMetaStoryState* FMetaStoryViewModel::FindStateAssociatedToBreakpoint(FMetaStory
 	{
 		return nullptr;
 	}
-	const UMetaStory* MetaStory = GetStateTree();
+	const UMetaStory* MetaStory = GetMetaStory();
 	if (MetaStory == nullptr)
 	{
 		return nullptr;
@@ -715,7 +715,7 @@ UMetaStoryState* FMetaStoryViewModel::FindStateAssociatedToBreakpoint(FMetaStory
 
 void FMetaStoryViewModel::HandleBreakpointsChanged(const UMetaStory& MetaStory)
 {
-	if (GetStateTree() == &MetaStory)
+	if (GetMetaStory() == &MetaStory)
 	{
 		RefreshDebuggerBreakpoints();
 	}
@@ -723,7 +723,7 @@ void FMetaStoryViewModel::HandleBreakpointsChanged(const UMetaStory& MetaStory)
 
 void FMetaStoryViewModel::HandlePostCompile(const UMetaStory& MetaStory)
 {
-	if (GetStateTree() == &MetaStory)
+	if (GetMetaStory() == &MetaStory)
 	{
 		RefreshDebuggerBreakpoints();
 	}
@@ -741,7 +741,7 @@ void FMetaStoryViewModel::RemoveAllBreakpoints()
 
 void FMetaStoryViewModel::RefreshDebuggerBreakpoints()
 {
-	const UMetaStory* MetaStory = GetStateTree();
+	const UMetaStory* MetaStory = GetMetaStory();
 	const UMetaStoryEditorData* TreeData = TreeDataWeak.Get();
 	if (MetaStory != nullptr && TreeData != nullptr)
 	{
@@ -1121,7 +1121,7 @@ void FMetaStoryViewModel::PasteNode(TWeakObjectPtr<UMetaStoryState> State, const
 
 						for (FMetaStoryPropertyPathBinding& Binding : ClipboardEditorData.GetBindingsInBuffer())
 						{
-							InEditorData->GetPropertyEditorBindings()->AddStateTreeBinding(MoveTemp(Binding));
+							InEditorData->GetPropertyEditorBindings()->AddMetaStoryBinding(MoveTemp(Binding));
 						}
 					};
 
@@ -1225,7 +1225,7 @@ void FMetaStoryViewModel::DuplicateNode(TWeakObjectPtr<UMetaStoryState> State, c
 
 						for (FMetaStoryPropertyPathBinding& Binding : Clipboard.GetBindingsInBuffer())
 						{
-							InEditorData->GetPropertyEditorBindings()->AddStateTreeBinding(MoveTemp(Binding));
+							InEditorData->GetPropertyEditorBindings()->AddMetaStoryBinding(MoveTemp(Binding));
 						}
 					};
 
@@ -1678,7 +1678,7 @@ void FMetaStoryViewModel::PasteStatesAsChildrenFromText(const FString& TextToImp
 						Binding.GetMutableSourcePath().SetStructID(*NewSourceID);
 					}
 					
-					TreeData->GetPropertyEditorBindings()->AddStateTreeBinding(MoveTemp(Binding));
+					TreeData->GetPropertyEditorBindings()->AddMetaStoryBinding(MoveTemp(Binding));
 				}
 			}
 		}
@@ -1963,17 +1963,17 @@ void FMetaStoryViewModel::BindToDebuggerDelegates()
 		{
 			ActiveStates.Empty();
 		}
-		else if (const UMetaStory* OuterStateTree = GetStateTree())
+		else if (const UMetaStory* OuterMetaStory = GetMetaStory())
 		{
 			for (const FMetaStoryTraceActiveStates::FAssetActiveStates& AssetActiveStates : NewActiveStates.PerAssetStates)
 			{
 				// Only track states owned by the MetaStory associated to the view model (skip linked assets)
-				if (AssetActiveStates.WeakStateTree == OuterStateTree)
+				if (AssetActiveStates.WeakMetaStory == OuterMetaStory)
 				{
 					ActiveStates.Reset(AssetActiveStates.ActiveStates.Num());
 					for (const FMetaStoryStateHandle Handle : AssetActiveStates.ActiveStates)
 					{
-						ActiveStates.Add(OuterStateTree->GetStateIdFromHandle(Handle));
+						ActiveStates.Add(OuterMetaStory->GetStateIdFromHandle(Handle));
 					}
 				}
 			}
@@ -2079,7 +2079,7 @@ void FMetaStoryViewModel::PasteNodesToState(TNotNull<UMetaStoryEditorData*> InEd
 	// Dump fixed property bindings in the end to avoid being cleaned up before their corresponding nodes are pushed in
 	for (FMetaStoryPropertyPathBinding& Binding : InProcessedClipboard.GetBindingsInBuffer())
 	{
-		InEditorData->GetPropertyEditorBindings()->AddStateTreeBinding(MoveTemp(Binding));
+		InEditorData->GetPropertyEditorBindings()->AddMetaStoryBinding(MoveTemp(Binding));
 	}
 
 	OnStateNodesChanged.Broadcast(InState);

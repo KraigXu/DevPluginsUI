@@ -387,7 +387,7 @@ EDataValidationResult UMetaStory::IsDataValid(FDataValidationContext& Context) c
 			const uint32 CurrentHash = UE::MetaStory::Delegates::OnRequestEditorHash.Execute(*this);
 			if (CurrentHash != LastCompiledEditorDataHash)
 			{
-				Context.AddWarning(FText::FromString(FString::Printf(TEXT("%s is not compiled. Please recompile the State Tree."), *GetPathName())));
+				Context.AddWarning(FText::FromString(FString::Printf(TEXT("%s is not compiled. Please recompile the MetaStory."), *GetPathName())));
 				return EDataValidationResult::Invalid;
 			}
 		}
@@ -395,7 +395,7 @@ EDataValidationResult UMetaStory::IsDataValid(FDataValidationContext& Context) c
 
 	if (!const_cast<UMetaStory*>(this)->Link())
 	{
-		Context.AddError(FText::FromString(FString::Printf(TEXT("%s failed to link. Please recompile the State Tree for more details errors."), *GetPathName())));
+		Context.AddError(FText::FromString(FString::Printf(TEXT("%s failed to link. Please recompile the MetaStory for more details errors."), *GetPathName())));
 		return EDataValidationResult::Invalid;
 	}
 
@@ -717,7 +717,7 @@ bool UMetaStory::Link()
 		{
 			if (!Node.IsValid())
 			{
-				UE_LOG(LogMetaStory, Error, TEXT("%s: State Tree asset was not properly loaded (missing node). See log for loading failures, or recompile the MetaStory asset."), *GetPathName());
+				UE_LOG(LogMetaStory, Error, TEXT("%s: MetaStory asset was not properly loaded (missing node). See log for loading failures, or recompile the MetaStory asset."), *GetPathName());
 				return false;
 			}
 		}
@@ -777,25 +777,25 @@ bool UMetaStory::Link()
 
 	if (!DefaultInstanceData.AreAllInstancesValid())
 	{
-		UE_LOG(LogMetaStory, Error, TEXT("%s: State Tree asset was not properly loaded (missing instance data). See log for loading failures, or recompile the MetaStory asset."), *GetPathName());
+		UE_LOG(LogMetaStory, Error, TEXT("%s: MetaStory asset was not properly loaded (missing instance data). See log for loading failures, or recompile the MetaStory asset."), *GetPathName());
 		return false;
 	}
 
 	if (!SharedInstanceData.AreAllInstancesValid())
 	{
-		UE_LOG(LogMetaStory, Error, TEXT("%s: State Tree asset was not properly loaded (missing shared instance data). See log for loading failures, or recompile the MetaStory asset."), *GetPathName());
+		UE_LOG(LogMetaStory, Error, TEXT("%s: MetaStory asset was not properly loaded (missing shared instance data). See log for loading failures, or recompile the MetaStory asset."), *GetPathName());
 		return false;
 	}
 
 	if (!DefaultEvaluationScopeInstanceData.AreAllInstancesValid())
 	{
-		UE_LOG(LogMetaStory, Error, TEXT("%s: State Tree asset was not properly loaded (missing evaluation scope instance data). See log for loading failures, or recompile the MetaStory asset."), *GetPathName());
+		UE_LOG(LogMetaStory, Error, TEXT("%s: MetaStory asset was not properly loaded (missing evaluation scope instance data). See log for loading failures, or recompile the MetaStory asset."), *GetPathName());
 		return false;
 	}
 
 	if (!GetDefaultExecutionRuntimeData().AreAllInstancesValid())
 	{
-		UE_LOG(LogMetaStory, Error, TEXT("%s: State Tree asset was not properly loaded (missing execution runtime data). See log for loading failures, or recompile the MetaStory asset."), *GetPathName());
+		UE_LOG(LogMetaStory, Error, TEXT("%s: MetaStory asset was not properly loaded (missing execution runtime data). See log for loading failures, or recompile the MetaStory asset."), *GetPathName());
 		return false;
 	}
 	
@@ -1266,7 +1266,7 @@ TArray<FMetaStoryMemoryUsage> UMetaStory::CalculateEstimatedMemoryUsage() const
 		return MemoryUsages;
 	}
 
-	const int32 TreeMemUsageIndex = MemoryUsages.Emplace(TEXT("State Tree Max"));
+	const int32 TreeMemUsageIndex = MemoryUsages.Emplace(TEXT("MetaStory Max"));
 	const int32 InstanceMemUsageIndex = MemoryUsages.Emplace(TEXT("Instance Overhead"));
 	const int32 EvalMemUsageIndex = MemoryUsages.Emplace(TEXT("Evaluators"));
 	const int32 GlobalTaskMemUsageIndex = MemoryUsages.Emplace(TEXT("GlobalTask"));
@@ -1478,7 +1478,7 @@ void UMetaStory::CompileIfChanged()
 		const uint32 CurrentHash = UE::MetaStory::Delegates::OnRequestEditorHash.Execute(*this);
 		if (LastCompiledEditorDataHash != CurrentHash)
 		{
-			UE_LOG(LogMetaStory, Log, TEXT("%s: Editor data has changed. Recompiling state tree."), *GetPathName());
+			UE_LOG(LogMetaStory, Log, TEXT("%s: Editor data has changed. Recompiling MetaStory."), *GetPathName());
 			UE::MetaStory::Delegates::OnRequestCompile.Execute(*this);
 		}
 	}
@@ -1493,7 +1493,7 @@ void UMetaStory::Compile()
 {
 	if (UE::MetaStory::Delegates::OnRequestCompile.IsBound())
 	{
-		UE_LOG(LogMetaStory, Log, TEXT("%s: Editor data has changed. Recompiling state tree."), *GetPathName());
+		UE_LOG(LogMetaStory, Log, TEXT("%s: Editor data has changed. Recompiling MetaStory."), *GetPathName());
 		UE::MetaStory::Delegates::OnRequestCompile.Execute(*this);
 	}
 	else

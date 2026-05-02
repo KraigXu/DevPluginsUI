@@ -70,14 +70,14 @@ namespace UE::MetaStoryDebugger
 		double& OutLastTraceReadTime);
 }
 
-DECLARE_DELEGATE_OneParam(FOnStateTreeDebuggerScrubStateChanged, const UE::MetaStoryDebugger::FScrubState& ScrubState);
-DECLARE_DELEGATE_TwoParams(FOnStateTreeDebuggerBreakpointHit, FMetaStoryInstanceDebugId InstanceId, const FMetaStoryDebuggerBreakpoint Breakpoint);
-DECLARE_DELEGATE_OneParam(FOnStateTreeDebuggerActiveStatesChanges, const FMetaStoryTraceActiveStates& ActiveStates);
-DECLARE_DELEGATE_OneParam(FOnStateTreeDebuggerNewInstance, FMetaStoryInstanceDebugId InstanceId);
-DECLARE_DELEGATE(FOnStateTreeDebuggerNewSession);
+DECLARE_DELEGATE_OneParam(FOnMetaStoryDebuggerScrubStateChanged, const UE::MetaStoryDebugger::FScrubState& ScrubState);
+DECLARE_DELEGATE_TwoParams(FOnMetaStoryDebuggerBreakpointHit, FMetaStoryInstanceDebugId InstanceId, const FMetaStoryDebuggerBreakpoint Breakpoint);
+DECLARE_DELEGATE_OneParam(FOnMetaStoryDebuggerActiveStatesChanges, const FMetaStoryTraceActiveStates& ActiveStates);
+DECLARE_DELEGATE_OneParam(FOnMetaStoryDebuggerNewInstance, FMetaStoryInstanceDebugId InstanceId);
+DECLARE_DELEGATE(FOnMetaStoryDebuggerNewSession);
 
 UE_DEPRECATED(5.7, "Delegate type no longer used and will be removed")
-DECLARE_DELEGATE(FOnStateTreeDebuggerDebuggedInstanceSet);
+DECLARE_DELEGATE(FOnMetaStoryDebuggerDebuggedInstanceSet);
 
 struct FMetaStoryDebugger : FTickableGameObject, UE::MetaStoryDebugger::ITraceReader
 {
@@ -332,17 +332,17 @@ struct FMetaStoryDebugger : FTickableGameObject, UE::MetaStoryDebugger::ITraceRe
 	UE_API void GetSessionInstances(TArray<UE::MetaStoryDebugger::FInstanceDescriptor>& OutInstances) const;
 	UE_API void GetSessionInstanceDescriptors(TArray<const TSharedRef<const UE::MetaStoryDebugger::FInstanceDescriptor>>& OutInstances) const;
 
-	FOnStateTreeDebuggerNewSession OnNewSession;
-	FOnStateTreeDebuggerNewInstance OnNewInstance;
+	FOnMetaStoryDebuggerNewSession OnNewSession;
+	FOnMetaStoryDebuggerNewInstance OnNewInstance;
 
 PRAGMA_DISABLE_DEPRECATION_WARNINGS
 	UE_DEPRECATED(5.7, "Delegate no longer used and will be removed")
-	FOnStateTreeDebuggerDebuggedInstanceSet OnSelectedInstanceCleared;
+	FOnMetaStoryDebuggerDebuggedInstanceSet OnSelectedInstanceCleared;
 PRAGMA_ENABLE_DEPRECATION_WARNINGS
 
-	FOnStateTreeDebuggerScrubStateChanged OnScrubStateChanged;
-	FOnStateTreeDebuggerBreakpointHit OnBreakpointHit;
-	FOnStateTreeDebuggerActiveStatesChanges OnActiveStatesChanged;
+	FOnMetaStoryDebuggerScrubStateChanged OnScrubStateChanged;
+	FOnMetaStoryDebuggerBreakpointHit OnBreakpointHit;
+	FOnMetaStoryDebuggerActiveStatesChanges OnActiveStatesChanged;
 
 protected:
 	virtual void Tick(float DeltaTime) override;
@@ -403,7 +403,7 @@ private:
 
 	/**
 	 * Tests event for given instance id against breakpoints.
-	 * @param InstanceId Id of the statetree instance that produces the event.
+	 * @param InstanceId Id of the MetaStory instance that produces the event.
 	 * @param Event The event received from the instance.
 	 * @return True if a breakpoint has been it, false otherwise.
 	 */

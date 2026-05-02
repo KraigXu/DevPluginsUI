@@ -195,7 +195,7 @@ FText SFrameEventViewRow::GetEventDescription() const
 	FString EventDescription;
 	if (Item->Description.IsEmpty())
 	{
-		if (const UMetaStory* MetaStory = Item->WeakStateTree.Get())
+		if (const UMetaStory* MetaStory = Item->WeakMetaStory.Get())
 		{
 			// Some types have some custom representations so we want to use a more minimal description.
 			if (Item->Event.IsType<FMetaStoryTraceStateEvent>()
@@ -230,7 +230,7 @@ FText SFrameEventViewRow::GetEventDescription() const
 FText SFrameEventViewRow::GetEventTooltip() const
 {
 	FString Tooltip;
-	if (const UMetaStory* MetaStory = Item->WeakStateTree.Get())
+	if (const UMetaStory* MetaStory = Item->WeakMetaStory.Get())
 	{
 		Visit([&Tooltip, MetaStory](auto& TypedEvent)
 			{

@@ -466,7 +466,7 @@ void FMetaStoryTransitionDetails::OnDuplicateTransition() const
 
 					for (FMetaStoryPropertyPathBinding& Binding : Clipboard.GetBindingsInBuffer())
 					{
-						EditorDataPtr->GetPropertyEditorBindings()->AddStateTreeBinding(MoveTemp(Binding));
+						EditorDataPtr->GetPropertyEditorBindings()->AddMetaStoryBinding(MoveTemp(Binding));
 					}
 				}
 
@@ -706,7 +706,7 @@ void FMetaStoryTransitionDetails::OnPasteTransitions() const
 
 					for (FMetaStoryPropertyPathBinding& Binding : ClipboardTransitions[ObjIdx].GetBindingsInBuffer())
 					{
-						EditorDataPtr->GetPropertyEditorBindings()->AddStateTreeBinding(MoveTemp(Binding));
+						EditorDataPtr->GetPropertyEditorBindings()->AddMetaStoryBinding(MoveTemp(Binding));
 					}
 				}
 			}
@@ -726,7 +726,7 @@ void FMetaStoryTransitionDetails::OnPasteTransitions() const
 
 					for (FMetaStoryPropertyPathBinding& Binding : ClipboardTransitions[Idx].GetBindingsInBuffer())
 					{
-						EditorDataPtr->GetPropertyEditorBindings()->AddStateTreeBinding(MoveTemp(Binding));
+						EditorDataPtr->GetPropertyEditorBindings()->AddMetaStoryBinding(MoveTemp(Binding));
 					}
 				}
 			}

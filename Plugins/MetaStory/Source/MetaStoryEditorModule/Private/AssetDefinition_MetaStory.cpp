@@ -12,7 +12,7 @@
 
 FText UAssetDefinition_MetaStory::GetAssetDisplayName() const
 {
-	return LOCTEXT("FAssetTypeActions_StateTree", "MetaStory");
+	return LOCTEXT("FAssetTypeActions_MetaStory", "MetaStory");
 }
 
 FLinearColor UAssetDefinition_MetaStory::GetAssetColor() const
@@ -47,15 +47,15 @@ EAssetCommandResult UAssetDefinition_MetaStory::OpenAssets(const FAssetOpenArgs&
 
 EAssetCommandResult UAssetDefinition_MetaStory::PerformAssetDiff(const FAssetDiffArgs& DiffArgs) const
 {
-	const UMetaStory* OldStateTree = Cast<UMetaStory>(DiffArgs.OldAsset);
-	const UMetaStory* NewStateTree = Cast<UMetaStory>(DiffArgs.NewAsset);
+	const UMetaStory* OldMetaStory = Cast<UMetaStory>(DiffArgs.OldAsset);
+	const UMetaStory* NewMetaStory = Cast<UMetaStory>(DiffArgs.NewAsset);
 
-	if (OldStateTree == nullptr || NewStateTree == nullptr)
+	if (OldMetaStory == nullptr || NewMetaStory == nullptr)
 	{
 		return EAssetCommandResult::Unhandled;
 	}
 
-	UE::MetaStory::Diff::SDiffWidget::CreateDiffWindow(OldStateTree, NewStateTree, DiffArgs.OldRevision, DiffArgs.NewRevision, UMetaStory::StaticClass());
+	UE::MetaStory::Diff::SDiffWidget::CreateDiffWindow(OldMetaStory, NewMetaStory, DiffArgs.OldRevision, DiffArgs.NewRevision, UMetaStory::StaticClass());
 	return EAssetCommandResult::Handled;
 }
 

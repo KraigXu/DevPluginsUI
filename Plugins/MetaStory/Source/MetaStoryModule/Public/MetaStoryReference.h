@@ -13,7 +13,7 @@ class UMetaStory;
 /**
  * Struct to hold reference to a MetaStory asset along with values to parameterized it.
  */
-USTRUCT(BlueprintType, meta = (DisableSplitPin, HasNativeMake = "/Script/MetaStoryModule.MetaStoryFunctionLibrary.MakeStateTreeReference"))
+USTRUCT(BlueprintType, meta = (DisableSplitPin, HasNativeMake = "/Script/MetaStoryModule.MetaStoryFunctionLibrary.MakeMetaStoryReference"))
 struct FMetaStoryReference
 {
 	GENERATED_BODY()
@@ -25,20 +25,20 @@ struct FMetaStoryReference
 	}
 	
 	/** Sets the MetaStory asset and referenced parameters. */
-	void SetStateTree(UMetaStory* NewStateTree)
+	void SetMetaStory(UMetaStory* NewMetaStory)
 	{
-		MetaStory = NewStateTree;
+		MetaStory = NewMetaStory;
 		SyncParameters();
 	}
 
 	/** @return const pointer to the referenced MetaStory asset. */
-	const UMetaStory* GetStateTree() const
+	const UMetaStory* GetMetaStory() const
 	{
 		return MetaStory;
 	}
 
 	/** @return pointer to the referenced MetaStory asset. */
-	UMetaStory* GetMutableStateTree()
+	UMetaStory* GetMutableMetaStory()
 	{
 		return MetaStory;
 	}
@@ -109,7 +109,7 @@ struct TStructOpsTypeTraits<FMetaStoryReference> : public TStructOpsTypeTraitsBa
 
 
 /**
- * Item describing a state tree override for a state with a specific tag.
+ * Item describing a MetaStory override for a state with a specific tag.
  */
 USTRUCT()
 struct FMetaStoryReferenceOverrideItem
@@ -117,14 +117,14 @@ struct FMetaStoryReferenceOverrideItem
 	GENERATED_BODY()
 
 	FMetaStoryReferenceOverrideItem() = default;
-	FMetaStoryReferenceOverrideItem(const FGameplayTag InStateTag, const FMetaStoryReference& InStateTreeReference)
+	FMetaStoryReferenceOverrideItem(const FGameplayTag InStateTag, const FMetaStoryReference& InMetaStoryReference)
 		: StateTag(InStateTag)
-		, MetaStoryReference(InStateTreeReference)
+		, MetaStoryReference(InMetaStoryReference)
 	{
 	}
-	FMetaStoryReferenceOverrideItem(const FGameplayTag InStateTag, FMetaStoryReference&& InStateTreeReference)
+	FMetaStoryReferenceOverrideItem(const FGameplayTag InStateTag, FMetaStoryReference&& InMetaStoryReference)
 		: StateTag(InStateTag)
-		, MetaStoryReference(MoveTemp(InStateTreeReference))
+		, MetaStoryReference(MoveTemp(InMetaStoryReference))
 	{
 	}
 	
@@ -133,22 +133,22 @@ struct FMetaStoryReferenceOverrideItem
 		return StateTag;
 	}
 
-	const FMetaStoryReference& GetStateTreeReference() const
+	const FMetaStoryReference& GetMetaStoryReference() const
 	{
 		return MetaStoryReference;
 	}
 
 	friend uint32 GetTypeHash(const FMetaStoryReferenceOverrideItem& Item)
 	{
-		return HashCombine(GetTypeHash(Item.StateTag), GetTypeHash(Item.MetaStoryReference.GetStateTree()));
+		return HashCombine(GetTypeHash(Item.StateTag), GetTypeHash(Item.MetaStoryReference.GetMetaStory()));
 	}
 	
 private:
-	/** Exact tag used to match against a tag on a linked State Tree state. */
+	/** Exact tag used to match against a tag on a linked MetaStory state. */
 	UPROPERTY(EditAnywhere, Category = "MetaStory")
 	FGameplayTag StateTag;
 
-	/** State Tree and parameters to replace the linked state asset with. */
+	/** MetaStory and parameters to replace the linked state asset with. */
 	UPROPERTY(EditAnywhere, Category = "MetaStory", meta=(SchemaCanBeOverriden))
 	FMetaStoryReference MetaStoryReference;
 	
@@ -156,7 +156,7 @@ private:
 };
 
 /**
- * Overrides for linked State Trees. This table is used to override State Tree references on linked states.
+ * Overrides for linked MetaStorys. This table is used to override MetaStory references on linked states.
  * If a linked state's tag is exact match of the tag specified on the table, the reference from the table is used instead.
  */
 USTRUCT()

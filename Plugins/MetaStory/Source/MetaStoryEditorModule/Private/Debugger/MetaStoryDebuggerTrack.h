@@ -32,7 +32,7 @@ struct FInstanceTrackHelper : public TSharedFromThis<FInstanceTrackHelper>
 	 * changed since the last update.
 	 * */
 	bool RebuildEventData(
-		TNotNull<const UMetaStory*> InStateTree
+		TNotNull<const UMetaStory*> InMetaStory
 		, const FInstanceEventCollection& InEventCollection
 		, const double InRecordingDuration
 		, const double InScrubTime
@@ -173,7 +173,7 @@ private:
 };
 
 
-/** Parent track of all the statetree instance tracks sharing the same execution context owner */
+/** Parent track of all the MetaStory instance tracks sharing the same execution context owner */
 struct FMetaStoryDebuggerOwnerTrack : FMetaStoryDebuggerBaseTrack
 {
 	explicit FMetaStoryDebuggerOwnerTrack(const FText& InInstanceName);

@@ -9,14 +9,14 @@
 
 #define LOCTEXT_NAMESPACE "MetaStory"
 
-void FMetaStoryRunParallelStateTreeExecutionExtension::ScheduleNextTick(const FContextParameters& Context, const FNextTickArguments& Args)
+void FMetaStoryRunParallelMetaStoryExecutionExtension::ScheduleNextTick(const FContextParameters& Context, const FNextTickArguments& Args)
 {
 	const FMetaStoryMinimalExecutionContext ExecutionContext(&Context.Owner, &Context.MetaStory, Context.InstanceData);
 	const FMetaStoryScheduledTick ScheduledTick = ExecutionContext.GetNextScheduledTick();
 	WeakExecutionContext.UpdateScheduledTickRequest(ScheduledTickHandle, ScheduledTick);
 }
 
-FMetaStoryRunParallelStateTreeTask::FMetaStoryRunParallelStateTreeTask()
+FMetaStoryRunParallelMetaStoryTask::FMetaStoryRunParallelMetaStoryTask()
 {
 	bShouldCopyBoundPropertiesOnTick = false;
 	bShouldCopyBoundPropertiesOnExitState = false;
@@ -24,24 +24,24 @@ FMetaStoryRunParallelStateTreeTask::FMetaStoryRunParallelStateTreeTask()
 	bConsideredForScheduling = false;
 }
 
-EMetaStoryRunStatus FMetaStoryRunParallelStateTreeTask::EnterState(FMetaStoryExecutionContext& Context, const FMetaStoryTransitionResult& Transitions) const
+EMetaStoryRunStatus FMetaStoryRunParallelMetaStoryTask::EnterState(FMetaStoryExecutionContext& Context, const FMetaStoryTransitionResult& Transitions) const
 {
 	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
-	const FMetaStoryReference& MetaStoryToRun = GetStateTreeToRun(Context, InstanceData);
+	const FMetaStoryReference& MetaStoryToRun = GetMetaStoryToRun(Context, InstanceData);
 	if (!MetaStoryToRun.IsValid())
 	{
 		return EMetaStoryRunStatus::Failed;
 	}
 
 	// Find if it's a recursive call. The detection is not perfect. For example: MetaStorys with a parallel task that links to each other cannot be detected.
-	const bool bInParentContext = Context.GetActiveFrames().ContainsByPredicate([NewTree = MetaStoryToRun.GetStateTree()](const FMetaStoryExecutionFrame& Frame)
+	const bool bInParentContext = Context.GetActiveFrames().ContainsByPredicate([NewTree = MetaStoryToRun.GetMetaStory()](const FMetaStoryExecutionFrame& Frame)
 		{
 			return Frame.MetaStory == NewTree;
 		});
-	const bool bFromParentProcessedFrame = Context.GetCurrentlyProcessedFrame() != nullptr ? Context.GetCurrentlyProcessedFrame()->MetaStory == MetaStoryToRun.GetStateTree() : false;
+	const bool bFromParentProcessedFrame = Context.GetCurrentlyProcessedFrame() != nullptr ? Context.GetCurrentlyProcessedFrame()->MetaStory == MetaStoryToRun.GetMetaStory() : false;
 	if (bInParentContext || bFromParentProcessedFrame)
 	{
-		UE_LOG(LogMetaStory, Warning, TEXT("Trying to start a new parallel tree from the same tree '%s'"), *MetaStoryToRun.GetStateTree()->GetName());
+		UE_LOG(LogMetaStory, Warning, TEXT("Trying to start a new parallel tree from the same tree '%s'"), *MetaStoryToRun.GetMetaStory()->GetName());
 		return EMetaStoryRunStatus::Failed;
 	}
 
@@ -56,36 +56,36 @@ EMetaStoryRunStatus FMetaStoryRunParallelStateTreeTask::EnterState(FMetaStoryExe
 		InstanceData.TreeInstanceData.SetSharedEventQueue(OuterInstanceData->GetSharedMutableEventQueue());
 	}
 	
-	InstanceData.RunningStateTree = MetaStoryToRun.GetStateTree();
-	FMetaStoryExecutionContext ParallelTreeContext(Context, *InstanceData.RunningStateTree, InstanceData.TreeInstanceData);
+	InstanceData.RunningMetaStory = MetaStoryToRun.GetMetaStory();
+	FMetaStoryExecutionContext ParallelTreeContext(Context, *InstanceData.RunningMetaStory, InstanceData.TreeInstanceData);
 	if (!ParallelTreeContext.IsValid())
 	{
 		return EMetaStoryRunStatus::Failed;
 	}
 
-	FMetaStoryRunParallelStateTreeExecutionExtension Extension;
+	FMetaStoryRunParallelMetaStoryExecutionExtension Extension;
 	Extension.WeakExecutionContext = Context.MakeWeakExecutionContext();
 	const EMetaStoryRunStatus RunStatus = ParallelTreeContext.Start(FMetaStoryExecutionContext::FStartParameters
 		{
 			.GlobalParameters = &MetaStoryToRun.GetParameters(),
-			.ExecutionExtension = TInstancedStruct<FMetaStoryRunParallelStateTreeExecutionExtension>::Make(MoveTemp(Extension))
+			.ExecutionExtension = TInstancedStruct<FMetaStoryRunParallelMetaStoryExecutionExtension>::Make(MoveTemp(Extension))
 		});
 
 	InstanceData.ScheduledTickHandle = Context.AddScheduledTickRequest(ParallelTreeContext.GetNextScheduledTick());
-	InstanceData.TreeInstanceData.GetMutableExecutionState()->ExecutionExtension.GetMutable<FMetaStoryRunParallelStateTreeExecutionExtension>().ScheduledTickHandle = InstanceData.ScheduledTickHandle;
+	InstanceData.TreeInstanceData.GetMutableExecutionState()->ExecutionExtension.GetMutable<FMetaStoryRunParallelMetaStoryExecutionExtension>().ScheduledTickHandle = InstanceData.ScheduledTickHandle;
 
 	return RunStatus;
 }
 
-EMetaStoryRunStatus FMetaStoryRunParallelStateTreeTask::Tick(FMetaStoryExecutionContext& Context, const float DeltaTime) const
+EMetaStoryRunStatus FMetaStoryRunParallelMetaStoryTask::Tick(FMetaStoryExecutionContext& Context, const float DeltaTime) const
 {
 	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
-	if (!InstanceData.RunningStateTree)
+	if (!InstanceData.RunningMetaStory)
 	{
 		return EMetaStoryRunStatus::Failed;
 	}
 
-	FMetaStoryExecutionContext ParallelTreeContext(Context, *InstanceData.RunningStateTree, InstanceData.TreeInstanceData);
+	FMetaStoryExecutionContext ParallelTreeContext(Context, *InstanceData.RunningMetaStory, InstanceData.TreeInstanceData);
 	if (!ParallelTreeContext.IsValid())
 	{
 		return EMetaStoryRunStatus::Failed;
@@ -96,15 +96,15 @@ EMetaStoryRunStatus FMetaStoryRunParallelStateTreeTask::Tick(FMetaStoryExecution
 	return RunStatus;
 }
 
-void FMetaStoryRunParallelStateTreeTask::TriggerTransitions(FMetaStoryExecutionContext& Context) const
+void FMetaStoryRunParallelMetaStoryTask::TriggerTransitions(FMetaStoryExecutionContext& Context) const
 {
 	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
-	if (!InstanceData.RunningStateTree)
+	if (!InstanceData.RunningMetaStory)
 	{
 		return;
 	}
 
-	FMetaStoryExecutionContext ParallelTreeContext(Context, *InstanceData.RunningStateTree, InstanceData.TreeInstanceData);
+	FMetaStoryExecutionContext ParallelTreeContext(Context, *InstanceData.RunningMetaStory, InstanceData.TreeInstanceData);
 	if (!ParallelTreeContext.IsValid())
 	{
 		return;
@@ -122,15 +122,15 @@ void FMetaStoryRunParallelStateTreeTask::TriggerTransitions(FMetaStoryExecutionC
 	Context.UpdateScheduledTickRequest(InstanceData.ScheduledTickHandle, ParallelTreeContext.GetNextScheduledTick());
 }
 
-void FMetaStoryRunParallelStateTreeTask::ExitState(FMetaStoryExecutionContext& Context, const FMetaStoryTransitionResult& Transition) const
+void FMetaStoryRunParallelMetaStoryTask::ExitState(FMetaStoryExecutionContext& Context, const FMetaStoryTransitionResult& Transition) const
 {
 	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
-	if (!InstanceData.RunningStateTree)
+	if (!InstanceData.RunningMetaStory)
 	{
 		return;
 	}
 
-	FMetaStoryExecutionContext ParallelTreeContext(Context, *InstanceData.RunningStateTree, InstanceData.TreeInstanceData);
+	FMetaStoryExecutionContext ParallelTreeContext(Context, *InstanceData.RunningMetaStory, InstanceData.TreeInstanceData);
 	if (!ParallelTreeContext.IsValid())
 	{
 		return;
@@ -140,11 +140,11 @@ void FMetaStoryRunParallelStateTreeTask::ExitState(FMetaStoryExecutionContext& C
 	Context.RemoveScheduledTickRequest(InstanceData.ScheduledTickHandle);
 }
 
-const FMetaStoryReference& FMetaStoryRunParallelStateTreeTask::GetStateTreeToRun(FMetaStoryExecutionContext& Context, FInstanceDataType& InstanceData) const
+const FMetaStoryReference& FMetaStoryRunParallelMetaStoryTask::GetMetaStoryToRun(FMetaStoryExecutionContext& Context, FInstanceDataType& InstanceData) const
 {
 	if (MetaStoryOverrideTag.IsValid())
 	{
-		if (const FMetaStoryReference* Override = Context.GetLinkedStateTreeOverrideForTag(MetaStoryOverrideTag))
+		if (const FMetaStoryReference* Override = Context.GetLinkedMetaStoryOverrideForTag(MetaStoryOverrideTag))
 		{
 			return *Override;
 		}
@@ -154,22 +154,22 @@ const FMetaStoryReference& FMetaStoryRunParallelStateTreeTask::GetStateTreeToRun
 }
 
 #if WITH_EDITOR
-EDataValidationResult FMetaStoryRunParallelStateTreeTask::Compile(UE::MetaStory::ICompileNodeContext& Context)
+EDataValidationResult FMetaStoryRunParallelMetaStoryTask::Compile(UE::MetaStory::ICompileNodeContext& Context)
 {
 	TransitionHandlingPriority = EventHandlingPriority;
 
 	return EDataValidationResult::Valid;
 }
 
-void FMetaStoryRunParallelStateTreeTask::PostEditInstanceDataChangeChainProperty(const FPropertyChangedChainEvent& PropertyChangedEvent, FMetaStoryDataView InstanceDataView)
+void FMetaStoryRunParallelMetaStoryTask::PostEditInstanceDataChangeChainProperty(const FPropertyChangedChainEvent& PropertyChangedEvent, FMetaStoryDataView InstanceDataView)
 {
-	if (PropertyChangedEvent.Property && PropertyChangedEvent.Property->GetFName() == GET_MEMBER_NAME_CHECKED(FMetaStoryRunParallelStateTreeTaskInstanceData, MetaStory))
+	if (PropertyChangedEvent.Property && PropertyChangedEvent.Property->GetFName() == GET_MEMBER_NAME_CHECKED(FMetaStoryRunParallelMetaStoryTaskInstanceData, MetaStory))
 	{
 		InstanceDataView.GetMutable<FInstanceDataType>().MetaStory.SyncParameters();
 	}
 }
 
-void FMetaStoryRunParallelStateTreeTask::PostLoad(FMetaStoryDataView InstanceDataView)
+void FMetaStoryRunParallelMetaStoryTask::PostLoad(FMetaStoryDataView InstanceDataView)
 {
 	if (FInstanceDataType* DataType = InstanceDataView.GetMutablePtr<FInstanceDataType>())
 	{
@@ -177,7 +177,7 @@ void FMetaStoryRunParallelStateTreeTask::PostLoad(FMetaStoryDataView InstanceDat
 	}
 }
 
-FText FMetaStoryRunParallelStateTreeTask::GetDescription(const FGuid& ID, FMetaStoryDataView InstanceDataView, const IMetaStoryBindingLookup& BindingLookup, EMetaStoryNodeFormatting Formatting) const
+FText FMetaStoryRunParallelMetaStoryTask::GetDescription(const FGuid& ID, FMetaStoryDataView InstanceDataView, const IMetaStoryBindingLookup& BindingLookup, EMetaStoryNodeFormatting Formatting) const
 {
 	const FInstanceDataType* InstanceData = InstanceDataView.GetPtr<FInstanceDataType>();
 	check(InstanceData);
@@ -185,7 +185,7 @@ FText FMetaStoryRunParallelStateTreeTask::GetDescription(const FGuid& ID, FMetaS
 	FText MetaStoryValue = BindingLookup.GetBindingSourceDisplayName(FPropertyBindingPath(ID, GET_MEMBER_NAME_CHECKED(FInstanceDataType, MetaStory)), Formatting);
 	if (MetaStoryValue.IsEmpty())
 	{
-		MetaStoryValue = FText::FromString(GetNameSafe(InstanceData->MetaStory.GetStateTree()));
+		MetaStoryValue = FText::FromString(GetNameSafe(InstanceData->MetaStory.GetMetaStory()));
 	}
 
 	const FText Format = (Formatting == EMetaStoryNodeFormatting::RichText)

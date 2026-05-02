@@ -68,7 +68,7 @@ struct FMetaStoryExecutionExtension
 	virtual void ScheduleNextTick(const FContextParameters& Context) final {}
 
 	/** Callback when the overrides are set to the execution context . */
-	virtual void OnLinkedStateTreeOverridesSet(const FContextParameters& Context, const FMetaStoryReferenceOverrides& Overrides)
+	virtual void OnLinkedMetaStoryOverridesSet(const FContextParameters& Context, const FMetaStoryReferenceOverrides& Overrides)
 	{
 		
 	}

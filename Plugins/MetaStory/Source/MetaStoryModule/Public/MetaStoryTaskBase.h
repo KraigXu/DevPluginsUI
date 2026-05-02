@@ -68,7 +68,7 @@ struct FMetaStoryTaskBase : public FMetaStoryNodeBase
 	}
 
 	/**
-	 * Called during state tree tick when the task is on active state.
+	 * Called during MetaStory tick when the task is on active state.
 	 * Note: The method is called only if bShouldCallTick or bShouldCallTickOnlyOnEvents is set.
 	 * @param Context Reference to current execution context.
 	 * @param DeltaTime Time since last MetaStory tick.
@@ -80,7 +80,7 @@ struct FMetaStoryTaskBase : public FMetaStoryNodeBase
 	}
 
 	/**
-	 * Called when state tree triggers transitions. This method is called during transition handling, before state's tick and event transitions are handled.
+	 * Called when MetaStory triggers transitions. This method is called during transition handling, before state's tick and event transitions are handled.
 	 * Note: the method is called only if bShouldAffectTransitions is set.
 	 * @param Context Reference to current execution context.
 	 */

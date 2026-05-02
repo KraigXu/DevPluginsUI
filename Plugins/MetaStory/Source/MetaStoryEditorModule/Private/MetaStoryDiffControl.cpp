@@ -42,7 +42,7 @@ void FDiffControl::GenerateTreeEntries(TArray<TSharedPtr<FBlueprintDifferenceTre
 		}
 		const TSharedPtr<FAsyncDiff> Diff = MetaStoryDifferences[LeftMetaStory].Right;
 		Diff->FlushQueue(); // make sure differences are fully up-to-date
-		Diff->GetStateTreeDifferences(DifferingProperties);
+		Diff->GetMetaStoryDifferences(DifferingProperties);
 	}
 
 	BindingDiffs.Empty();
@@ -94,7 +94,7 @@ FDiffControl::~FDiffControl()
 TSharedRef<SMetaStoryView> FDiffControl::InsertObject(TNotNull<const UMetaStory*> MetaStory)
 {
 	const FDiffWidgets DiffWidgets(MetaStory);
-	TSharedRef<SMetaStoryView> TreeView = DiffWidgets.GetStateTreeWidget();
+	TSharedRef<SMetaStoryView> TreeView = DiffWidgets.GetMetaStoryViewWidget();
 
 	const int32 Index = DisplayedAssets.Num();
 	DisplayedAssets.Insert(TStrongObjectPtr<const UMetaStory>(MetaStory), Index);
@@ -105,22 +105,22 @@ TSharedRef<SMetaStoryView> FDiffControl::InsertObject(TNotNull<const UMetaStory*
 	// set up interaction with left panel
 	if (DisplayedAssets.IsValidIndex(Index - 1))
 	{
-		const UMetaStory* OtherStateTree = DisplayedAssets[Index - 1].Get();
-		const FDiffWidgets& OtherStateTreeDiff = MetaStoryDiffWidgets[OtherStateTree];
-		const TSharedRef<SMetaStoryView> OtherTreeView = OtherStateTreeDiff.GetStateTreeWidget();
+		const UMetaStory* OtherMetaStory = DisplayedAssets[Index - 1].Get();
+		const FDiffWidgets& OtherMetaStoryDiff = MetaStoryDiffWidgets[OtherMetaStory];
+		const TSharedRef<SMetaStoryView> OtherTreeView = OtherMetaStoryDiff.GetMetaStoryViewWidget();
 
-		MetaStoryDifferences[OtherStateTree].Right = MakeShared<FAsyncDiff>(OtherTreeView, TreeView);
-		MetaStoryDifferences[MetaStory].Left = MetaStoryDifferences[OtherStateTree].Right;
+		MetaStoryDifferences[OtherMetaStory].Right = MakeShared<FAsyncDiff>(OtherTreeView, TreeView);
+		MetaStoryDifferences[MetaStory].Left = MetaStoryDifferences[OtherMetaStory].Right;
 	}
 	// Set up interaction with right panel
 	if (DisplayedAssets.IsValidIndex(Index + 1))
 	{
-		const UMetaStory* OtherStateTree = DisplayedAssets[Index + 1].Get();
-		const FDiffWidgets& OtherStateTreeDiff = MetaStoryDiffWidgets[OtherStateTree];
-		const TSharedRef<SMetaStoryView> OtherTreeView = OtherStateTreeDiff.GetStateTreeWidget();
+		const UMetaStory* OtherMetaStory = DisplayedAssets[Index + 1].Get();
+		const FDiffWidgets& OtherMetaStoryDiff = MetaStoryDiffWidgets[OtherMetaStory];
+		const TSharedRef<SMetaStoryView> OtherTreeView = OtherMetaStoryDiff.GetMetaStoryViewWidget();
 
-		MetaStoryDifferences[OtherStateTree].Left = MakeShared<FAsyncDiff>(TreeView, OtherTreeView);
-		MetaStoryDifferences[MetaStory].Right = MetaStoryDifferences[OtherStateTree].Left;
+		MetaStoryDifferences[OtherMetaStory].Left = MakeShared<FAsyncDiff>(TreeView, OtherTreeView);
+		MetaStoryDifferences[MetaStory].Right = MetaStoryDifferences[OtherMetaStory].Left;
 	}
 
 	return TreeView;
@@ -128,7 +128,7 @@ TSharedRef<SMetaStoryView> FDiffControl::InsertObject(TNotNull<const UMetaStory*
 
 TSharedRef<SMetaStoryView> FDiffControl::GetDetailsWidget(const UMetaStory* Object) const
 {
-	return MetaStoryDiffWidgets[Object].GetStateTreeWidget();
+	return MetaStoryDiffWidgets[Object].GetMetaStoryViewWidget();
 }
 
 FDiffWidgets::FDiffWidgets(const UMetaStory* InMetaStory)
@@ -139,7 +139,7 @@ FDiffWidgets::FDiffWidgets(const UMetaStory* InMetaStory)
 	SAssignNew(MetaStoryTreeView, SMetaStoryView, MetaStoryViewModel.ToSharedRef(), MakeShared<FUICommandList>());
 }
 
-TSharedRef<SMetaStoryView> FDiffWidgets::GetStateTreeWidget() const
+TSharedRef<SMetaStoryView> FDiffWidgets::GetMetaStoryViewWidget() const
 {
 	return MetaStoryTreeView.ToSharedRef();
 }

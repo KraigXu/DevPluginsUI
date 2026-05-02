@@ -28,7 +28,7 @@ public:
 	}
 	SLATE_END_ARGS()
 
-	void Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& InOwnerTableView, TWeakObjectPtr<UMetaStoryState> InState, const TSharedPtr<SScrollBox>& ViewBox, TSharedPtr<FMetaStoryViewModel> InStateTreeViewModel);
+	void Construct(const FArguments& InArgs, const TSharedRef<STableViewBase>& InOwnerTableView, TWeakObjectPtr<UMetaStoryState> InState, const TSharedPtr<SScrollBox>& ViewBox, TSharedPtr<FMetaStoryViewModel> InMetaStoryViewModel);
 	~SMetaStoryViewRow();
 
 	void RequestRename() const;

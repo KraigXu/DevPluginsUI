@@ -20,7 +20,7 @@ class UMetaStoryEditorMode : public UEdMode
 {
 	GENERATED_BODY()
 public:
-	UE_API const static FEditorModeID EM_StateTree;
+	UE_API const static FEditorModeID EM_MetaStory;
 	
 	UE_API UMetaStoryEditorMode();
 
@@ -30,15 +30,15 @@ public:
 	UE_API virtual void BindCommands() override;
 
 protected:
-	UE_API void OnStateTreeChanged();
+	UE_API void OnMetaStoryChanged();
 	UE_API void BindToolkitCommands(const TSharedRef<FUICommandList>& ToolkitCommands);
 
 	UE_API void OnPropertyBindingChanged(const FPropertyBindingPath& SourcePath, const FPropertyBindingPath& TargetPath);
-	UE_API void OnIdentifierChanged(const UMetaStory& InStateTree);
-	UE_API void OnSchemaChanged(const UMetaStory& InStateTree);
+	UE_API void OnIdentifierChanged(const UMetaStory& InMetaStory);
+	UE_API void OnSchemaChanged(const UMetaStory& InMetaStory);
 	UE_API void ForceRefreshDetailsView() const;
-	UE_API void OnRefreshDetailsView(const UMetaStory& InStateTree) const;
-	UE_API void OnStateParametersChanged(const UMetaStory& InStateTree, const FGuid ChangedStateID) const;
+	UE_API void OnRefreshDetailsView(const UMetaStory& InMetaStory) const;
+	UE_API void OnStateParametersChanged(const UMetaStory& InMetaStory, const FGuid ChangedStateID) const;
 
 	UE_API void HandleMessageTokenClicked(const TSharedRef<IMessageToken>& InMessageToken) const;
 
@@ -49,7 +49,7 @@ protected:
 	UE_API bool CanCompile() const;
 	UE_API bool IsCompileVisible() const;
 
-	UE_API bool HasValidStateTree() const;
+	UE_API bool HasValidMetaStory() const;
 	
 	UE_API void HandleModelAssetChanged();
 	UE_API void HandleModelSelectionChanged(const TArray<TWeakObjectPtr<UMetaStoryState>>& SelectedStates) const;
@@ -87,7 +87,7 @@ protected:
 	UE_API TSharedPtr<IMessageLogListing> GetMessageLogListing() const;	
 	UE_API void ShowCompilerTab() const;
 
-	UE_API UMetaStory* GetStateTree() const;
+	UE_API UMetaStory* GetMetaStory() const;
 	
 	friend class FMetaStoryEditorModeToolkit;
 
@@ -99,7 +99,7 @@ protected:
 	mutable FTimerHandle SetObjectTimerHandle;
 	mutable FTimerHandle HighlightTimerHandle;
 
-	TWeakObjectPtr<UMetaStory> CachedStateTree = nullptr;
+	TWeakObjectPtr<UMetaStory> CachedMetaStory = nullptr;
 
 	TSharedPtr<FMetaStoryBindingExtension> DetailsViewExtensionHandler;
 	TSharedPtr<FMetaStoryBindingsChildrenCustomization> DetailsViewChildrenCustomizationHandler;

@@ -335,7 +335,7 @@ namespace UE::MetaStory::InstanceData
 			return SharedInstanceStorage->GetMutableObject(Handle.GetIndex());
 
 		case EMetaStoryDataSourceType::GlobalParameterData:
-			// Defined in parent frame or is root state tree parameters
+			// Defined in parent frame or is root MetaStory parameters
 			if (ParentFrame)
 			{
 				return GetDataView(InstanceStorage, SharedInstanceStorage, nullptr, *ParentFrame, CurrentFrame.GlobalParameterDataHandle);
@@ -547,7 +547,7 @@ int32 FMetaStoryInstanceStorage::AddExecutionRuntimeData(TNotNull<UObject*> Owne
 
 	check(FrameHandle.IsValid());
 
-	const FObjectKey MetaStoryKey = FrameHandle.GetStateTree();
+	const FObjectKey MetaStoryKey = FrameHandle.GetMetaStory();
 	const FExecutionRuntimeInfo* Info = ExecutionRuntimeDataInfos.FindByPredicate([MetaStoryKey](const FExecutionRuntimeInfo& Other)
 		{
 			return Other.MetaStory == MetaStoryKey;
@@ -557,7 +557,7 @@ int32 FMetaStoryInstanceStorage::AddExecutionRuntimeData(TNotNull<UObject*> Owne
 		return Info->StartIndex;
 	}
 
-	const int32 StartIndex = ExecutionRuntimeData.Append(Owner, FrameHandle.GetStateTree()->GetDefaultExecutionRuntimeData(), FMetaStoryInstanceContainer::FAddArgs());
+	const int32 StartIndex = ExecutionRuntimeData.Append(Owner, FrameHandle.GetMetaStory()->GetDefaultExecutionRuntimeData(), FMetaStoryInstanceContainer::FAddArgs());
 
 	FExecutionRuntimeInfo& NewInfo = ExecutionRuntimeDataInfos.AddDefaulted_GetRef();
 	NewInfo.MetaStory = MetaStoryKey;

@@ -19,7 +19,7 @@ public:
 	/**
 	 * Editor targets relies on PIE and MetaStoryEditor to start/stop traces.
 	 * This is to start traces automatically when launching Standalone, Client or Server builds. 
-	 * It's also possible to do it manually using 'statetree.startdebuggertraces' and 'statetree.stopdebuggertraces' in the console.
+	 * It's also possible to do it manually using 'metastory.startdebuggertraces' and 'metastory.stopdebuggertraces' in the console.
 	 */
 	UPROPERTY(EditDefaultsOnly, Category = MetaStory, config)
 	bool bAutoStartDebuggerTracesOnNonEditorTargets = false;

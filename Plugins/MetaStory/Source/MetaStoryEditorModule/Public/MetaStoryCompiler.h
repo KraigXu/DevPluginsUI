@@ -27,14 +27,14 @@ namespace UE::MetaStory::Compiler
 	// Compiler steps: PrePublic, PostPublic, PreInternal, PostInternal
 
 	/**
-	 * Compiler context for when the state tree fully compiled and succeeded.
+	 * Compiler context for when the MetaStory fully compiled and succeeded.
 	 * This is the last compilation step.
 	 */
 	struct FPostInternalContext
 	{
 		virtual ~FPostInternalContext() = default;
 
-		virtual TNotNull<const UMetaStory*> GetStateTree() const = 0;
+		virtual TNotNull<const UMetaStory*> GetMetaStory() const = 0;
 		virtual TNotNull<const UMetaStoryEditorData*> GetEditorData() const = 0;
 		virtual FMetaStoryCompilerLog& GetLog() const = 0;
 
@@ -56,7 +56,7 @@ public:
 	}
 
 	UE_API bool Compile(TNotNull<UMetaStory*> MetaStory);
-	UE_API bool Compile(UMetaStory& InStateTree);
+	UE_API bool Compile(UMetaStory& InMetaStory);
 
 private:
 	/** Resolves the state a transition points to, and the optional fallback for failing to enter the state. SourceState is nullptr for global tasks. */

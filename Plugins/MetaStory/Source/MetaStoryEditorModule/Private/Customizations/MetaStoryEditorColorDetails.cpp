@@ -177,7 +177,7 @@ void FMetaStoryEditorColorDetails::CreateColorPickerWindow()
 	FColorPickerArgs PickerArgs;
 
 	// Begin Transaction
-	ColorPickerTransaction = MakeShared<FScopedTransaction>(LOCTEXT("SetStateTreeColorProperty", "Set Color Property"));
+	ColorPickerTransaction = MakeShared<FScopedTransaction>(LOCTEXT("SetMetaStoryColorProperty", "Set Color Property"));
 
 	PickerArgs.bOnlyRefreshOnMouseUp = false;
 	PickerArgs.ParentWidget = ColorButtonWidget;

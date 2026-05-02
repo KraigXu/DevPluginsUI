@@ -127,9 +127,9 @@ void UMetaStoryEditorData::BeginDestroy()
 
 void UMetaStoryEditorData::OnParametersChanged(const UMetaStory& MetaStory)
 {
-	if (const UMetaStory* OwnerStateTree = GetTypedOuter<UMetaStory>())
+	if (const UMetaStory* OwnerMetaStory = GetTypedOuter<UMetaStory>())
 	{
-		if (OwnerStateTree == &MetaStory)
+		if (OwnerMetaStory == &MetaStory)
 		{
 			UpdateBindingsInstanceStructs();
 		}
@@ -138,9 +138,9 @@ void UMetaStoryEditorData::OnParametersChanged(const UMetaStory& MetaStory)
 
 void UMetaStoryEditorData::OnStateParametersChanged(const UMetaStory& MetaStory, const FGuid StateID)
 {
-	if (const UMetaStory* OwnerStateTree = GetTypedOuter<UMetaStory>())
+	if (const UMetaStory* OwnerMetaStory = GetTypedOuter<UMetaStory>())
 	{
-		if (OwnerStateTree == &MetaStory)
+		if (OwnerMetaStory == &MetaStory)
 		{
 			UpdateBindingsInstanceStructs();
 		}
@@ -826,7 +826,7 @@ void UMetaStoryEditorData::FixObjectInstances(TSet<UObject*>& SeenObjects, UObje
 
 void UMetaStoryEditorData::FixObjectNodes()
 {
-	// Older version of State Trees had all instances outered to the editor data. This causes issues with State copy/paste.
+	// Older version of MetaStorys had all instances outered to the editor data. This causes issues with State copy/paste.
 	// Instance data does not get duplicated but the copied state will reference the object on the source state instead.
 	//
 	// Ensure that all node objects are parented to their states, and make duplicated instances unique.

@@ -5,14 +5,14 @@
 #include "GenericPlatform/GenericPlatformCrashContext.h"
 #include "Misc/NotNull.h"
 
-#ifndef UE_WITH_STATETREE_CRASHREPORTER
-	#define UE_WITH_STATETREE_CRASHREPORTER WITH_ADDITIONAL_CRASH_CONTEXTS
+#ifndef UE_WITH_METASTORY_CRASHREPORTER
+	#define UE_WITH_METASTORY_CRASHREPORTER WITH_ADDITIONAL_CRASH_CONTEXTS
 #endif
 
 class UObject;
 class UMetaStory;
 
-#if UE_WITH_STATETREE_CRASHREPORTER
+#if UE_WITH_METASTORY_CRASHREPORTER
 
 namespace UE::MetaStory
 {
@@ -45,10 +45,10 @@ private:
 
 } //namespace
 
-#endif //UE_WITH_STATETREE_CRASHREPORTER
+#endif //UE_WITH_METASTORY_CRASHREPORTER
 
-#if UE_WITH_STATETREE_CRASHREPORTER
-#define UE_STATETREE_CRASH_REPORTER_SCOPE(InOwner, InStateTree, InContext) ::UE::MetaStory::FCrashReporterScope ANONYMOUS_VARIABLE(AddCrashContext) {(InOwner), (InStateTree), (InContext)}
-#else //UE_WITH_STATETREE_CRASHREPORTER
-#define UE_STATETREE_CRASH_REPORTER_SCOPE(InOwner, InStateTree, InContext)
-#endif //UE_WITH_STATETREE_CRASHREPORTER
+#if UE_WITH_METASTORY_CRASHREPORTER
+#define UE_METASTORY_CRASH_REPORTER_SCOPE(InOwner, InMetaStory, InContext) ::UE::MetaStory::FCrashReporterScope ANONYMOUS_VARIABLE(AddCrashContext) {(InOwner), (InMetaStory), (InContext)}
+#else //UE_WITH_METASTORY_CRASHREPORTER
+#define UE_METASTORY_CRASH_REPORTER_SCOPE(InOwner, InMetaStory, InContext)
+#endif //UE_WITH_METASTORY_CRASHREPORTER

@@ -80,10 +80,10 @@ public:
 
 	UE_API void BringNodeToFocus(UMetaStoryState* State, const FGuid NodeID);
 	
-	// Returns associated state tree asset.
-	UE_API const UMetaStory* GetStateTree() const;
+	// Returns associated MetaStory asset.
+	UE_API const UMetaStory* GetMetaStory() const;
 
-	UE_API const UMetaStoryEditorData* GetStateTreeEditorData() const;
+	UE_API const UMetaStoryEditorData* GetMetaStoryEditorData() const;
 
 	UE_API const UMetaStoryState* GetStateByID(const FGuid StateID) const;
 	UE_API UMetaStoryState* GetMutableStateByID(const FGuid StateID) const;

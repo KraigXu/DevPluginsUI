@@ -62,7 +62,7 @@ namespace UE::MetaStory::Compiler
 	FAutoConsoleVariable CVarLogEnableParameterDelegateDispatcherBinding(
 		TEXT("MetaStory.Compiler.EnableParameterDelegateDispatcherBinding"),
 		false,
-		TEXT("Enable binding from delegate dispatchers that are in the state tree parameters.")
+		TEXT("Enable binding from delegate dispatchers that are in the MetaStory parameters.")
 	);
 
 	bool bEnablePropertyFunctionWithEvaluationScopeInstanceData = true;
@@ -87,7 +87,7 @@ namespace UE::MetaStory::Compiler
 		TEXT("Use EvaluationScope data for utility considerations instead of SharedInstance data.")
 	);
 
-	FAutoConsoleVariable CVarLogCompiledStateTree(
+	FAutoConsoleVariable CVarLogCompiledMetaStory(
 		TEXT("MetaStory.Compiler.LogResultOnCompilationCompleted"),
 		false,
 		TEXT("After a MetaStory compiles, log the internal content of the MetaStory.")
@@ -102,8 +102,8 @@ namespace UE::MetaStory::Compiler
 		FMetaStoryCompilerLog& Log;
 	public:
 
-		FCheckOutersArchive(const UMetaStory& InStateTree, const UMetaStoryEditorData& InEditorData, FMetaStoryCompilerLog& InLog)
-			: MetaStory(InStateTree)
+		FCheckOutersArchive(const UMetaStory& InMetaStory, const UMetaStoryEditorData& InEditorData, FMetaStoryCompilerLog& InLog)
+			: MetaStory(InMetaStory)
 			, EditorData(InEditorData)
 			, Log(InLog)
 		{
@@ -134,13 +134,13 @@ namespace UE::MetaStory::Compiler
 					{
 						if (!Object->IsInOuter(&MetaStory))
 						{
-							Log.Reportf(EMessageSeverity::Error, TEXT("Compiled MetaStory contains instanced object %s (%s), which does not belong to the MetaStory. This is due to error in the State Tree node implementation."),
+							Log.Reportf(EMessageSeverity::Error, TEXT("Compiled MetaStory contains instanced object %s (%s), which does not belong to the MetaStory. This is due to error in the MetaStory node implementation."),
 								*GetFullNameSafe(Object), *GetFullNameSafe(Object->GetClass()));
 						}
 
 						if (Object->IsInOuter(&EditorData))
 						{
-							Log.Reportf(EMessageSeverity::Error, TEXT("Compiled MetaStory contains instanced object %s (%s), which still belongs to the Editor data. This is due to error in the State Tree node implementation."),
+							Log.Reportf(EMessageSeverity::Error, TEXT("Compiled MetaStory contains instanced object %s (%s), which still belongs to the Editor data. This is due to error in the MetaStory node implementation."),
 								*GetFullNameSafe(Object), *GetFullNameSafe(Object->GetClass()));
 						}
 					}
@@ -327,10 +327,10 @@ namespace UE::MetaStory::Compiler
 	{
 		if (InstanceObject->GetClass()->HasAnyClassFlags(CLASS_NewerVersionExists))
 		{
-			const UMetaStory* OuterStateTree = Owner->GetTypedOuter<UMetaStory>();
+			const UMetaStory* OuterMetaStory = Owner->GetTypedOuter<UMetaStory>();
 			Log.Reportf(EMessageSeverity::Warning, NodeDesc,
-				TEXT("Duplicating '%s' with an old class '%s' Please resave State Tree asset '%s'."),
-				*InstanceObject->GetName(), *InstanceObject->GetClass()->GetName(), *GetFullNameSafe(OuterStateTree));
+				TEXT("Duplicating '%s' with an old class '%s' Please resave MetaStory asset '%s'."),
+				*InstanceObject->GetName(), *InstanceObject->GetClass()->GetName(), *GetFullNameSafe(OuterMetaStory));
 		}
 
 		// We want the object name to match between compilations.
@@ -406,12 +406,12 @@ namespace UE::MetaStory::Compiler
 
 }; // UE::MetaStory::Compiler
 
-bool FMetaStoryCompiler::Compile(UMetaStory& InStateTree)
+bool FMetaStoryCompiler::Compile(UMetaStory& InMetaStory)
 {
-	return Compile(&InStateTree);
+	return Compile(&InMetaStory);
 }
 
-bool FMetaStoryCompiler::Compile(TNotNull<UMetaStory*> InStateTree)
+bool FMetaStoryCompiler::Compile(TNotNull<UMetaStory*> InMetaStory)
 {
 	if (bCompiled)
 	{
@@ -420,7 +420,7 @@ bool FMetaStoryCompiler::Compile(TNotNull<UMetaStory*> InStateTree)
 	}
 	bCompiled = true;
 
-	MetaStory = InStateTree;
+	MetaStory = InMetaStory;
 	EditorData = Cast<UMetaStoryEditorData>(MetaStory->EditorData);
 
 	auto FailCompilation = [MetaStory=MetaStory]()
@@ -439,7 +439,7 @@ bool FMetaStoryCompiler::Compile(TNotNull<UMetaStory*> InStateTree)
 
 	if (!EditorData->Schema)
 	{
-		Log.Reportf(EMessageSeverity::Error, TEXT("Missing Schema. Please set valid schema in the State Tree Asset settings."));
+		Log.Reportf(EMessageSeverity::Error, TEXT("Missing Schema. Please set valid schema in the MetaStory Asset settings."));
 		return FailCompilation();
 	}
 
@@ -578,7 +578,7 @@ bool FMetaStoryCompiler::Compile(TNotNull<UMetaStory*> InStateTree)
 	UE::MetaStory::Compiler::FCheckOutersArchive CheckOuters(*MetaStory, *EditorData, Log);
 	MetaStory->Serialize(CheckOuters);
 
-	if (UE::MetaStory::Compiler::CVarLogCompiledStateTree->GetBool())
+	if (UE::MetaStory::Compiler::CVarLogCompiledMetaStory->GetBool())
 	{
 		UE_LOG(LogMetaStoryEditor, Log, TEXT("%s"), *MetaStory->DebugInternalLayoutAsString());
 	}
@@ -975,7 +975,7 @@ bool FMetaStoryCompiler::CreateStateTasksAndParameters()
 		// Each state has their parameters as instance data.
 		FInstancedStruct& Instance = InstanceStructs.AddDefaulted_GetRef();
 		Instance.InitializeAs<FMetaStoryCompactParameters>(State->Parameters.Parameters);
-		FMetaStoryCompactParameters& CompactStateTreeParameters = Instance.GetMutable<FMetaStoryCompactParameters>(); 
+		FMetaStoryCompactParameters& CompactMetaStoryParameters = Instance.GetMutable<FMetaStoryCompactParameters>(); 
 			
 		const int32 InstanceIndex = InstanceStructs.Num() - 1;
 		if (const auto Validation = UE::MetaStory::Compiler::IsValidIndex16(InstanceIndex); Validation.DidFail())
@@ -1008,7 +1008,7 @@ bool FMetaStoryCompiler::CreateStateTasksAndParameters()
 			State->Parameters.ID
 		};
 
-		if (!UE::MetaStory::Compiler::ValidateNoLevelActorReferences(Log, LinkedParamsDesc, FMetaStoryDataView(), FMetaStoryDataView(CompactStateTreeParameters.Parameters.GetMutableValue())))
+		if (!UE::MetaStory::Compiler::ValidateNoLevelActorReferences(Log, LinkedParamsDesc, FMetaStoryDataView(), FMetaStoryDataView(CompactMetaStoryParameters.Parameters.GetMutableValue())))
 		{
 			bSucceeded = false;
 			continue;
@@ -1073,7 +1073,7 @@ bool FMetaStoryCompiler::CreateStateTasksAndParameters()
 
 			// Only nodes support output bindings
 			constexpr FMetaStoryIndex16* OutputBindingsBatch = nullptr;
-			if (!CreateBindingsForStruct(LinkedParamsDesc, FMetaStoryDataView(CompactStateTreeParameters.Parameters.GetMutableValue()), PropertyFunctionsBegin, PropertyFunctionsEnd, CompactState.ParameterBindingsBatch, OutputBindingsBatch))
+			if (!CreateBindingsForStruct(LinkedParamsDesc, FMetaStoryDataView(CompactMetaStoryParameters.Parameters.GetMutableValue()), PropertyFunctionsBegin, PropertyFunctionsEnd, CompactState.ParameterBindingsBatch, OutputBindingsBatch))
 			{
 				bSucceeded = false;
 				continue;
@@ -1374,7 +1374,7 @@ bool FMetaStoryCompiler::CreateStateTransitions()
 				if (!LinkedAssetSchema)
 				{
 					Log.Reportf(EMessageSeverity::Error,
-						TEXT("Linked State Tree asset must have valid schema."));
+						TEXT("Linked MetaStory asset must have valid schema."));
 					bSucceeded = false;
 					continue;
 				}
@@ -1383,7 +1383,7 @@ bool FMetaStoryCompiler::CreateStateTransitions()
 				if (LinkedAssetSchema->GetClass() != MetaStory->Schema->GetClass())
 				{
 					Log.Reportf(EMessageSeverity::Error,
-						TEXT("Linked State Tree asset '%s' must have same schema class as this asset. Linked asset has '%s', expected '%s'."),
+						TEXT("Linked MetaStory asset '%s' must have same schema class as this asset. Linked asset has '%s', expected '%s'."),
 						*GetFullNameSafe(SourceState->LinkedAsset),
 						*LinkedAssetSchema->GetClass()->GetDisplayNameText().ToString(),
 						*MetaStory->Schema->GetClass()->GetDisplayNameText().ToString()
@@ -2887,7 +2887,7 @@ void FMetaStoryCompiler::InstantiateStructSubobjects(FStructView Struct)
 				{
 					UObject* OuterObject = Object->GetOuter();
 					// If the instanced object was created as Editor Data as outer,
-					// change the outer to State Tree to prevent references to editor only data.
+					// change the outer to MetaStory to prevent references to editor only data.
 					if (Object->IsInOuter(EditorData))
 					{
 						OuterObject = MetaStory;
@@ -2904,7 +2904,7 @@ bool FMetaStoryCompiler::NotifyInternalPost()
 {
 	struct FPostInternalContextImpl : UE::MetaStory::Compiler::FPostInternalContext
 	{
-		virtual TNotNull<const UMetaStory*> GetStateTree() const override
+		virtual TNotNull<const UMetaStory*> GetMetaStory() const override
 		{
 			return MetaStory;
 		}
@@ -2926,8 +2926,8 @@ bool FMetaStoryCompiler::NotifyInternalPost()
 			return Result;
 		}
 
-		FPostInternalContextImpl(TNotNull<UMetaStory*> InStateTree, TNotNull<UMetaStoryEditorData*> InEditorData, FMetaStoryCompilerLog& InLog)
-			: MetaStory(InStateTree)
+		FPostInternalContextImpl(TNotNull<UMetaStory*> InMetaStory, TNotNull<UMetaStoryEditorData*> InEditorData, FMetaStoryCompilerLog& InLog)
+			: MetaStory(InMetaStory)
 			, EditorData(InEditorData)
 			, Log(InLog)
 		{ }

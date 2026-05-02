@@ -7,9 +7,9 @@
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(MetaStoryLinker)
 
-FMetaStoryLinker::FMetaStoryLinker(TNotNull<const UMetaStory*> InStateTree)
-	: MetaStory(InStateTree)
-	, Schema(InStateTree->GetSchema())
+FMetaStoryLinker::FMetaStoryLinker(TNotNull<const UMetaStory*> InMetaStory)
+	: MetaStory(InMetaStory)
+	, Schema(InMetaStory->GetSchema())
 {
 }
 

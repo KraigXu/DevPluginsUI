@@ -31,7 +31,7 @@ public:
 	
 	UE_API virtual void ExtendSecondaryModeToolbar(UToolMenu* InModeToolbarMenu) override;
 		
-	UE_API void OnStateTreeChanged();
+	UE_API void OnMetaStoryChanged();
 
 protected:
 	UE_API FSlateIcon GetCompileStatusImage() const;
@@ -50,7 +50,7 @@ protected:
 	UE_API FText GetStatisticsText() const;
 	UE_API const FPropertyBindingBindingCollection* GetBindingCollection() const;
 
-	UE_API void UpdateStateTreeOutliner();
+	UE_API void UpdateMetaStoryOutliner();
 
 	UE_API void HandleTabSpawned(UE::MetaStoryEditor::FSpawnedWorkspaceTab SpawnedTab);
 	UE_API void HandleTabClosed(UE::MetaStoryEditor::FSpawnedWorkspaceTab SpawnedTab);

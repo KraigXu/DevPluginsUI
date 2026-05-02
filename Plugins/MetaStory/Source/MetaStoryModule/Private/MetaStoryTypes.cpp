@@ -133,10 +133,10 @@ void FMetaStoryStateLink::PostSerialize(const FArchive& Ar)
 {
 #if WITH_EDITORONLY_DATA
 PRAGMA_DISABLE_DEPRECATION_WARNINGS
-	const int32 CurrentStateTreeCustomVersion = UE::MetaStory::CustomVersions::GetEffectiveAssetArchiveVersion(Ar);
+	const int32 CurrentMetaStoryCustomVersion = UE::MetaStory::CustomVersions::GetEffectiveAssetArchiveVersion(Ar);
 	constexpr int32 AddedExternalTransitionsVersion = FMetaStoryCustomVersion::AddedExternalTransitions;
 
-	if (CurrentStateTreeCustomVersion < AddedExternalTransitionsVersion)
+	if (CurrentMetaStoryCustomVersion < AddedExternalTransitionsVersion)
 	{
 		LinkType = Type_DEPRECATED;
 		if (LinkType == EMetaStoryTransitionType::NotSet)

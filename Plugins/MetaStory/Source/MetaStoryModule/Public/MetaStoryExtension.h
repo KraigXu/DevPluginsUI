@@ -9,7 +9,7 @@ class UMetaStory;
 struct FMetaStoryLinker;
 
 /**
- * Extension for the state tree asset.
+ * Extension for the MetaStory asset.
  */
 UCLASS(Abstract, DefaultToInstanced, Within=MetaStory, MinimalAPI)
 class UMetaStoryExtension : public UObject
@@ -24,7 +24,7 @@ public:
 	}
 
 protected:
-	UMetaStory* GetStateTree() const
+	UMetaStory* GetMetaStory() const
 	{
 		return GetTypedOuter<UMetaStory>();
 	}

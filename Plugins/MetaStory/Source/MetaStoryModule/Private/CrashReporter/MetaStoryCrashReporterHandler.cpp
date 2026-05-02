@@ -10,7 +10,7 @@
 
 #include <atomic>
 
-#if UE_WITH_STATETREE_CRASHREPORTER
+#if UE_WITH_METASTORY_CRASHREPORTER
 
 namespace UE::MetaStory::Private
 {
@@ -26,9 +26,9 @@ struct FCrashReporterHandlerImpl : FCrashReporterHandler
 public:
 	struct FContext
 	{
-		explicit FContext(TNotNull<const UObject*> InOwner, TNotNull<const UMetaStory*> InStateTree, FName InContext, uint32 InThreadID)
+		explicit FContext(TNotNull<const UObject*> InOwner, TNotNull<const UMetaStory*> InMetaStory, FName InContext, uint32 InThreadID)
 			: Owner(InOwner)
-			, MetaStory(InStateTree)
+			, MetaStory(InMetaStory)
 			, Context(InContext)
 			, ThreadID(InThreadID)
 		{
@@ -51,10 +51,10 @@ public:
 	};
 
 public:
-	uint32 PushInfo(TNotNull<const UObject*> InOwner, TNotNull<const UMetaStory*> InStateTree, FName InContext)
+	uint32 PushInfo(TNotNull<const UObject*> InOwner, TNotNull<const UMetaStory*> InMetaStory, FName InContext)
 	{
 		UE::TScopeLock LockGuard(CriticalSection);
-		return Contexts.Emplace_GetRef(InOwner, InStateTree, InContext, FPlatformTLS::GetCurrentThreadId()).ID;
+		return Contexts.Emplace_GetRef(InOwner, InMetaStory, InContext, FPlatformTLS::GetCurrentThreadId()).ID;
 	}
 
 	void PopInfo(uint32 ID)

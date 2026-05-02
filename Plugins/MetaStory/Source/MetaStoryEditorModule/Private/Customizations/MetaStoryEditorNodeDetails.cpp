@@ -1026,7 +1026,7 @@ void FMetaStoryEditorNodeDetails::OnPasteNodes()
 
 					for (FMetaStoryPropertyPathBinding& Binding : ClipboardEditorDatas[ObjIdx].GetBindingsInBuffer())
 					{
-						EditorDataPtr->GetPropertyEditorBindings()->AddStateTreeBinding(MoveTemp(Binding));
+						EditorDataPtr->GetPropertyEditorBindings()->AddMetaStoryBinding(MoveTemp(Binding));
 					}
 				}
 			}
@@ -1045,7 +1045,7 @@ void FMetaStoryEditorNodeDetails::OnPasteNodes()
 
 					for (FMetaStoryPropertyPathBinding& Binding : ClipboardEditorDatas[Idx].GetBindingsInBuffer())
 					{
-						EditorDataPtr->GetPropertyEditorBindings()->AddStateTreeBinding(MoveTemp(Binding));
+						EditorDataPtr->GetPropertyEditorBindings()->AddMetaStoryBinding(MoveTemp(Binding));
 					}
 				}
 			}
@@ -1213,9 +1213,9 @@ TSharedPtr<IPropertyHandle> FMetaStoryEditorNodeDetails::GetInstancedObjectValue
 	return ChildHandle;
 }
 
-void FMetaStoryEditorNodeDetails::OnIdentifierChanged(const UMetaStory& InStateTree)
+void FMetaStoryEditorNodeDetails::OnIdentifierChanged(const UMetaStory& InMetaStory)
 {
-	if (PropUtils && MetaStory == &InStateTree)
+	if (PropUtils && MetaStory == &InMetaStory)
 	{
 		PropUtils->ForceRefresh();
 	}
@@ -1280,14 +1280,14 @@ void FMetaStoryEditorNodeDetails::FindOuterObjects()
 			OuterEditorData = Outer->GetTypedOuter<UMetaStoryEditorData>();
 		}
 		
-		UMetaStory* OuterStateTree = OuterEditorData ? OuterEditorData->GetTypedOuter<UMetaStory>() : nullptr;
-		if (OuterEditorData && OuterStateTree)
+		UMetaStory* OuterMetaStory = OuterEditorData ? OuterEditorData->GetTypedOuter<UMetaStory>() : nullptr;
+		if (OuterEditorData && OuterMetaStory)
 		{
-			MetaStory = OuterStateTree;
+			MetaStory = OuterMetaStory;
 			EditorData = OuterEditorData;
 			if (UMetaStoryEditingSubsystem* MetaStoryEditingSubsystem = GEditor ? GEditor->GetEditorSubsystem<UMetaStoryEditingSubsystem>() : nullptr)
 			{
-				MetaStoryViewModel = MetaStoryEditingSubsystem->FindOrAddViewModel(OuterStateTree);
+				MetaStoryViewModel = MetaStoryEditingSubsystem->FindOrAddViewModel(OuterMetaStory);
 			}
 			break;
 		}
@@ -2338,7 +2338,7 @@ void FMetaStoryEditorNodeDetails::OnDuplicateNode() const
 
 					for (FMetaStoryPropertyPathBinding& Binding : Clipboard.GetBindingsInBuffer())
 					{
-						EditorDataPtr->GetPropertyEditorBindings()->AddStateTreeBinding(MoveTemp(Binding));
+						EditorDataPtr->GetPropertyEditorBindings()->AddMetaStoryBinding(MoveTemp(Binding));
 					}
 				}
 

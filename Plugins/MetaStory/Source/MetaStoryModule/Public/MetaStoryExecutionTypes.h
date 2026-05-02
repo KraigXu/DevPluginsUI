@@ -31,7 +31,7 @@ enum class EMetaStoryUpdatePhase : uint8
 	StartGlobalTasksForSelection	UMETA(DisplayName = "Start Global Tasks & Evaluators for selection"),
 	StopGlobalTasks					UMETA(DisplayName = "Stop Global Tasks & Evaluators"),
 	StopGlobalTasksForSelection		UMETA(DisplayName = "Stop Global Tasks & Evaluators for selection"),
-	TickStateTree					UMETA(DisplayName = "Tick State Tree"),
+	TickMetaStory					UMETA(DisplayName = "Tick MetaStory"),
 	ApplyTransitions				UMETA(DisplayName = "Transition"),
 	TickTransitions					UMETA(DisplayName = "Tick Transitions"),
 	TriggerTransitions				UMETA(DisplayName = "Trigger Transitions"),
@@ -47,14 +47,14 @@ enum class EMetaStoryUpdatePhase : uint8
 };
 
 
-/** Status describing current run status of a State Tree. */
+/** Status describing current run status of a MetaStory. */
 UENUM(BlueprintType)
 enum class EMetaStoryRunStatus : uint8
 {
 	/** Tree is still running. */
 	Running,
 	
-	/** The State Tree was requested to stop without a particular success or failure state. */
+	/** The MetaStory was requested to stop without a particular success or failure state. */
 	Stopped,
 	
 	/** Tree execution has stopped on success. */
@@ -157,11 +157,11 @@ struct FMetaStoryExternalDataHandle
  *      ...
  *    }
  *
- *    TStateTreeExternalDataHandle<UExampleSubsystem> ExampleSubsystemHandle;
+ *    TMetaStoryExternalDataHandle<UExampleSubsystem> ExampleSubsystemHandle;
  * }
  */
 template<typename T, EMetaStoryExternalDataRequirement Req = EMetaStoryExternalDataRequirement::Required>
-struct TStateTreeExternalDataHandle : FMetaStoryExternalDataHandle
+struct TMetaStoryExternalDataHandle : FMetaStoryExternalDataHandle
 {
 	typedef T DataType;
 	static constexpr EMetaStoryExternalDataRequirement DataRequirement = Req;
@@ -291,8 +291,8 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 #if WITH_EDITORONLY_DATA
 	UE_DEPRECATED(5.6, "Use SourceFrameID to uniquely identify a frame.")
 	/** MetaStory asset that was active when the transition was requested. Filled in by the MetaStory execution context. */
-	UPROPERTY()
-	TObjectPtr<const UMetaStory> SourceStateTree = nullptr;
+	UPROPERTY(meta = (FormerlySerializedAs = "SourceStateTree"))
+	TObjectPtr<const UMetaStory> SourceMetaStory = nullptr;
 
 	UE_DEPRECATED(5.6, "Use SourceFrameID to uniquely identify a frame.")
 	/** Root state the execution frame where the transition was requested. Filled in by the MetaStory execution context. */
@@ -308,7 +308,7 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 
 
 /**
- * Describes an array of active states in a State Tree.
+ * Describes an array of active states in a MetaStory.
  */
 USTRUCT(BlueprintType)
 struct FMetaStoryActiveStates
@@ -808,7 +808,7 @@ namespace UE::MetaStory
 }
 
 /*
- * Information on how a state tree should tick next.
+ * Information on how a MetaStory should tick next.
  */
 USTRUCT()
 struct FMetaStoryScheduledTick
@@ -946,8 +946,8 @@ namespace UE::MetaStory
 		GENERATED_BODY()
 
 		FMetaStoryExecutionFrameHandle() = default;
-		FMetaStoryExecutionFrameHandle(TNotNull<const UMetaStory*> InStateTree, FMetaStoryStateHandle InRootState)
-			: MetaStory(InStateTree)
+		FMetaStoryExecutionFrameHandle(TNotNull<const UMetaStory*> InMetaStory, FMetaStoryStateHandle InRootState)
+			: MetaStory(InMetaStory)
 			, RootState(InRootState)
 		{
 		}
@@ -957,7 +957,7 @@ namespace UE::MetaStory
 			return RootState.IsValid() && MetaStory != nullptr;
 		}
 
-		const UMetaStory* GetStateTree() const
+		const UMetaStory* GetMetaStory() const
 		{
 			return MetaStory;
 		}
@@ -976,7 +976,7 @@ private:
 	};
 }
 
-/** Describes an active branch of a State Tree. */
+/** Describes an active branch of a MetaStory. */
 USTRUCT(BlueprintType)
 struct FMetaStoryExecutionFrame
 {
@@ -998,25 +998,25 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 		return MetaStory == OtherFrame.MetaStory && RootState == OtherFrame.RootState;
 	}
 
-	/** @return wherever the frame uses the state tree and root state. */
+	/** @return wherever the frame uses the MetaStory and root state. */
 	bool HasSameRoot(const FMetaStoryExecutionFrame& OtherFrame) const
 	{
 		return MetaStory == OtherFrame.MetaStory && RootState == OtherFrame.RootState;
 	}
 
-	/** @return wherever the frame uses the state tree and root state. */
+	/** @return wherever the frame uses the MetaStory and root state. */
 	bool HasRoot(const UE::MetaStory::FMetaStoryExecutionFrameHandle& FrameHandle) const
 	{
-		return MetaStory == FrameHandle.GetStateTree() && RootState == FrameHandle.GetRootState();
+		return MetaStory == FrameHandle.GetMetaStory() && RootState == FrameHandle.GetRootState();
 	}
 
-	/** @return wherever the frame uses the state tree and root state. */
-	bool HasRoot(TNotNull<const UMetaStory*> InStateTree, FMetaStoryStateHandle InRootState) const
+	/** @return wherever the frame uses the MetaStory and root state. */
+	bool HasRoot(TNotNull<const UMetaStory*> InMetaStory, FMetaStoryStateHandle InRootState) const
 	{
-		return MetaStory == InStateTree && RootState == InRootState;
+		return MetaStory == InMetaStory && RootState == InRootState;
 	}
 	
-	/** The State Tree used by the frame. */
+	/** The MetaStory used by the frame. */
 	UPROPERTY()
 	TObjectPtr<const UMetaStory> MetaStory = nullptr;
 
@@ -1066,7 +1066,7 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 	UPROPERTY()
 	FMetaStoryDataHandle GlobalParameterDataHandle = FMetaStoryDataHandle::Invalid;
 	
-	/** If true, the global tasks of the State Tree should be handle in this frame. */
+	/** If true, the global tasks of the MetaStory should be handle in this frame. */
 	UPROPERTY()
 	uint8 bIsGlobalFrame : 1 = false;
 
@@ -1084,7 +1084,7 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 #endif
 };
 
-/** Describes the execution state of the current State Tree instance. */
+/** Describes the execution state of the current MetaStory instance. */
 USTRUCT()
 struct FMetaStoryExecutionState
 {
@@ -1109,13 +1109,13 @@ public:
 
 	UE_DEPRECATED(5.6, "FindAndRemoveExpiredDelayedTransitions is not used anymore.")
 	/** Finds all delayed transition states for a specific transition and removes them. Returns their copies. */
-	TArray<FMetaStoryTransitionDelayedState, TInlineAllocator<8>> FindAndRemoveExpiredDelayedTransitions(const UMetaStory* OwnerStateTree, const FMetaStoryIndex16 TransitionIndex)
+	TArray<FMetaStoryTransitionDelayedState, TInlineAllocator<8>> FindAndRemoveExpiredDelayedTransitions(const UMetaStory* OwnerMetaStory, const FMetaStoryIndex16 TransitionIndex)
 	{
 PRAGMA_DISABLE_DEPRECATION_WARNINGS
 		TArray<FMetaStoryTransitionDelayedState, TInlineAllocator<8>> Result;
 		for (TArray<FMetaStoryTransitionDelayedState>::TIterator It = DelayedTransitions.CreateIterator(); It; ++It)
 		{
-			if (It->TimeLeft <= 0.0f && It->MetaStory == OwnerStateTree && It->TransitionIndex == TransitionIndex)
+			if (It->TimeLeft <= 0.0f && It->MetaStory == OwnerMetaStory && It->TransitionIndex == TransitionIndex)
 			{
 				Result.Emplace(MoveTemp(*It));
 				It.RemoveCurrentSwap();
@@ -1168,7 +1168,7 @@ public:
 	UPROPERTY()
 	TArray<FMetaStoryTransitionDelayedState> DelayedTransitions;
 
-	/** Used by state tree random-based operations. */
+	/** Used by MetaStory random-based operations. */
 	UPROPERTY()
 	FRandomStream RandomStream;
 
@@ -1263,7 +1263,7 @@ FMetaStoryFrameStateSelectionEvents
 };
 
 /**
- * Describes a state tree transition. Source is the state where the transition started, Target describes the state where the transition pointed at,
+ * Describes a MetaStory transition. Source is the state where the transition started, Target describes the state where the transition pointed at,
  * and Next describes the selected state. The reason Transition and Next are different is that Transition state can be a selector state,
  * in which case the children will be visited until a leaf state is found, which will be the next state.
  */
@@ -1329,8 +1329,8 @@ PRAGMA_DISABLE_DEPRECATION_WARNINGS
 
 	UE_DEPRECATED(5.6, "Use SourceFrameID instead")
 	/** MetaStory asset that was active when the transition was requested. */
-	UPROPERTY(Category = "Default", BlueprintReadOnly, meta = (DeprecatedProperty))
-	TObjectPtr<const UMetaStory> SourceStateTree = nullptr;
+	UPROPERTY(Category = "Default", BlueprintReadOnly, meta = (DeprecatedProperty, FormerlySerializedAs = "SourceStateTree"))
+	TObjectPtr<const UMetaStory> SourceMetaStory = nullptr;
 
 	UE_DEPRECATED(5.6, "Use SourceFrameID instead.")
 	/** Root state the execution frame where the transition was requested. */
@@ -1356,7 +1356,7 @@ enum class EMetaStoryRecordTransitions : uint8
 };
 
 /*
- * Captured state tree execution frame that can be cached for recording purposes.
+ * Captured MetaStory execution frame that can be cached for recording purposes.
  * Held in FMetaStoryRecordedTransitionResult for its NextActiveFrames.
  */
 USTRUCT()
@@ -1370,7 +1370,7 @@ FMetaStoryRecordedExecutionFrame
 	UE_DEPRECATED(5.6, "Use FMetaStoryExecutionContext::MakeRecordedTransitionResult to create a new recorded transition.")
 	UE_API FMetaStoryRecordedExecutionFrame(const FMetaStoryExecutionFrame& ExecutionFrame);
 
-	/** The State Tree used for ticking this frame. */
+	/** The MetaStory used for ticking this frame. */
 	UPROPERTY()
 	TObjectPtr<const UMetaStory> MetaStory = nullptr;
 
@@ -1382,7 +1382,7 @@ FMetaStoryRecordedExecutionFrame
 	UPROPERTY()
 	FMetaStoryActiveStates ActiveStates;
 
-	/** If true, the global tasks of the State Tree should be handle in this frame. */
+	/** If true, the global tasks of the MetaStory should be handle in this frame. */
 	UPROPERTY()
 	uint8 bIsGlobalFrame : 1 = false;
 
@@ -1398,7 +1398,7 @@ struct FMetaStoryRecordedActiveState
 
 	FMetaStoryRecordedActiveState() = default;
 
-	/** The state tree that owns the state handle. */
+	/** The MetaStory that owns the state handle. */
 	UPROPERTY()
 	TObjectPtr<const UMetaStory> MetaStory;
 
@@ -1412,9 +1412,9 @@ struct FMetaStoryRecordedActiveState
 };
 
 /*
- * Captured state tree transition result that can be cached for recording purposes.
+ * Captured MetaStory transition result that can be cached for recording purposes.
  * when transitions are recorded through this structure, we can replicate them down
- * to clients to keep our state tree in sync.
+ * to clients to keep our MetaStory in sync.
  */
 USTRUCT()
 struct FMetaStoryRecordedTransitionResult
@@ -1468,8 +1468,8 @@ PRAGMA_DISABLE_DEPRECATION_WARNINGS
 
 	UE_DEPRECATED(5.7, "We can't assumed that the recorded has the same active states. The source won't be set.")
 	/** MetaStory asset that was active when the transition was requested. */
-	UPROPERTY()
-	TObjectPtr<const UMetaStory> SourceStateTree = nullptr;
+	UPROPERTY(meta = (FormerlySerializedAs = "SourceStateTree"))
+	TObjectPtr<const UMetaStory> SourceMetaStory = nullptr;
 
 	UE_DEPRECATED(5.7, "We can't assumed that the recorded has the same active states. The source won't be set.")
 	/** Root state the execution frame where the transition was requested. */

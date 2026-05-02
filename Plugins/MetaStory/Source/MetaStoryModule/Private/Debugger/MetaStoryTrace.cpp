@@ -149,11 +149,11 @@ struct FPhaseTraceStatusPair
 struct FAssetDebugIdEventBufferedData
 {
 	FAssetDebugIdEventBufferedData() = default;
-	explicit FAssetDebugIdEventBufferedData(const UMetaStory* MetaStory, const FMetaStoryIndex16 AssetDebugId) : WeakStateTree(MetaStory), AssetDebugId(AssetDebugId)
+	explicit FAssetDebugIdEventBufferedData(const UMetaStory* MetaStory, const FMetaStoryIndex16 AssetDebugId) : WeakMetaStory(MetaStory), AssetDebugId(AssetDebugId)
 	{
 	}
 
-	TWeakObjectPtr<const UMetaStory> WeakStateTree;
+	TWeakObjectPtr<const UMetaStory> WeakMetaStory;
 	FMetaStoryIndex16 AssetDebugId;
 };
 
@@ -392,7 +392,7 @@ void FBufferedDataList::TraceStackedPhases_AnyThread(const FMetaStoryInstanceDeb
 
 void FBufferedDataList::OnTracesStarted_GameThread()
 {
-	checkf(IsInGameThread(), TEXT("Expecting to only be called by the statetree delegate on the main thread before worker threads trace events."));
+	checkf(IsInGameThread(), TEXT("Expecting to only be called by the MetaStory delegate on the main thread before worker threads trace events."));
 
 	// Delegate can be received before first call to SetWorldTime_GameThread()
 	// In that case we set the time to 0 for any pending lifetime events
@@ -406,7 +406,7 @@ void FBufferedDataList::OnTracesStarted_GameThread()
 
 void FBufferedDataList::OnStoppingTraces_GameThread()
 {
-	checkf(IsInGameThread(), TEXT("Expecting to only be called by the statetree delegate on the main thread after worker threads traced events."));
+	checkf(IsInGameThread(), TEXT("Expecting to only be called by the MetaStory delegate on the main thread after worker threads traced events."));
 
 	UE_MT_SCOPED_READ_ACCESS(BufferedEventsMapMTDetector);
 	for (TPair<FMetaStoryInstanceDebugId, FInstanceEventBufferedData>& Pair : BufferedEventsMap)
@@ -432,7 +432,7 @@ FMetaStoryIndex16 FBufferedDataList::FindOrAddDebugIdForAsset_AnyThread(const UM
 		UE_MT_SCOPED_READ_ACCESS(AssetDebugIdMapMTDetector);
 		const FAssetDebugIdEventBufferedData* ExistingPair = AssetDebugIdMap.FindByPredicate([MetaStory](const FAssetDebugIdEventBufferedData& BufferedData)
 		{
-			return BufferedData.WeakStateTree == MetaStory;
+			return BufferedData.WeakMetaStory == MetaStory;
 		});
 
 		if (ExistingPair != nullptr)
@@ -550,7 +550,7 @@ void TraceBufferedEvents(TNotNull<const FMetaStoryReadOnlyExecutionContext*> Con
 	const FMetaStoryInstanceDebugId InstanceId = Context->GetInstanceDebugId();
 	if (GBufferedEvents.ShouldTraceInstance(InstanceId))
 	{
-		const UMetaStory* MetaStory = Context->GetStateTree();
+		const UMetaStory* MetaStory = Context->GetMetaStory();
 		const FString InstanceName = Context->GetInstanceDebugDescription();
 		const uint64 OuterTraceId = Context->GetOuterTraceId();
 

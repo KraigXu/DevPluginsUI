@@ -28,7 +28,7 @@ public:
 	SLATE_BEGIN_ARGS(SFrameEventsView) {}
 	SLATE_END_ARGS()
 
-	UE_API void Construct(const FArguments& InArgs, TNotNull<const UMetaStory*> InStateTree);
+	UE_API void Construct(const FArguments& InArgs, TNotNull<const UMetaStory*> InMetaStory);
 
 	/** Selects an element in the list based on a predicate applied on the currently displayed events */
 	UE_API void SelectByPredicate(TFunctionRef<bool(const FMetaStoryTraceEventVariantType& Event)> InPredicate);
@@ -42,7 +42,7 @@ private:
 
 	static void GenerateElementsForProperties(const FMetaStoryTraceEventVariantType& Event, const TSharedRef<FFrameEventTreeElement>& ParentElement);
 
-	TWeakObjectPtr<const UMetaStory> WeakStateTree;
+	TWeakObjectPtr<const UMetaStory> WeakMetaStory;
 
 	/** All trace events received for a given instance. */
 	TArray<TSharedPtr<FFrameEventTreeElement>> EventsTreeElements;

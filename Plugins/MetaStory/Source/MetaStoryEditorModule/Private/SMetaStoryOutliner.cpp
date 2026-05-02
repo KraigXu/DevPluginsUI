@@ -32,9 +32,9 @@ SMetaStoryOutliner::~SMetaStoryOutliner()
 	UE::MetaStory::Delegates::OnVisualThemeChanged.RemoveAll(this);
 }
 
-void SMetaStoryOutliner::Construct(const FArguments& InArgs, TSharedRef<FMetaStoryViewModel> InStateTreeViewModel, const TSharedRef<FUICommandList>& InCommandList)
+void SMetaStoryOutliner::Construct(const FArguments& InArgs, TSharedRef<FMetaStoryViewModel> InMetaStoryViewModel, const TSharedRef<FUICommandList>& InCommandList)
 {
-	MetaStoryViewModel = InStateTreeViewModel;
+	MetaStoryViewModel = InMetaStoryViewModel;
 
 	MetaStoryViewModel->GetOnAssetChanged().AddSP(this, &SMetaStoryOutliner::HandleModelAssetChanged);
 	MetaStoryViewModel->GetOnStatesRemoved().AddSP(this, &SMetaStoryOutliner::HandleModelStatesRemoved);
@@ -51,7 +51,7 @@ void SMetaStoryOutliner::Construct(const FArguments& InArgs, TSharedRef<FMetaSto
 	[
 		SAssignNew(CompactTreeView, UE::MetaStory::SCompactTreeEditorView, MetaStoryViewModel)
 		.SelectionMode(ESelectionMode::Multi)
-		.MetaStoryEditorData(MetaStoryViewModel->GetStateTreeEditorData())
+		.MetaStoryEditorData(MetaStoryViewModel->GetMetaStoryEditorData())
 		.OnSelectionChanged(this, &SMetaStoryOutliner::HandleTreeViewSelectionChanged)
 		.OnContextMenuOpening(this, &SMetaStoryOutliner::HandleContextMenuOpening)
 		.ShowLinkedStates(true)
@@ -188,7 +188,7 @@ void SMetaStoryOutliner::HandleModelAssetChanged()
 
 	if (CompactTreeView && MetaStoryViewModel)
 	{
-		CompactTreeView->Refresh(MetaStoryViewModel->GetStateTreeEditorData());
+		CompactTreeView->Refresh(MetaStoryViewModel->GetMetaStoryEditorData());
 	}
 }
 
@@ -198,7 +198,7 @@ void SMetaStoryOutliner::HandleModelStatesRemoved(const TSet<UMetaStoryState*>& 
 	
 	if (CompactTreeView && MetaStoryViewModel)
 	{
-		CompactTreeView->Refresh(MetaStoryViewModel->GetStateTreeEditorData());
+		CompactTreeView->Refresh(MetaStoryViewModel->GetMetaStoryEditorData());
 	}
 }
 
@@ -208,7 +208,7 @@ void SMetaStoryOutliner::HandleModelStatesMoved(const TSet<UMetaStoryState*>& Af
 	
 	if (CompactTreeView && MetaStoryViewModel)
 	{
-		CompactTreeView->Refresh(MetaStoryViewModel->GetStateTreeEditorData());
+		CompactTreeView->Refresh(MetaStoryViewModel->GetMetaStoryEditorData());
 	}
 }
 
@@ -218,7 +218,7 @@ void SMetaStoryOutliner::HandleModelStateAdded(UMetaStoryState* ParentState, UMe
 	
 	if (CompactTreeView && MetaStoryViewModel)
 	{
-		CompactTreeView->Refresh(MetaStoryViewModel->GetStateTreeEditorData());
+		CompactTreeView->Refresh(MetaStoryViewModel->GetMetaStoryEditorData());
 	}
 }
 
@@ -239,7 +239,7 @@ void SMetaStoryOutliner::HandleModelStatesChanged(const TSet<UMetaStoryState*>& 
 
 	if (CompactTreeView && MetaStoryViewModel)
 	{
-		CompactTreeView->Refresh(MetaStoryViewModel->GetStateTreeEditorData());
+		CompactTreeView->Refresh(MetaStoryViewModel->GetMetaStoryEditorData());
 	}
 }
 
@@ -271,7 +271,7 @@ void SMetaStoryOutliner::HandleTreeViewSelectionChanged(TConstArrayView<FGuid> S
 	{
 		TArray<TWeakObjectPtr<UMetaStoryState>> Selection;
 
-		if (const UMetaStoryEditorData* MetaStoryEditorData = MetaStoryViewModel->GetStateTreeEditorData())
+		if (const UMetaStoryEditorData* MetaStoryEditorData = MetaStoryViewModel->GetMetaStoryEditorData())
 		{
 			for (const FGuid& StateID : SelectedStateIDs)
 			{
@@ -289,9 +289,9 @@ void SMetaStoryOutliner::HandleTreeViewSelectionChanged(TConstArrayView<FGuid> S
 void SMetaStoryOutliner::HandleVisualThemeChanged(const UMetaStory& MetaStory)
 {
 	if (MetaStoryViewModel
-		&& MetaStoryViewModel->GetStateTree() == &MetaStory)
+		&& MetaStoryViewModel->GetMetaStory() == &MetaStory)
 	{
-		CompactTreeView->Refresh(MetaStoryViewModel->GetStateTreeEditorData());
+		CompactTreeView->Refresh(MetaStoryViewModel->GetMetaStoryEditorData());
 	}
 }
 

@@ -19,7 +19,7 @@ const IMetaStoryBindingLookup* UMetaStoryNodeBlueprintBase::CachedBindingLookup 
 
 UWorld* UMetaStoryNodeBlueprintBase::GetWorld() const
 {
-	// The items are duplicated as the State Tree execution context as outer, so this should be essentially the same as GetWorld() on MetaStory context.
+	// The items are duplicated as the MetaStory execution context as outer, so this should be essentially the same as GetWorld() on MetaStory context.
 	// The CDO is used by the BP editor to check for certain functionality, make it return nullptr so that the GetWorld() passes as overridden. 
 	if (!HasAnyFlags(RF_ClassDefaultObject))
 	{

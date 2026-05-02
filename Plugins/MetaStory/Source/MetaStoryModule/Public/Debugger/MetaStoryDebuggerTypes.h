@@ -60,12 +60,12 @@ struct FFrameSpan
 
 
 /**
- * Struct describing a state tree instance for a given MetaStory asset
+ * Struct describing a MetaStory instance for a given MetaStory asset
  */
 struct FInstanceDescriptor : TSharedFromThis<FInstanceDescriptor>
 {
 	FInstanceDescriptor() = default;
-	UE_API FInstanceDescriptor(const UMetaStory* InStateTree, const FMetaStoryInstanceDebugId InId, const FString& InName, const TRange<double>& InLifetime);
+	UE_API FInstanceDescriptor(const UMetaStory* InMetaStory, const FMetaStoryInstanceDebugId InId, const FString& InName, const TRange<double>& InLifetime);
 
 	UE_API bool IsValid() const;
 
@@ -107,7 +107,7 @@ struct FInstanceDescriptor : TSharedFromThis<FInstanceDescriptor>
 
 
 /**
- * Struct holding organized events associated to a given state tree instance.
+ * Struct holding organized events associated to a given MetaStory instance.
  */
 struct FInstanceEventCollection
 {

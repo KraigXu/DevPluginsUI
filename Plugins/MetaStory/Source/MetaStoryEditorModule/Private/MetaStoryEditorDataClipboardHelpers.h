@@ -39,9 +39,9 @@ struct FMetaStoryClipboardEditorData
 		return bBufferProcessed;
 	}
 
-	void Append(TNotNull<const UMetaStoryEditorData*> InStateTree, TConstArrayView<FMetaStoryEditorNode> InEditorNodes);
-	void Append(TNotNull<const UMetaStoryEditorData*> InStateTree, TConstArrayView<FMetaStoryTransition> InTransitions);
-	void Append(TNotNull<const UMetaStoryEditorData*> InStateTree, TConstArrayView<const FPropertyBindingBinding*> InBindingPtrs);
+	void Append(TNotNull<const UMetaStoryEditorData*> InMetaStory, TConstArrayView<FMetaStoryEditorNode> InEditorNodes);
+	void Append(TNotNull<const UMetaStoryEditorData*> InMetaStory, TConstArrayView<FMetaStoryTransition> InTransitions);
+	void Append(TNotNull<const UMetaStoryEditorData*> InMetaStory, TConstArrayView<const FPropertyBindingBinding*> InBindingPtrs);
 
 	void Reset();
 
@@ -76,7 +76,7 @@ struct FMetaStoryClipboardEditorData
 	}
 
 private:
-	void CollectBindingsForEditorNodes(TNotNull<const UMetaStoryEditorData*> InStateTree, TConstArrayView<FMetaStoryEditorNode> InEditorNodes);
+	void CollectBindingsForEditorNodes(TNotNull<const UMetaStoryEditorData*> InMetaStory, TConstArrayView<FMetaStoryEditorNode> InEditorNodes);
 
 	UPROPERTY()
 	TArray<FMetaStoryEditorNode> EditorNodesBuffer;

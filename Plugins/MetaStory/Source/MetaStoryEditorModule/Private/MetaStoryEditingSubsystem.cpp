@@ -30,20 +30,20 @@ void UMetaStoryEditingSubsystem::BeginDestroy()
 	Super::BeginDestroy();
 }
 
-bool UMetaStoryEditingSubsystem::CompileStateTree(TNotNull<UMetaStory*> InStateTree, FMetaStoryCompilerLog& InOutLog)
+bool UMetaStoryEditingSubsystem::CompileMetaStory(TNotNull<UMetaStory*> InMetaStory, FMetaStoryCompilerLog& InOutLog)
 {
-	return UE::MetaStory::Compiler::FCompilerManager::CompileSynchronously(InStateTree, InOutLog);
+	return UE::MetaStory::Compiler::FCompilerManager::CompileSynchronously(InMetaStory, InOutLog);
 }
 
-TSharedPtr<FMetaStoryViewModel> UMetaStoryEditingSubsystem::FindViewModel(TNotNull<const UMetaStory*> InStateTree) const
+TSharedPtr<FMetaStoryViewModel> UMetaStoryEditingSubsystem::FindViewModel(TNotNull<const UMetaStory*> InMetaStory) const
 {
-	const FObjectKey MetaStoryKey = InStateTree;
+	const FObjectKey MetaStoryKey = InMetaStory;
 	TSharedPtr<FMetaStoryViewModel> ViewModelPtr = MetaStoryViewModels.FindRef(MetaStoryKey);
 	if (ViewModelPtr)
 	{
 		// The MetaStory could be re-instantiated. Can occur when the object is destroyed and recreated in a pool or when reloaded in editor.
 		//The object might have the same pointer value or the same path but it's a new object and all weakptr are now invalid.
-		if (ViewModelPtr->GetStateTree() == InStateTree)
+		if (ViewModelPtr->GetMetaStory() == InMetaStory)
 		{
 			return ViewModelPtr.ToSharedRef();
 		}
@@ -51,15 +51,15 @@ TSharedPtr<FMetaStoryViewModel> UMetaStoryEditingSubsystem::FindViewModel(TNotNu
 	return nullptr;
 }
 
-TSharedRef<FMetaStoryViewModel> UMetaStoryEditingSubsystem::FindOrAddViewModel(TNotNull<UMetaStory*> InStateTree)
+TSharedRef<FMetaStoryViewModel> UMetaStoryEditingSubsystem::FindOrAddViewModel(TNotNull<UMetaStory*> InMetaStory)
 {
-	const FObjectKey MetaStoryKey = InStateTree;
+	const FObjectKey MetaStoryKey = InMetaStory;
 	TSharedPtr<FMetaStoryViewModel> ViewModelPtr = MetaStoryViewModels.FindRef(MetaStoryKey);
 	if (ViewModelPtr)
 	{
 		// The MetaStory could be re-instantiated. Can occur when the object is destroyed and recreated in a pool or when reloaded in editor.
 		//The object might have the same pointer value or the same path but it's a new object and all weakptr are now invalid.
-		if (ViewModelPtr->GetStateTree() == InStateTree)
+		if (ViewModelPtr->GetMetaStory() == InMetaStory)
 		{
 			return ViewModelPtr.ToSharedRef();
 		}
@@ -70,21 +70,21 @@ TSharedRef<FMetaStoryViewModel> UMetaStoryEditingSubsystem::FindOrAddViewModel(T
 		}
 	}
 
-	ValidateStateTree(InStateTree);
+	ValidateMetaStory(InMetaStory);
 
 	TSharedRef<FMetaStoryViewModel> SharedModel = MetaStoryViewModels.Add(MetaStoryKey, MakeShared<FMetaStoryViewModel>()).ToSharedRef();
-	UMetaStoryEditorData* EditorData = Cast<UMetaStoryEditorData>(InStateTree->EditorData);
+	UMetaStoryEditorData* EditorData = Cast<UMetaStoryEditorData>(InMetaStory->EditorData);
 	SharedModel->Init(EditorData);
 
 	return SharedModel;
 }
 
-TSharedRef<SWidget> UMetaStoryEditingSubsystem::GetStateTreeView(TSharedRef<FMetaStoryViewModel> InViewModel, const TSharedRef<FUICommandList>& TreeViewCommandList)
+TSharedRef<SWidget> UMetaStoryEditingSubsystem::GetMetaStoryDocumentView(TSharedRef<FMetaStoryViewModel> InViewModel, const TSharedRef<FUICommandList>& TreeViewCommandList)
 {
 	return SNew(SMetaStoryView, InViewModel, TreeViewCommandList);
 }
 
-void UMetaStoryEditingSubsystem::ValidateStateTree(TNotNull<UMetaStory*> InStateTree)
+void UMetaStoryEditingSubsystem::ValidateMetaStory(TNotNull<UMetaStory*> InMetaStory)
 {
 	auto FixChangedStateLinkName = [](FMetaStoryStateLink& StateLink, const TMap<FGuid, FName>& IDToName) -> bool
 		{
@@ -141,7 +141,7 @@ void UMetaStoryEditingSubsystem::ValidateStateTree(TNotNull<UMetaStory*> InState
 	auto FixEditorData = [](TNotNull<UMetaStory*> MetaStory)
 	{
 		UMetaStoryEditorData* EditorData = Cast<UMetaStoryEditorData>(MetaStory->EditorData);
-		// The schema is defined in the EditorData. If we can't find the editor data (probably because the class doesn't exist anymore), then try the compiled schema in the state tree asset.
+		// The schema is defined in the EditorData. If we can't find the editor data (probably because the class doesn't exist anymore), then try the compiled schema in the MetaStory asset.
 		TSubclassOf<const UMetaStorySchema> SchemaClass;
 		if (EditorData && EditorData->Schema)
 		{
@@ -154,7 +154,7 @@ void UMetaStoryEditingSubsystem::ValidateStateTree(TNotNull<UMetaStory*> InState
 
 		if (SchemaClass.Get() == nullptr)
 		{
-			UE_LOG(LogMetaStoryEditor, Error, TEXT("The state tree '%s' does not have a schema."), *MetaStory->GetPathName());
+			UE_LOG(LogMetaStoryEditor, Error, TEXT("The MetaStory '%s' does not have a schema."), *MetaStory->GetPathName());
 			return;
 		}
 
@@ -190,8 +190,8 @@ void UMetaStoryEditingSubsystem::ValidateStateTree(TNotNull<UMetaStory*> InState
 			MetaStory->EditorData = EditorData;
 
 			// Trash the previous EditorData
-			const FName TrashStateTreeName = MakeUniqueObjectName(GetTransientPackage(), UMetaStory::StaticClass(), *FString::Printf(TEXT("TRASH_%s"), *UMetaStory::StaticClass()->GetName()));
-			UMetaStory* TransientOuter = NewObject<UMetaStory>(GetTransientPackage(), TrashStateTreeName, RF_Transient);
+			const FName TrashMetaStoryName = MakeUniqueObjectName(GetTransientPackage(), UMetaStory::StaticClass(), *FString::Printf(TEXT("TRASH_%s"), *UMetaStory::StaticClass()->GetName()));
+			UMetaStory* TransientOuter = NewObject<UMetaStory>(GetTransientPackage(), TrashMetaStoryName, RF_Transient);
 			const FName TrashSchemaName = *FString::Printf(TEXT("TRASH_%s"), *PreviousEditorData->GetName());
 			constexpr ERenameFlags RenameFlags = REN_DoNotDirty | REN_DontCreateRedirectors;
 			PreviousEditorData->Rename(*TrashSchemaName.ToString(), TransientOuter, RenameFlags);
@@ -270,19 +270,19 @@ void UMetaStoryEditingSubsystem::ValidateStateTree(TNotNull<UMetaStory*> InState
 			}
 		};
 
-	FixEditorData(InStateTree);
-	if (InStateTree->EditorData)
+	FixEditorData(InMetaStory);
+	if (InMetaStory->EditorData)
 	{
 		constexpr bool bMarkDirty = false;
-		InStateTree->EditorData->Modify(bMarkDirty);
+		InMetaStory->EditorData->Modify(bMarkDirty);
 
-		UMetaStoryEditorData* EditorData = CastChecked<UMetaStoryEditorData>(InStateTree->EditorData);
+		UMetaStoryEditorData* EditorData = CastChecked<UMetaStoryEditorData>(InMetaStory->EditorData);
 		FixEditorSchema(EditorData);
 
 		EditorData->ReparentStates();
 		if (EditorData->EditorSchema)
 		{
-			EditorData->EditorSchema->Validate(InStateTree);
+			EditorData->EditorSchema->Validate(InMetaStory);
 		}
 
 		RemoveUnusedBindings(EditorData);
@@ -292,13 +292,13 @@ void UMetaStoryEditingSubsystem::ValidateStateTree(TNotNull<UMetaStory*> InState
 	}
 }
 
-uint32 UMetaStoryEditingSubsystem::CalculateStateTreeHash(TNotNull<const UMetaStory*> InStateTree)
+uint32 UMetaStoryEditingSubsystem::CalculateMetaStoryHash(TNotNull<const UMetaStory*> InMetaStory)
 {
 	uint32 EditorDataHash = 0;
-	if (InStateTree->EditorData != nullptr)
+	if (InMetaStory->EditorData != nullptr)
 	{
 		FMetaStoryObjectCRC32 Archive;
-		EditorDataHash = Archive.Crc32(InStateTree->EditorData, 0);
+		EditorDataHash = Archive.Crc32(InMetaStory->EditorData, 0);
 	}
 
 	return EditorDataHash;
@@ -313,17 +313,17 @@ void UMetaStoryEditingSubsystem::HandlePostGarbageCollect()
 		{
 			It.RemoveCurrent();
 		}
-		else if (!It.Value() || !It.Value()->GetStateTree())
+		else if (!It.Value() || !It.Value()->GetMetaStory())
 		{
 			It.RemoveCurrent();
 		}
 	}
 }
 
-void UMetaStoryEditingSubsystem::HandlePostCompile(const UMetaStory& InStateTree)
+void UMetaStoryEditingSubsystem::HandlePostCompile(const UMetaStory& InMetaStory)
 {
 	// Notify the UI that something changed. Make sure to not request a new viewmodel. That way, we are not creating new viewmodel when cooking/PIE.
-	if (TSharedPtr<FMetaStoryViewModel> ViewModel = FindViewModel(&InStateTree))
+	if (TSharedPtr<FMetaStoryViewModel> ViewModel = FindViewModel(&InMetaStory))
 	{
 		ViewModel->NotifyAssetChangedExternally();
 	}

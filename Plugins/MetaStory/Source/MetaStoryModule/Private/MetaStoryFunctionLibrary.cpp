@@ -12,15 +12,15 @@
 
 #define LOCTEXT_NAMESPACE "MetaStoryFunctionLibrary"
 
-void UMetaStoryFunctionLibrary::SetStateTree(FMetaStoryReference& Reference, UMetaStory* NewStateTree)
+void UMetaStoryFunctionLibrary::SetMetaStory(FMetaStoryReference& Reference, UMetaStory* NewMetaStory)
 {
-	Reference.SetStateTree(NewStateTree);
+	Reference.SetMetaStory(NewMetaStory);
 }
 
-FMetaStoryReference UMetaStoryFunctionLibrary::MakeStateTreeReference(UMetaStory* NewStateTree)
+FMetaStoryReference UMetaStoryFunctionLibrary::MakeMetaStoryReference(UMetaStory* NewMetaStory)
 {
 	FMetaStoryReference Result;
-	Result.SetStateTree(NewStateTree);
+	Result.SetMetaStory(NewMetaStory);
 	return Result;
 }
 

@@ -40,15 +40,15 @@ struct FMetaStoryTestLog
 	}
 };
 
-struct FTestStateTreeExecutionContext : public FMetaStoryExecutionContext
+struct FTestMetaStoryExecutionContext : public FMetaStoryExecutionContext
 {
-	FTestStateTreeExecutionContext(UObject& InOwner, const UMetaStory& InStateTree, FMetaStoryInstanceData& InInstanceData, const FOnCollectStateTreeExternalData& CollectExternalDataCallback = {}, const EMetaStoryRecordTransitions RecordTransitions = EMetaStoryRecordTransitions::No)
-		: FMetaStoryExecutionContext(InOwner, InStateTree, InInstanceData, CollectExternalDataCallback, RecordTransitions)
+	FTestMetaStoryExecutionContext(UObject& InOwner, const UMetaStory& InMetaStory, FMetaStoryInstanceData& InInstanceData, const FOnCollectMetaStoryExternalData& CollectExternalDataCallback = {}, const EMetaStoryRecordTransitions RecordTransitions = EMetaStoryRecordTransitions::No)
+		: FMetaStoryExecutionContext(InOwner, InMetaStory, InInstanceData, CollectExternalDataCallback, RecordTransitions)
 	{
 		// Handle getting pointer to the test log.
 		FMetaStoryDataView TestLogView(TBaseStructure<FMetaStoryTestLog>::Get(), (uint8*)&Log);
 		
-		CollectExternalDataDelegate = FOnCollectStateTreeExternalData::CreateLambda(
+		CollectExternalDataDelegate = FOnCollectMetaStoryExternalData::CreateLambda(
 			[TestLogView](const FMetaStoryExecutionContext& Context, const UMetaStory* MetaStory, TArrayView<const FMetaStoryExternalDataDesc> ExternalDataDescs, TArrayView<FMetaStoryDataView> OutDataViews)
 			{
 				for (int32 Index = 0; Index < ExternalDataDescs.Num(); Index++)
@@ -73,7 +73,7 @@ struct FTestStateTreeExecutionContext : public FMetaStoryExecutionContext
 
 	struct FLogOrder
 	{
-		FLogOrder(const FTestStateTreeExecutionContext& InContext, const int32 InIndex)
+		FLogOrder(const FTestMetaStoryExecutionContext& InContext, const int32 InIndex)
 			: Context(&InContext), Index(InIndex)
 		{}
 
@@ -113,7 +113,7 @@ struct FTestStateTreeExecutionContext : public FMetaStoryExecutionContext
 		}
 
 	private:
-		const FTestStateTreeExecutionContext* Context;
+		const FTestMetaStoryExecutionContext* Context;
 		int32 Index = 0;
 	};
 
@@ -227,7 +227,7 @@ struct FTestEval_Custom : public FMetaStoryEvaluatorBase
 		return true;
 	}
 
-	TStateTreeExternalDataHandle<FMetaStoryTestLog> LogHandle;
+	TMetaStoryExternalDataHandle<FMetaStoryTestLog> LogHandle;
 
 	TFunction<void(FMetaStoryExecutionContext&, const FTestEval_Custom*)> CustomEnterStateFunc;
 	TFunction<void(FMetaStoryExecutionContext&, const FTestEval_Custom*)> CustomExitStateFunc;
@@ -275,7 +275,7 @@ struct FTestTask_B : public FMetaStoryTaskBase
 		return true;
 	}
 	
-	TStateTreeExternalDataHandle<FMetaStoryTestLog> LogHandle;
+	TMetaStoryExternalDataHandle<FMetaStoryTestLog> LogHandle;
 };
 
 USTRUCT()
@@ -399,7 +399,7 @@ struct FTestTask_PrintValue : public FMetaStoryTaskBase
 		return true;
 	}
 	
-	TStateTreeExternalDataHandle<FMetaStoryTestLog> LogHandle;
+	TMetaStoryExternalDataHandle<FMetaStoryTestLog> LogHandle;
 	TFunction<void(FMetaStoryExecutionContext&, const FTestTask_PrintValue*)> CustomEnterStateFunc;
 	TFunction<void(FMetaStoryExecutionContext&, const FTestTask_PrintValue*)> CustomExitStateFunc;
 	TFunction<void(FMetaStoryExecutionContext&, const FTestTask_PrintValue*)> CustomTickFunc;
@@ -519,7 +519,7 @@ struct FTestTask_StopTree : public FMetaStoryTaskBase
 
 	virtual EMetaStoryRunStatus Tick(FMetaStoryExecutionContext& Context, const float DeltaTime) const override
 	{
-		if (Phase == EMetaStoryUpdatePhase::TickStateTree)
+		if (Phase == EMetaStoryUpdatePhase::TickMetaStory)
 		{
 			return Context.Stop();
 		}
@@ -532,9 +532,9 @@ struct FTestTask_StopTree : public FMetaStoryTaskBase
 		return true;
 	}
 	
-	TStateTreeExternalDataHandle<FMetaStoryTestLog> LogHandle;
+	TMetaStoryExternalDataHandle<FMetaStoryTestLog> LogHandle;
 	
-	/** Indicates in which phase the call to Stop should be performed. Possible values are EnterStates, ExitStats and TickStateTree */
+	/** Indicates in which phase the call to Stop should be performed. Possible values are EnterStates, ExitStats and TickMetaStory */
 	UPROPERTY()
 	EMetaStoryUpdatePhase Phase = EMetaStoryUpdatePhase::Unset;
 };
@@ -624,7 +624,7 @@ struct FTestTask_Stand : public FMetaStoryTaskBase
 		return true;
 	}
 	
-	TStateTreeExternalDataHandle<FMetaStoryTestLog> LogHandle;
+	TMetaStoryExternalDataHandle<FMetaStoryTestLog> LogHandle;
 	
 	UPROPERTY(EditAnywhere, Category = Parameter)
 	int32 TicksToCompletion = 1;
@@ -1054,7 +1054,7 @@ struct FMetaStoryTestBooleanCondition : public FMetaStoryConditionCommonBase
 		return true;
 	}
 
-	TStateTreeExternalDataHandle<FMetaStoryTestLog> LogHandle;
+	TMetaStoryExternalDataHandle<FMetaStoryTestLog> LogHandle;
 };
 
 USTRUCT()
@@ -1166,7 +1166,7 @@ struct FTestTask_ListenDelegate : public FMetaStoryTaskBase
 	}
 	
 	bool bRemoveOnExit = true;
-	TStateTreeExternalDataHandle<FMetaStoryTestLog> LogHandle;
+	TMetaStoryExternalDataHandle<FMetaStoryTestLog> LogHandle;
 };
 
 USTRUCT()

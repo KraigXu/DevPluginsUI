@@ -28,8 +28,8 @@ public:
 	virtual bool ShouldShowCompileButton() const = 0;
 	virtual bool CanToolkitSpawnWorkspaceTab() const = 0;
 
-	virtual UMetaStory* GetStateTree() const = 0;
-	virtual FSimpleMulticastDelegate& OnStateTreeChanged() = 0;
+	virtual UMetaStory* GetMetaStory() const = 0;
+	virtual FSimpleMulticastDelegate& OnMetaStoryChanged() = 0;
 
 	virtual TSharedPtr<IDetailsView> GetAssetDetailsView() = 0;
 	virtual TSharedPtr<IDetailsView> GetDetailsView() = 0;

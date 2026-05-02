@@ -25,12 +25,12 @@ void SCompactTreeDebuggerView::Construct(const FArguments& InArgs, const TNotNul
 
 void SCompactTreeDebuggerView::CacheStatesInternal()
 {
-	if (const UMetaStory* MetaStory = WeakStateTree.Get())
+	if (const UMetaStory* MetaStory = WeakMetaStory.Get())
 	{
 		const FMetaStoryTraceActiveStates::FAssetActiveStates* PerAssetActiveStates = AllActiveStates.Get().PerAssetStates.FindByPredicate(
 			[MetaStory](const FMetaStoryTraceActiveStates::FAssetActiveStates& AssetActiveStates)
 			{
-				return AssetActiveStates.WeakStateTree == MetaStory;
+				return AssetActiveStates.WeakMetaStory == MetaStory;
 			});
 
 		if (PerAssetActiveStates && PerAssetActiveStates->ActiveStates.Num() > 0)
@@ -48,7 +48,7 @@ void SCompactTreeDebuggerView::CacheStateRecursive(
 	, const uint16 InStateIdx
 	, TArray<FProcessedState>& OutProcessedStates)
 {
-	TNotNull<const UMetaStory*> MetaStory = InAssetActiveStates->WeakStateTree.Get();
+	TNotNull<const UMetaStory*> MetaStory = InAssetActiveStates->WeakMetaStory.Get();
 	const FProcessedState ProcessedState(MetaStory, InStateIdx);
 	if (OutProcessedStates.Contains(ProcessedState))
 	{
@@ -100,7 +100,7 @@ void SCompactTreeDebuggerView::CacheStateRecursive(
 				const FMetaStoryTraceActiveStates::FAssetActiveStates* LinkedAssetActiveStates = AllActiveStates.Get().PerAssetStates.FindByPredicate(
 					[MetaStory = State.LinkedAsset](const FMetaStoryTraceActiveStates::FAssetActiveStates& AssetActiveStates)
 					{
-						return AssetActiveStates.WeakStateTree == MetaStory;
+						return AssetActiveStates.WeakMetaStory == MetaStory;
 					});
 				if (LinkedAssetActiveStates && LinkedAssetActiveStates->ActiveStates.Num() > 0)
 				{

@@ -108,7 +108,7 @@ struct FMetaStoryEditorNode
 };
 
 template <typename T>
-struct TStateTreeEditorNode : public FMetaStoryEditorNode
+struct TMetaStoryTypedEditorNode : public FMetaStoryEditorNode
 {
 	using NodeType = T;
 	inline T& GetNode() { return Node.template GetMutable<T>(); }

@@ -109,13 +109,13 @@ private:
 };
 
 /**
- * State Tree instance data is used to store the runtime state of a State Tree. It is used together with FMetaStoryExecution context to tick the state tree.
+ * MetaStory instance data is used to store the runtime state of a MetaStory. It is used together with FMetaStoryExecution context to tick the MetaStory.
  * You are supposed to use FMetaStoryInstanceData as a property to store the instance data. That ensures that any UObject references will get GC'd correctly.
  *
  * The FMetaStoryInstanceData wraps FMetaStoryInstanceStorage, where the data is actually stored. This indirection is done in order to allow the FMetaStoryInstanceData
  * to be bitwise relocatable (e.g. you can put it in an array), and we can still allow delegates to bind to the instance data of individual tasks.
  *
- * Since the tasks in the instance data are stored in a array that may get resized you will need to use TStateTreeInstanceDataStructRef
+ * Since the tasks in the instance data are stored in a array that may get resized you will need to use TMetaStoryInstanceDataStructRef
  * to reference a struct based task instance data. It is defined below, and has example how to use it.
  */
 
@@ -160,7 +160,7 @@ struct FMetaStoryInstanceStorage
 	UE_API void SetSharedEventQueue(const TSharedRef<FMetaStoryEventQueue>& InSharedEventQueue);
 	
 	/** 
-	 * Buffers a transition request to be sent to the State Tree.
+	 * Buffers a transition request to be sent to the MetaStory.
 	 * @param Owner Optional pointer to an owner UObject that is used for logging errors.
 	 * @param Request transition to request.
 	*/
@@ -246,20 +246,20 @@ struct FMetaStoryInstanceStorage
 		return ExecutionState;
 	}
 
-	/** @return the storage's execution runtime data for the state tree. */
+	/** @return the storage's execution runtime data for the MetaStory. */
 	[[nodiscard]] const UE::MetaStory::InstanceData::FMetaStoryInstanceContainer& GetExecutionRuntimeData() const
 	{
 		return ExecutionRuntimeData;
 	}
 
-	/** @return the storage's execution runtime data for the state tree. */
+	/** @return the storage's execution runtime data for the MetaStory. */
 	[[nodiscard]] UE::MetaStory::InstanceData::FMetaStoryInstanceContainer& GetExecutionRuntimeData()
 	{
 		return ExecutionRuntimeData;
 	}
 
 	/**
-	 * Add or reuse the execution runtime data for the state tree.
+	 * Add or reuse the execution runtime data for the MetaStory.
 	 * Return the base index for the execution runtime data.
 	 */
 	[[nodiscard]] UE_API int32 AddExecutionRuntimeData(TNotNull<UObject*> Owner, UE::MetaStory::FMetaStoryExecutionFrameHandle FrameHandle);
@@ -285,7 +285,7 @@ struct FMetaStoryInstanceStorage
 		return TemporaryInstances;
 	}
 
-	/** Stores copy of provided parameters as State Tree global parameters. */
+	/** Stores copy of provided parameters as MetaStory global parameters. */
 	UE_API void SetGlobalParameters(const FInstancedPropertyBag& Parameters);
 
 	/** @return view to global parameters. */
@@ -338,7 +338,7 @@ protected:
 	UPROPERTY()
 	FInstancedStructContainer InstanceStructs;
 
-	/** Execution state of the state tree instance. */
+	/** Execution state of the MetaStory instance. */
 	UPROPERTY(Transient)
 	FMetaStoryExecutionState ExecutionState;
 
@@ -349,7 +349,7 @@ protected:
 	UPROPERTY(Transient)
 	UE::MetaStory::InstanceData::FMetaStoryInstanceContainer ExecutionRuntimeData;
 
-	/** Info to find the index where the execution runtime data starts for a specific state tree. */
+	/** Info to find the index where the execution runtime data starts for a specific MetaStory. */
 	struct FExecutionRuntimeInfo
 	{
 		FObjectKey MetaStory;
@@ -511,7 +511,7 @@ struct FMetaStoryInstanceData
 	UE_API void SetSharedEventQueue(const TSharedRef<FMetaStoryEventQueue>& InSharedEventQueue);
 
 	/** 
-	 * Buffers a transition request to be sent to the State Tree.
+	 * Buffers a transition request to be sent to the MetaStory.
 	 * @param Owner Optional pointer to an owner UObject that is used for logging errors.
 	 * @param Request transition to request.
 	*/
@@ -636,23 +636,23 @@ struct TStructOpsTypeTraits<FMetaStoryInstanceData> : public TStructOpsTypeTrait
  *	}
  */
 template <typename T>
-struct TStateTreeInstanceDataStructRef
+struct TMetaStoryInstanceDataStructRef
 {
-	TStateTreeInstanceDataStructRef(FMetaStoryInstanceData& InInstanceData, const FMetaStoryExecutionFrame& CurrentFrame, const FMetaStoryDataHandle InDataHandle)
+	TMetaStoryInstanceDataStructRef(FMetaStoryInstanceData& InInstanceData, const FMetaStoryExecutionFrame& CurrentFrame, const FMetaStoryDataHandle InDataHandle)
 		: WeakStorage(InInstanceData.GetWeakMutableStorage())
 		, FrameID(CurrentFrame.FrameID)
 		, DataHandle(InDataHandle)
 	{
 		checkf(InDataHandle.GetSource() == EMetaStoryDataSourceType::ActiveInstanceData
 			|| InDataHandle.GetSource() == EMetaStoryDataSourceType::GlobalInstanceData,
-			TEXT("TStateTreeInstanceDataStructRef supports only struct instance data."));
+			TEXT("TMetaStoryInstanceDataStructRef supports only struct instance data."));
 	}
 
 PRAGMA_DISABLE_DEPRECATION_WARNINGS
-	TStateTreeInstanceDataStructRef(const TStateTreeInstanceDataStructRef& Other) = default;
-	TStateTreeInstanceDataStructRef(TStateTreeInstanceDataStructRef&& Other) = default;
-	TStateTreeInstanceDataStructRef& operator=(TStateTreeInstanceDataStructRef const& Other) = default;
-	TStateTreeInstanceDataStructRef& operator=(TStateTreeInstanceDataStructRef&& Other) = default;
+	TMetaStoryInstanceDataStructRef(const TMetaStoryInstanceDataStructRef& Other) = default;
+	TMetaStoryInstanceDataStructRef(TMetaStoryInstanceDataStructRef&& Other) = default;
+	TMetaStoryInstanceDataStructRef& operator=(TMetaStoryInstanceDataStructRef const& Other) = default;
+	TMetaStoryInstanceDataStructRef& operator=(TMetaStoryInstanceDataStructRef&& Other) = default;
 PRAGMA_ENABLE_DEPRECATION_WARNINGS
 
 	bool IsValid() const
@@ -742,7 +742,7 @@ protected:
 
 #if WITH_EDITORONLY_DATA
 	UE_DEPRECATED(5.6, "Use the frame id to identify the frame.")
-	TWeakObjectPtr<const UMetaStory> WeakStateTree = nullptr;
+	TWeakObjectPtr<const UMetaStory> WeakMetaStory = nullptr;
 	UE_DEPRECATED(5.6, "Use the frame id to identify the frame.")
 	FMetaStoryStateHandle RootState = FMetaStoryStateHandle::Invalid;
 #endif

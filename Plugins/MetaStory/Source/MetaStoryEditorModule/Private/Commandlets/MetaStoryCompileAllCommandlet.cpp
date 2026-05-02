@@ -75,11 +75,11 @@ bool UMetaStoryCompileAllCommandlet::CompileAndSaveMetaStory(TNonNullPtr<UMetaSt
 	const FString PackageFileName = SourceControlHelpers::PackageFilename(Package);
 
 	// Compile the MetaStory asset.
-	UMetaStoryEditingSubsystem::ValidateStateTree(MetaStory);
-	const uint32 EditorDataHash = UMetaStoryEditingSubsystem::CalculateStateTreeHash(MetaStory);
+	UMetaStoryEditingSubsystem::ValidateMetaStory(MetaStory);
+	const uint32 EditorDataHash = UMetaStoryEditingSubsystem::CalculateMetaStoryHash(MetaStory);
 
 	FMetaStoryCompilerLog Log;
-	const bool bSuccess = UMetaStoryEditingSubsystem::CompileStateTree(MetaStory, Log);
+	const bool bSuccess = UMetaStoryEditingSubsystem::CompileMetaStory(MetaStory, Log);
 
 	if (!bSuccess)
 	{

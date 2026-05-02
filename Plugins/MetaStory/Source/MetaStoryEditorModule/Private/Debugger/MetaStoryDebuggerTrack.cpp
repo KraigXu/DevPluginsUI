@@ -20,7 +20,7 @@ FInstanceTrackHelper::FInstanceTrackHelper(const FMetaStoryInstanceDebugId InIns
 }
 
 bool FInstanceTrackHelper::RebuildEventData(
-	const TNotNull<const UMetaStory*> InStateTree
+	const TNotNull<const UMetaStory*> InMetaStory
 	, const FInstanceEventCollection& InEventCollection
 	, const double InRecordingDuration
 	, const double InScrubTime
@@ -83,7 +83,7 @@ bool FInstanceTrackHelper::RebuildEventData(
 			const uint32 EventIndex = InEventCollection.ActiveStatesChanges[StateChangeIndex].EventIndex;
 			const FMetaStoryTraceActiveStatesEvent& Event = Events[EventIndex].Get<FMetaStoryTraceActiveStatesEvent>();
 
-			FString StatePath = Event.GetValueString(*InStateTree);
+			FString StatePath = Event.GetValueString(*InMetaStory);
 			FFrameSpan Span = InEventCollection.FrameSpans[SpanIndex];
 
 			// Only update active states with the last received even before timeline scrub time

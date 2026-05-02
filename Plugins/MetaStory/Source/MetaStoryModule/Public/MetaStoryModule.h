@@ -39,7 +39,7 @@ public:
 	}
 
 	/**
-	 * Creates new tracing connection if necessary and enables MetaStory debugging related channels (frame + statetree).
+	 * Creates new tracing connection if necessary and enables MetaStory debugging related channels (frame + MetaStory).
 	 * If traces are already active we keep track of all channels previously activated to restore them on stop.
 	 * @param OutTraceId In case a connection is already active this indicates its id, 0 otherwise.
 	 * @return True if a new trace connection was created, false otherwise (already active or not created)
@@ -55,7 +55,7 @@ public:
 	virtual void StopTraces() = 0;
 
 	/**
-	 * Indicates if the statetree specific traces are active (explicitly started by StartTraces).
+	 * Indicates if the MetaStory-specific traces are active (explicitly started by StartTraces).
 	 * @return True is StartTraces was called, false otherwise.
 	 */
 	virtual bool IsTracing() const = 0;

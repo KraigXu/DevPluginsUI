@@ -79,13 +79,13 @@ namespace UE::MetaStory::ExecutionContext::Private
 	const FLazyName Name_Start = "Start";
 	const FLazyName Name_Stop = "Stop";
 
-	constexpr uint32 NumEStateTreeRunStatus()
+	constexpr uint32 NumEMetaStoryRunStatus()
 	{
 		// Keep compile-time guard semantics without relying on generated enum helper macro names.
 		return 5;
 	}
 
-	constexpr uint32 NumEStateTreeFinishTaskType()
+	constexpr uint32 NumEMetaStoryFinishTaskType()
 	{
 		// Keep compile-time guard semantics without relying on generated enum helper macro names.
 		return 2;
@@ -111,10 +111,10 @@ namespace UE::MetaStory::ExecutionContext::Private
 			});
 	}
 
-	const FMetaStoryCompactFrame* FindStateTreeFrame(const FMetaStoryExecutionFrameHandle& FrameHandle)
+	const FMetaStoryCompactFrame* FindMetaStoryFrame(const FMetaStoryExecutionFrameHandle& FrameHandle)
 	{
 		check(FrameHandle.IsValid());
-		const FMetaStoryCompactFrame* FrameInfo = FrameHandle.GetStateTree()->GetFrameFromHandle(FrameHandle.GetRootState());
+		const FMetaStoryCompactFrame* FrameInfo = FrameHandle.GetMetaStory()->GetFrameFromHandle(FrameHandle.GetRootState());
 		ensureAlwaysMsgf(FrameInfo, TEXT("The compiled data is invalid. It should contains the information for the new root frame."));
 		return FrameInfo;
 	}
@@ -280,7 +280,7 @@ namespace UE::MetaStory::ExecutionContext
 		static_assert((int32)EMetaStoryRunStatus::Succeeded == 2);
 		static_assert((int32)EMetaStoryRunStatus::Failed == 3);
 		static_assert((int32)EMetaStoryRunStatus::Unset == 4);
-		static_assert(Private::NumEStateTreeRunStatus() == 5, "The number of entries in EMetaStoryRunStatus changed. Update GetPriorityRunStatus.");
+		static_assert(Private::NumEMetaStoryRunStatus() == 5, "The number of entries in EMetaStoryRunStatus changed. Update GetPriorityRunStatus.");
 
 		static constexpr int32 PriorityMatrix[] = { 1, 2, 3, 4, 0 };
 		return PriorityMatrix[(uint8)A] > PriorityMatrix[(uint8)B] ? A : B;
@@ -288,14 +288,14 @@ namespace UE::MetaStory::ExecutionContext
 
 	UE::MetaStory::ETaskCompletionStatus CastToTaskStatus(EMetaStoryFinishTaskType FinishTask)
 	{
-		static_assert(Private::NumEStateTreeFinishTaskType() == 2, "The number of entries in EMetaStoryFinishTaskType changed. Update CastToTaskStatus.");
+		static_assert(Private::NumEMetaStoryFinishTaskType() == 2, "The number of entries in EMetaStoryFinishTaskType changed. Update CastToTaskStatus.");
 
 		return FinishTask == EMetaStoryFinishTaskType::Succeeded ? UE::MetaStory::ETaskCompletionStatus::Succeeded : UE::MetaStory::ETaskCompletionStatus::Failed;
 	}
 
 	EMetaStoryRunStatus CastToRunStatus(EMetaStoryFinishTaskType FinishTask)
 	{
-		static_assert(Private::NumEStateTreeFinishTaskType() == 2, "The number of entries in EMetaStoryFinishTaskType changed. Update CastToRunStatus.");
+		static_assert(Private::NumEMetaStoryFinishTaskType() == 2, "The number of entries in EMetaStoryFinishTaskType changed. Update CastToRunStatus.");
 
 		return FinishTask == EMetaStoryFinishTaskType::Succeeded ? EMetaStoryRunStatus::Succeeded : EMetaStoryRunStatus::Failed;
 	}
@@ -306,7 +306,7 @@ namespace UE::MetaStory::ExecutionContext
 		static_assert((int32)EMetaStoryRunStatus::Stopped == (int32)UE::MetaStory::ETaskCompletionStatus::Stopped);
 		static_assert((int32)EMetaStoryRunStatus::Succeeded == (int32)UE::MetaStory::ETaskCompletionStatus::Succeeded);
 		static_assert((int32)EMetaStoryRunStatus::Failed == (int32)UE::MetaStory::ETaskCompletionStatus::Failed);
-		static_assert(Private::NumEStateTreeRunStatus() == 5, "The number of entries in EMetaStoryRunStatus changed. Update CastToTaskStatus.");
+		static_assert(Private::NumEMetaStoryRunStatus() == 5, "The number of entries in EMetaStoryRunStatus changed. Update CastToTaskStatus.");
 
 		return InStatus != EMetaStoryRunStatus::Unset ? (UE::MetaStory::ETaskCompletionStatus)InStatus : UE::MetaStory::ETaskCompletionStatus::Running;
 	}
@@ -326,14 +326,14 @@ namespace UE::MetaStory::ExecutionContext
 /**
  * FMetaStoryReadOnlyExecutionContext implementation
  */
-FMetaStoryReadOnlyExecutionContext::FMetaStoryReadOnlyExecutionContext(TNotNull<UObject*> InOwner, TNotNull<const UMetaStory*> InStateTree, FMetaStoryInstanceData& InInstanceData)
-	: FMetaStoryReadOnlyExecutionContext(InOwner, InStateTree, InInstanceData.GetMutableStorage())
+FMetaStoryReadOnlyExecutionContext::FMetaStoryReadOnlyExecutionContext(TNotNull<UObject*> InOwner, TNotNull<const UMetaStory*> InMetaStory, FMetaStoryInstanceData& InInstanceData)
+	: FMetaStoryReadOnlyExecutionContext(InOwner, InMetaStory, InInstanceData.GetMutableStorage())
 {
 }
 
-FMetaStoryReadOnlyExecutionContext::FMetaStoryReadOnlyExecutionContext(TNotNull<UObject*> InOwner, TNotNull<const UMetaStory*> InStateTree, FMetaStoryInstanceStorage& InStorage)
+FMetaStoryReadOnlyExecutionContext::FMetaStoryReadOnlyExecutionContext(TNotNull<UObject*> InOwner, TNotNull<const UMetaStory*> InMetaStory, FMetaStoryInstanceStorage& InStorage)
 	: Owner(*InOwner)
-	, RootStateTree(*InStateTree)
+	, RootMetaStory(*InMetaStory)
 	, Storage(InStorage)
 {
 	Storage.AcquireReadAccess();
@@ -341,7 +341,7 @@ FMetaStoryReadOnlyExecutionContext::FMetaStoryReadOnlyExecutionContext(TNotNull<
 	if (IsValid())
 	{
 		constexpr bool bWriteAccessAcquired = false;
-		Storage.GetRuntimeValidation().SetContext(&Owner, &RootStateTree, bWriteAccessAcquired);
+		Storage.GetRuntimeValidation().SetContext(&Owner, &RootMetaStory, bWriteAccessAcquired);
 	}
 }
 
@@ -355,7 +355,7 @@ FMetaStoryScheduledTick FMetaStoryReadOnlyExecutionContext::GetNextScheduledTick
 	if (!IsValid())
 	{
 		METASTORY_LOG(Warning, TEXT("%hs: MetaStory context is not initialized properly ('%s' using MetaStory '%s')"),
-			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootStateTree));
+			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootMetaStory));
 		return FMetaStoryScheduledTick::MakeSleep();
 	}
 
@@ -366,7 +366,7 @@ FMetaStoryScheduledTick FMetaStoryReadOnlyExecutionContext::GetNextScheduledTick
 	}
 
 	// USchema::IsScheduleTickAllowed.
-	//Used the state tree cached value to prevent runtime changes that could affect the behavior.
+	//Used the MetaStory cached value to prevent runtime changes that could affect the behavior.
 	for (int32 FrameIndex = 0; FrameIndex < Exec.ActiveFrames.Num(); ++FrameIndex)
 	{
 		const FMetaStoryExecutionFrame& CurrentFrame = Exec.ActiveFrames[FrameIndex];
@@ -407,10 +407,10 @@ FMetaStoryScheduledTick FMetaStoryReadOnlyExecutionContext::GetNextScheduledTick
 		for (int32 FrameIndex = 0; FrameIndex < Exec.ActiveFrames.Num(); ++FrameIndex)
 		{
 			const FMetaStoryExecutionFrame& CurrentFrame = Exec.ActiveFrames[FrameIndex];
-			const UMetaStory* CurrentStateTree = CurrentFrame.MetaStory;
+			const UMetaStory* CurrentMetaStory = CurrentFrame.MetaStory;
 
 			// Test global tasks.
-			if (CurrentStateTree->DoesRequestTickGlobalTasks(bHasEvents))
+			if (CurrentMetaStory->DoesRequestTickGlobalTasks(bHasEvents))
 			{
 				bHasTaskWithEveryFramesTick = true;
 			}
@@ -419,7 +419,7 @@ FMetaStoryScheduledTick FMetaStoryReadOnlyExecutionContext::GetNextScheduledTick
 			for (int32 StateIndex = 0; StateIndex < CurrentFrame.ActiveStates.Num(); ++StateIndex)
 			{
 				const FMetaStoryStateHandle CurrentHandle = CurrentFrame.ActiveStates[StateIndex];
-				const FMetaStoryCompactState& State = CurrentStateTree->States[CurrentHandle.Index];
+				const FMetaStoryCompactState& State = CurrentMetaStory->States[CurrentHandle.Index];
 				checkf(State.bEnabled, TEXT("Only enabled states are in ActiveStates."));
 				if (State.bHasCustomTickRate)
 				{
@@ -513,12 +513,12 @@ FMetaStoryScheduledTick FMetaStoryReadOnlyExecutionContext::GetNextScheduledTick
 	return FMetaStoryScheduledTick::MakeSleep();
 }
 
-EMetaStoryRunStatus FMetaStoryReadOnlyExecutionContext::GetStateTreeRunStatus() const
+EMetaStoryRunStatus FMetaStoryReadOnlyExecutionContext::GetMetaStoryRunStatus() const
 {
 	if (!IsValid())
 	{
 		METASTORY_LOG(Warning, TEXT("%hs: MetaStory context is not initialized properly ('%s' using MetaStory '%s')"),
-			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootStateTree));
+			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootMetaStory));
 		return EMetaStoryRunStatus::Failed;
 	}
 
@@ -530,7 +530,7 @@ EMetaStoryRunStatus FMetaStoryReadOnlyExecutionContext::GetLastTickStatus() cons
 	if (!IsValid())
 	{
 		METASTORY_LOG(Warning, TEXT("%hs: MetaStory context is not initialized properly ('%s' using MetaStory '%s')"),
-			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootStateTree));
+			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootMetaStory));
 		return EMetaStoryRunStatus::Failed;
 	}
 
@@ -543,7 +543,7 @@ TConstArrayView<FMetaStoryExecutionFrame> FMetaStoryReadOnlyExecutionContext::Ge
 	if (!IsValid())
 	{
 		METASTORY_LOG(Warning, TEXT("%hs: MetaStory context is not initialized properly ('%s' using MetaStory '%s')"),
-			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootStateTree));
+			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootMetaStory));
 		return TConstArrayView<FMetaStoryExecutionFrame>();
 	}
 
@@ -556,7 +556,7 @@ FString FMetaStoryReadOnlyExecutionContext::GetActiveStateName() const
 	if (!IsValid())
 	{
 		METASTORY_LOG(Warning, TEXT("%hs: MetaStory context is not initialized properly ('%s' using MetaStory '%s')"),
-			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootStateTree));
+			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootMetaStory));
 		return FString();
 	}
 
@@ -564,13 +564,13 @@ FString FMetaStoryReadOnlyExecutionContext::GetActiveStateName() const
 
 	TStringBuilder<1024> FullStateName;
 
-	const UMetaStory* LastStateTree = &RootStateTree;
+	const UMetaStory* LastMetaStory = &RootMetaStory;
 	int32 Indent = 0;
 
 	for (int32 FrameIndex = 0; FrameIndex < Exec.ActiveFrames.Num(); FrameIndex++)
 	{
 		const FMetaStoryExecutionFrame& CurrentFrame = Exec.ActiveFrames[FrameIndex];
-		const UMetaStory* CurrentStateTree = CurrentFrame.MetaStory;
+		const UMetaStory* CurrentMetaStory = CurrentFrame.MetaStory;
 
 		// Append linked state marker at the end of the previous line.
 		if (Indent > 0)
@@ -578,13 +578,13 @@ FString FMetaStoryReadOnlyExecutionContext::GetActiveStateName() const
 			FullStateName << TEXT(" >");
 		}
 		// If tree has changed, append that too.
-		if (CurrentFrame.MetaStory != LastStateTree)
+		if (CurrentFrame.MetaStory != LastMetaStory)
 		{
 			FullStateName << TEXT(" [");
 			FullStateName << CurrentFrame.MetaStory.GetFName();
 			FullStateName << TEXT(']');
 
-			LastStateTree = CurrentFrame.MetaStory;
+			LastMetaStory = CurrentFrame.MetaStory;
 		}
 
 		for (int32 Index = 0; Index < CurrentFrame.ActiveStates.Num(); Index++)
@@ -592,7 +592,7 @@ FString FMetaStoryReadOnlyExecutionContext::GetActiveStateName() const
 			const FMetaStoryStateHandle Handle = CurrentFrame.ActiveStates[Index];
 			if (Handle.IsValid())
 			{
-				const FMetaStoryCompactState& State = CurrentStateTree->States[Handle.Index];
+				const FMetaStoryCompactState& State = CurrentMetaStory->States[Handle.Index];
 				if (Indent > 0)
 				{
 					FullStateName += TEXT("\n");
@@ -627,7 +627,7 @@ TArray<FName> FMetaStoryReadOnlyExecutionContext::GetActiveStateNames() const
 	if (!IsValid())
 	{
 		METASTORY_LOG(Warning, TEXT("%hs: MetaStory context is not initialized properly ('%s' using MetaStory '%s')"),
-			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootStateTree));
+			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootMetaStory));
 		return TArray<FName>();
 	}
 
@@ -637,13 +637,13 @@ TArray<FName> FMetaStoryReadOnlyExecutionContext::GetActiveStateNames() const
 	// Active States
 	for (const FMetaStoryExecutionFrame& CurrentFrame : Exec.ActiveFrames)
 	{
-		const UMetaStory* CurrentStateTree = CurrentFrame.MetaStory;
+		const UMetaStory* CurrentMetaStory = CurrentFrame.MetaStory;
 		for (int32 Index = 0; Index < CurrentFrame.ActiveStates.Num(); Index++)
 		{
 			const FMetaStoryStateHandle Handle = CurrentFrame.ActiveStates[Index];
 			if (Handle.IsValid())
 			{
-				const FMetaStoryCompactState& State = CurrentStateTree->States[Handle.Index];
+				const FMetaStoryCompactState& State = CurrentMetaStory->States[Handle.Index];
 				Result.Add(State.Name);
 			}
 		}
@@ -657,7 +657,7 @@ FString FMetaStoryReadOnlyExecutionContext::GetDebugInfoString() const
 {
 	TStringBuilder<2048> DebugString;
 	DebugString << TEXT("MetaStory (asset: '");
-	RootStateTree.GetFullName(DebugString);
+	RootMetaStory.GetFullName(DebugString);
 	DebugString << TEXT("')");
 
 	if (IsValid())
@@ -672,23 +672,23 @@ FString FMetaStoryReadOnlyExecutionContext::GetDebugInfoString() const
 		DebugString << TEXT("Current State:\n");
 		for (const FMetaStoryExecutionFrame& CurrentFrame : Exec.ActiveFrames)
 		{
-			const UMetaStory* CurrentStateTree = CurrentFrame.MetaStory;
+			const UMetaStory* CurrentMetaStory = CurrentFrame.MetaStory;
 
 			if (CurrentFrame.bIsGlobalFrame)
 			{
 				DebugString.Appendf(TEXT("\nEvaluators\n  [ %-30s | %8s | %8s | %15s ]\n"),
 					TEXT("Name"), TEXT("Bindings"), TEXT("Output Bindings"), TEXT("Data Handle"));
-				for (int32 EvalIndex = CurrentStateTree->EvaluatorsBegin; EvalIndex < (CurrentStateTree->EvaluatorsBegin + CurrentStateTree->EvaluatorsNum); EvalIndex++)
+				for (int32 EvalIndex = CurrentMetaStory->EvaluatorsBegin; EvalIndex < (CurrentMetaStory->EvaluatorsBegin + CurrentMetaStory->EvaluatorsNum); EvalIndex++)
 				{
-					const FMetaStoryEvaluatorBase& Eval = CurrentStateTree->Nodes[EvalIndex].Get<const FMetaStoryEvaluatorBase>();
+					const FMetaStoryEvaluatorBase& Eval = CurrentMetaStory->Nodes[EvalIndex].Get<const FMetaStoryEvaluatorBase>();
 					DebugString.Appendf(TEXT("| %-30s | %8d | %8d | %15s |\n"),
 						*Eval.Name.ToString(), Eval.BindingsBatch.Get(), Eval.OutputBindingsBatch.Get(), *Eval.InstanceDataHandle.Describe());
 				}
 
 				DebugString << TEXT("\nGlobal Tasks\n");
-				for (int32 TaskIndex = CurrentStateTree->GlobalTasksBegin; TaskIndex < (CurrentStateTree->GlobalTasksBegin + CurrentStateTree->GlobalTasksNum); TaskIndex++)
+				for (int32 TaskIndex = CurrentMetaStory->GlobalTasksBegin; TaskIndex < (CurrentMetaStory->GlobalTasksBegin + CurrentMetaStory->GlobalTasksNum); TaskIndex++)
 				{
-					const FMetaStoryTaskBase& Task = CurrentStateTree->Nodes[TaskIndex].Get<const FMetaStoryTaskBase>();
+					const FMetaStoryTaskBase& Task = CurrentMetaStory->Nodes[TaskIndex].Get<const FMetaStoryTaskBase>();
 					if (Task.bTaskEnabled)
 					{
 						DebugString << Task.GetDebugInfo(*this);
@@ -702,7 +702,7 @@ FString FMetaStoryReadOnlyExecutionContext::GetDebugInfoString() const
 				FMetaStoryStateHandle Handle = CurrentFrame.ActiveStates[Index];
 				if (Handle.IsValid())
 				{
-					const FMetaStoryCompactState& State = CurrentStateTree->States[Handle.Index];
+					const FMetaStoryCompactState& State = CurrentMetaStory->States[Handle.Index];
 					DebugString << TEXT('[');
 					DebugString << State.Name;
 					DebugString << TEXT("]\n");
@@ -712,7 +712,7 @@ FString FMetaStoryReadOnlyExecutionContext::GetDebugInfoString() const
 						DebugString += TEXT("\nTasks:\n");
 						for (int32 TaskIndex = State.TasksBegin; TaskIndex < (State.TasksBegin + State.TasksNum); TaskIndex++)
 						{
-							const FMetaStoryTaskBase& Task = CurrentStateTree->Nodes[TaskIndex].Get<const FMetaStoryTaskBase>();
+							const FMetaStoryTaskBase& Task = CurrentMetaStory->Nodes[TaskIndex].Get<const FMetaStoryTaskBase>();
 							if (Task.bTaskEnabled)
 							{
 								DebugString << Task.GetDebugInfo(*this);
@@ -738,7 +738,7 @@ int32 FMetaStoryReadOnlyExecutionContext::GetStateChangeCount() const
 	if (!IsValid())
 	{
 		METASTORY_LOG(Warning, TEXT("%hs: MetaStory context is not initialized properly ('%s' using MetaStory '%s')"),
-			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootStateTree));
+			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootMetaStory));
 		return 0;
 	}
 
@@ -749,7 +749,7 @@ int32 FMetaStoryReadOnlyExecutionContext::GetStateChangeCount() const
 void FMetaStoryReadOnlyExecutionContext::DebugPrintInternalLayout()
 {
 	LOG_SCOPE_VERBOSITY_OVERRIDE(LogMetaStory, ELogVerbosity::Log);
-	UE_LOG(LogMetaStory, Log, TEXT("%s"), *RootStateTree.DebugInternalLayoutAsString());
+	UE_LOG(LogMetaStory, Log, TEXT("%s"), *RootMetaStory.DebugInternalLayoutAsString());
 }
 #endif // WITH_METASTORY_DEBUG
 
@@ -757,7 +757,7 @@ FString FMetaStoryReadOnlyExecutionContext::GetInstanceDescriptionInternal() con
 {
 	const TInstancedStruct<FMetaStoryExecutionExtension>& ExecutionExtension = Storage.GetExecutionState().ExecutionExtension;
 	return ExecutionExtension.IsValid()
-		? ExecutionExtension.Get().GetInstanceDescription(FMetaStoryExecutionExtension::FContextParameters(Owner, RootStateTree, Storage))
+		? ExecutionExtension.Get().GetInstanceDescription(FMetaStoryExecutionExtension::FContextParameters(Owner, RootMetaStory, Storage))
 		: Owner.GetName();
 }
 
@@ -782,31 +782,31 @@ FMetaStoryInstanceDebugId FMetaStoryReadOnlyExecutionContext::GetInstanceDebugId
  * FMetaStoryMinimalExecutionContext implementation
  */
  // Deprecated
-FMetaStoryMinimalExecutionContext::FMetaStoryMinimalExecutionContext(UObject& InOwner, const UMetaStory& InStateTree, FMetaStoryInstanceData& InInstanceData)
-	: FMetaStoryMinimalExecutionContext(&InOwner, &InStateTree, InInstanceData.GetMutableStorage())
+FMetaStoryMinimalExecutionContext::FMetaStoryMinimalExecutionContext(UObject& InOwner, const UMetaStory& InMetaStory, FMetaStoryInstanceData& InInstanceData)
+	: FMetaStoryMinimalExecutionContext(&InOwner, &InMetaStory, InInstanceData.GetMutableStorage())
 {
 }
 
 // Deprecated
-FMetaStoryMinimalExecutionContext::FMetaStoryMinimalExecutionContext(UObject& InOwner, const UMetaStory& InStateTree, FMetaStoryInstanceStorage& InStorage)
-	: FMetaStoryMinimalExecutionContext(&InOwner, &InStateTree, InStorage)
+FMetaStoryMinimalExecutionContext::FMetaStoryMinimalExecutionContext(UObject& InOwner, const UMetaStory& InMetaStory, FMetaStoryInstanceStorage& InStorage)
+	: FMetaStoryMinimalExecutionContext(&InOwner, &InMetaStory, InStorage)
 {
 }
 
-FMetaStoryMinimalExecutionContext::FMetaStoryMinimalExecutionContext(TNotNull<UObject*> InOwner, TNotNull<const UMetaStory*> InStateTree, FMetaStoryInstanceData& InInstanceData)
-	: FMetaStoryMinimalExecutionContext(InOwner, InStateTree, InInstanceData.GetMutableStorage())
+FMetaStoryMinimalExecutionContext::FMetaStoryMinimalExecutionContext(TNotNull<UObject*> InOwner, TNotNull<const UMetaStory*> InMetaStory, FMetaStoryInstanceData& InInstanceData)
+	: FMetaStoryMinimalExecutionContext(InOwner, InMetaStory, InInstanceData.GetMutableStorage())
 {
 }
 
-FMetaStoryMinimalExecutionContext::FMetaStoryMinimalExecutionContext(TNotNull<UObject*> InOwner, TNotNull<const UMetaStory*> InStateTree, FMetaStoryInstanceStorage& InStorage)
-	: FMetaStoryReadOnlyExecutionContext(InOwner, InStateTree, InStorage)
+FMetaStoryMinimalExecutionContext::FMetaStoryMinimalExecutionContext(TNotNull<UObject*> InOwner, TNotNull<const UMetaStory*> InMetaStory, FMetaStoryInstanceStorage& InStorage)
+	: FMetaStoryReadOnlyExecutionContext(InOwner, InMetaStory, InStorage)
 {
 	Storage.AcquireWriteAccess();
 
 	if (IsValid())
 	{
 		constexpr bool bWriteAccessAcquired = true;
-		Storage.GetRuntimeValidation().SetContext(&Owner, &RootStateTree, bWriteAccessAcquired);
+		Storage.GetRuntimeValidation().SetContext(&Owner, &RootMetaStory, bWriteAccessAcquired);
 	}
 }
 
@@ -820,7 +820,7 @@ UE::MetaStory::FScheduledTickHandle FMetaStoryMinimalExecutionContext::AddSchedu
 	if (!IsValid())
 	{
 		METASTORY_LOG(Warning, TEXT("%hs: MetaStory context is not initialized properly ('%s' using MetaStory '%s')"),
-			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootStateTree));
+			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootMetaStory));
 		return UE::MetaStory::FScheduledTickHandle();
 	}
 
@@ -834,7 +834,7 @@ void FMetaStoryMinimalExecutionContext::UpdateScheduledTickRequest(UE::MetaStory
 	if (!IsValid())
 	{
 		METASTORY_LOG(Warning, TEXT("%hs: MetaStory context is not initialized properly ('%s' using MetaStory '%s')"),
-			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootStateTree));
+			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootMetaStory));
 		return;
 	}
 
@@ -849,7 +849,7 @@ void FMetaStoryMinimalExecutionContext::RemoveScheduledTickRequest(UE::MetaStory
 	if (!IsValid())
 	{
 		METASTORY_LOG(Warning, TEXT("%hs: MetaStory context is not initialized properly ('%s' using MetaStory '%s')"),
-			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootStateTree));
+			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootMetaStory));
 		return;
 	}
 
@@ -866,18 +866,18 @@ void FMetaStoryMinimalExecutionContext::SendEvent(const FGameplayTag Tag, const 
 	if (!IsValid())
 	{
 		METASTORY_LOG(Warning, TEXT("%hs: MetaStory context is not initialized properly ('%s' using MetaStory '%s')"),
-			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootStateTree));
+			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootMetaStory));
 		return;
 	}
 
 	METASTORY_LOG(VeryVerbose, TEXT("Send Event '%s'"), *Tag.ToString());
-	UE_STATETREE_DEBUG_LOG_EVENT(this, Log, TEXT("Send Event '%s'"), *Tag.ToString());
+	UE_METASTORY_DEBUG_LOG_EVENT(this, Log, TEXT("Send Event '%s'"), *Tag.ToString());
 
 	FMetaStoryEventQueue& LocalEventQueue = Storage.GetMutableEventQueue();
 	if (LocalEventQueue.SendEvent(&Owner, Tag, Payload, Origin))
 	{
 		ScheduleNextTick(UE::MetaStory::EMetaStoryTickReason::Event);
-		UE_STATETREE_DEBUG_SEND_EVENT(this, &RootStateTree, Tag, Payload, Origin);
+		UE_METASTORY_DEBUG_SEND_EVENT(this, &RootMetaStory, Tag, Payload, Origin);
 	}
 }
 
@@ -888,11 +888,11 @@ FMetaStoryExecutionExtension* FMetaStoryMinimalExecutionContext::GetMutableExecu
 
 void FMetaStoryMinimalExecutionContext::ScheduleNextTick(UE::MetaStory::EMetaStoryTickReason Reason)
 {
-	if (bAllowedToScheduleNextTick && RootStateTree.IsScheduledTickAllowed())
+	if (bAllowedToScheduleNextTick && RootMetaStory.IsScheduledTickAllowed())
 	{
 		if (FMetaStoryExecutionExtension* ExecExtension = GetMutableExecutionExtension())
 		{
-			ExecExtension->ScheduleNextTick(FMetaStoryExecutionExtension::FContextParameters(Owner, RootStateTree, Storage), FMetaStoryExecutionExtension::FNextTickArguments(Reason));
+			ExecExtension->ScheduleNextTick(FMetaStoryExecutionExtension::FContextParameters(Owner, RootMetaStory, Storage), FMetaStoryExecutionExtension::FNextTickArguments(Reason));
 		}
 	}
 }
@@ -909,11 +909,11 @@ FMetaStoryExecutionFrame& FMetaStoryExecutionContext::FSelectStateResult::MakeAn
 
 	FMetaStoryExecutionFrame& ExecFrame = TemporaryFrames.AddDefaulted_GetRef();
 	ExecFrame.FrameID = FrameID;
-	ExecFrame.MetaStory = FrameHandle.GetStateTree();
+	ExecFrame.MetaStory = FrameHandle.GetMetaStory();
 	ExecFrame.RootState = FrameHandle.GetRootState();
 	ExecFrame.bIsGlobalFrame = bIsGlobalFrame;
 
-	const FMetaStoryCompactFrame* TargetFrame = UE::MetaStory::ExecutionContext::Private::FindStateTreeFrame(FrameHandle);
+	const FMetaStoryCompactFrame* TargetFrame = UE::MetaStory::ExecutionContext::Private::FindMetaStoryFrame(FrameHandle);
 	ensureMsgf(TargetFrame, TEXT("The compiled data is invalid. It should contains the information for the new root frame."));
 	ExecFrame.ActiveTasksStatus = TargetFrame ? FMetaStoryTasksCompletionStatus(*TargetFrame) : FMetaStoryTasksCompletionStatus();
 
@@ -974,7 +974,7 @@ FMetaStoryExecutionContext::FCurrentlyProcessedFrameScope::FCurrentlyProcessedFr
 	Context.CurrentlyProcessedParentFrame = CurrentParentFrame;
 	Context.CurrentlyProcessedSharedInstanceStorage = SharedInstanceDataStorage;
 
-	UE_STATETREE_DEBUG_INSTANCE_FRAME_EVENT(&Context, Context.CurrentlyProcessedFrame);
+	UE_METASTORY_DEBUG_INSTANCE_FRAME_EVENT(&Context, Context.CurrentlyProcessedFrame);
 }
 
 FMetaStoryExecutionContext::FCurrentlyProcessedFrameScope::~FCurrentlyProcessedFrameScope()
@@ -985,7 +985,7 @@ FMetaStoryExecutionContext::FCurrentlyProcessedFrameScope::~FCurrentlyProcessedF
 
 	if (Context.CurrentlyProcessedFrame)
 	{
-		UE_STATETREE_DEBUG_INSTANCE_FRAME_EVENT(&Context, Context.CurrentlyProcessedFrame);
+		UE_METASTORY_DEBUG_INSTANCE_FRAME_EVENT(&Context, Context.CurrentlyProcessedFrame);
 	}
 }
 
@@ -1016,40 +1016,40 @@ FMetaStoryExecutionContext::FNodeInstanceDataScope::~FNodeInstanceDataScope()
 /**
  * FMetaStoryExecutionContext implementation
  */
-FMetaStoryExecutionContext::FMetaStoryExecutionContext(UObject& InOwner, const UMetaStory& InStateTree, FMetaStoryInstanceData& InInstanceData, const FOnCollectStateTreeExternalData& InCollectExternalDataDelegate, const EMetaStoryRecordTransitions RecordTransitions)
-	: FMetaStoryExecutionContext(&InOwner, &InStateTree, InInstanceData, InCollectExternalDataDelegate, RecordTransitions)
+FMetaStoryExecutionContext::FMetaStoryExecutionContext(UObject& InOwner, const UMetaStory& InMetaStory, FMetaStoryInstanceData& InInstanceData, const FOnCollectMetaStoryExternalData& InCollectExternalDataDelegate, const EMetaStoryRecordTransitions RecordTransitions)
+	: FMetaStoryExecutionContext(&InOwner, &InMetaStory, InInstanceData, InCollectExternalDataDelegate, RecordTransitions)
 {
 }
 
-FMetaStoryExecutionContext::FMetaStoryExecutionContext(TNotNull<UObject*> InOwner, TNotNull<const UMetaStory*> InStateTree, FMetaStoryInstanceData& InInstanceData, const FOnCollectStateTreeExternalData& InCollectExternalDataDelegate, const EMetaStoryRecordTransitions RecordTransitions)
-	: FMetaStoryMinimalExecutionContext(InOwner, InStateTree, InInstanceData)
+FMetaStoryExecutionContext::FMetaStoryExecutionContext(TNotNull<UObject*> InOwner, TNotNull<const UMetaStory*> InMetaStory, FMetaStoryInstanceData& InInstanceData, const FOnCollectMetaStoryExternalData& InCollectExternalDataDelegate, const EMetaStoryRecordTransitions RecordTransitions)
+	: FMetaStoryMinimalExecutionContext(InOwner, InMetaStory, InInstanceData)
 	, InstanceData(InInstanceData)
 	, CollectExternalDataDelegate(InCollectExternalDataDelegate)
 {
 	if (IsValid())
 	{
 		// Initialize data views for all possible items.
-		ContextAndExternalDataViews.SetNum(RootStateTree.GetNumContextDataViews());
+		ContextAndExternalDataViews.SetNum(RootMetaStory.GetNumContextDataViews());
 		EventQueue = InstanceData.GetSharedMutableEventQueue();
 		bRecordTransitions = RecordTransitions == EMetaStoryRecordTransitions::Yes;
 	}
 	else
 	{
 		METASTORY_LOG(Warning, TEXT("%hs: MetaStory asset is not valid ('%s' using MetaStory '%s')"),
-			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootStateTree));
+			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootMetaStory));
 	}
 }
 
-FMetaStoryExecutionContext::FMetaStoryExecutionContext(const FMetaStoryExecutionContext& InContextToCopy, const UMetaStory& InStateTree, FMetaStoryInstanceData& InInstanceData)
-	: FMetaStoryExecutionContext(InContextToCopy, &InStateTree, InInstanceData)
+FMetaStoryExecutionContext::FMetaStoryExecutionContext(const FMetaStoryExecutionContext& InContextToCopy, const UMetaStory& InMetaStory, FMetaStoryInstanceData& InInstanceData)
+	: FMetaStoryExecutionContext(InContextToCopy, &InMetaStory, InInstanceData)
 {
 }
 
-FMetaStoryExecutionContext::FMetaStoryExecutionContext(const FMetaStoryExecutionContext& InContextToCopy, TNotNull<const UMetaStory*> InStateTree, FMetaStoryInstanceData& InInstanceData)
-	: FMetaStoryExecutionContext(&InContextToCopy.Owner, InStateTree, InInstanceData, InContextToCopy.CollectExternalDataDelegate)
+FMetaStoryExecutionContext::FMetaStoryExecutionContext(const FMetaStoryExecutionContext& InContextToCopy, TNotNull<const UMetaStory*> InMetaStory, FMetaStoryInstanceData& InInstanceData)
+	: FMetaStoryExecutionContext(&InContextToCopy.Owner, InMetaStory, InInstanceData, InContextToCopy.CollectExternalDataDelegate)
 {
-	SetLinkedStateTreeOverrides(InContextToCopy.LinkedAssetStateTreeOverrides);
-	const bool bIsSameSchema = RootStateTree.GetSchema()->GetClass() == InContextToCopy.GetStateTree()->GetSchema()->GetClass();
+	SetLinkedMetaStoryOverrides(InContextToCopy.LinkedAssetMetaStoryOverrides);
+	const bool bIsSameSchema = RootMetaStory.GetSchema()->GetClass() == InContextToCopy.GetMetaStory()->GetSchema()->GetClass();
 	if (bIsSameSchema)
 	{
 		for (const FMetaStoryExternalDataDesc& TargetDataDesc : GetContextDataDescs())
@@ -1061,7 +1061,7 @@ FMetaStoryExecutionContext::FMetaStoryExecutionContext(const FMetaStoryExecution
 	else
 	{
 		METASTORY_LOG(Error, TEXT("%hs: '%s' using MetaStory '%s' trying to run subtree '%s' but their schemas don't match"),
-			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(InContextToCopy.GetStateTree()), *GetFullNameSafe(&RootStateTree));
+			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(InContextToCopy.GetMetaStory()), *GetFullNameSafe(&RootMetaStory));
 	}
 }
 
@@ -1077,18 +1077,18 @@ FMetaStoryExecutionContext::~FMetaStoryExecutionContext()
 }
 PRAGMA_ENABLE_DEPRECATION_WARNINGS
 
-void FMetaStoryExecutionContext::SetCollectExternalDataCallback(const FOnCollectStateTreeExternalData& Callback)
+void FMetaStoryExecutionContext::SetCollectExternalDataCallback(const FOnCollectMetaStoryExternalData& Callback)
 {
 	if (!IsValid())
 	{
 		METASTORY_LOG(Warning, TEXT("%hs: MetaStory context is not initialized properly ('%s' using MetaStory '%s')"),
-			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootStateTree));
+			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootMetaStory));
 		return;
 	}
 
 	FMetaStoryExecutionState& Exec = GetExecState();
 	if (!ensureMsgf(Exec.CurrentPhase == EMetaStoryUpdatePhase::Unset, TEXT("%hs can't be called while already in %s ('%s' using MetaStory '%s')."),
-		__FUNCTION__, *UEnum::GetDisplayValueAsText(Exec.CurrentPhase).ToString(), *GetNameSafe(&Owner), *GetFullNameSafe(&RootStateTree)))
+		__FUNCTION__, *UEnum::GetDisplayValueAsText(Exec.CurrentPhase).ToString(), *GetNameSafe(&Owner), *GetFullNameSafe(&RootMetaStory)))
 	{
 		return;
 	}
@@ -1096,30 +1096,30 @@ void FMetaStoryExecutionContext::SetCollectExternalDataCallback(const FOnCollect
 	CollectExternalDataDelegate = Callback;
 }
 
-void FMetaStoryExecutionContext::SetLinkedStateTreeOverrides(const FMetaStoryReferenceOverrides* InLinkedStateTreeOverrides)
+void FMetaStoryExecutionContext::SetLinkedMetaStoryOverrides(const FMetaStoryReferenceOverrides* InLinkedMetaStoryOverrides)
 {
-	if (InLinkedStateTreeOverrides)
+	if (InLinkedMetaStoryOverrides)
 	{
-		SetLinkedStateTreeOverrides(*InLinkedStateTreeOverrides);
+		SetLinkedMetaStoryOverrides(*InLinkedMetaStoryOverrides);
 	}
 	else
 	{
-		SetLinkedStateTreeOverrides(FMetaStoryReferenceOverrides());
+		SetLinkedMetaStoryOverrides(FMetaStoryReferenceOverrides());
 	}
 }
 
-void FMetaStoryExecutionContext::SetLinkedStateTreeOverrides(FMetaStoryReferenceOverrides InLinkedStateTreeOverrides)
+void FMetaStoryExecutionContext::SetLinkedMetaStoryOverrides(FMetaStoryReferenceOverrides InLinkedMetaStoryOverrides)
 {
 	if (!IsValid())
 	{
 		METASTORY_LOG(Warning, TEXT("%hs: MetaStory context is not initialized properly ('%s' using MetaStory '%s')"),
-			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootStateTree));
+			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootMetaStory));
 		return;
 	}
 
 	FMetaStoryExecutionState& Exec = GetExecState();
 	if (!ensureMsgf(Exec.CurrentPhase == EMetaStoryUpdatePhase::Unset, TEXT("%hs can't be called while already in %s ('%s' using MetaStory '%s')."),
-		__FUNCTION__, *UEnum::GetDisplayValueAsText(Exec.CurrentPhase).ToString(), *GetNameSafe(&Owner), *GetFullNameSafe(&RootStateTree)))
+		__FUNCTION__, *UEnum::GetDisplayValueAsText(Exec.CurrentPhase).ToString(), *GetNameSafe(&Owner), *GetFullNameSafe(&RootMetaStory)))
 	{
 		return;
 	}
@@ -1127,41 +1127,41 @@ void FMetaStoryExecutionContext::SetLinkedStateTreeOverrides(FMetaStoryReference
 	bool bValid = true;
 
 	// Confirms that the overrides schema matches.
-	const TConstArrayView<FMetaStoryReferenceOverrideItem> InOverrideItems = InLinkedStateTreeOverrides.GetOverrideItems();
+	const TConstArrayView<FMetaStoryReferenceOverrideItem> InOverrideItems = InLinkedMetaStoryOverrides.GetOverrideItems();
 	for (const FMetaStoryReferenceOverrideItem& Item : InOverrideItems)
 	{
-		if (const UMetaStory* ItemStateTree = Item.GetStateTreeReference().GetStateTree())
+		if (const UMetaStory* ItemMetaStory = Item.GetMetaStoryReference().GetMetaStory())
 		{
-			if (!ItemStateTree->IsReadyToRun())
+			if (!ItemMetaStory->IsReadyToRun())
 			{
 				METASTORY_LOG(Error, TEXT("%hs: '%s' using MetaStory '%s' trying to set override '%s' but the tree is not initialized properly."),
-					__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(GetStateTree()), *GetFullNameSafe(ItemStateTree));
+					__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(GetMetaStory()), *GetFullNameSafe(ItemMetaStory));
 				bValid = false;
 				break;
 			}
 
-			if (!RootStateTree.HasCompatibleContextData(*ItemStateTree))
+			if (!RootMetaStory.HasCompatibleContextData(*ItemMetaStory))
 			{
 				METASTORY_LOG(Error, TEXT("%hs: '%s' using MetaStory '%s' trying to set override '%s' but the tree context data is not compatible."),
-					__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(GetStateTree()), *GetFullNameSafe(ItemStateTree));
+					__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(GetMetaStory()), *GetFullNameSafe(ItemMetaStory));
 				bValid = false;
 				break;
 			}
 
-			const UMetaStorySchema* OverrideSchema = ItemStateTree->GetSchema();
-			if (ItemStateTree->GetSchema() == nullptr)
+			const UMetaStorySchema* OverrideSchema = ItemMetaStory->GetSchema();
+			if (ItemMetaStory->GetSchema() == nullptr)
 			{
 				METASTORY_LOG(Error, TEXT("%hs: '%s' using MetaStory '%s' trying to set override '%s' but the tree does not have a schema."),
-					__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(GetStateTree()), *GetFullNameSafe(ItemStateTree));
+					__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(GetMetaStory()), *GetFullNameSafe(ItemMetaStory));
 				bValid = false;
 				break;
 			}
 
-			const bool bIsSameSchema = RootStateTree.GetSchema()->GetClass() == OverrideSchema->GetClass();
+			const bool bIsSameSchema = RootMetaStory.GetSchema()->GetClass() == OverrideSchema->GetClass();
 			if (!bIsSameSchema)
 			{
 				METASTORY_LOG(Error, TEXT("%hs: '%s' using MetaStory '%s' trying to set override '%s' but their schemas don't match."),
-					__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(GetStateTree()), *GetFullNameSafe(Item.GetStateTreeReference().GetStateTree()));
+					__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(GetMetaStory()), *GetFullNameSafe(Item.GetMetaStoryReference().GetMetaStory()));
 				bValid = false;
 				break;
 			}
@@ -1171,12 +1171,12 @@ void FMetaStoryExecutionContext::SetLinkedStateTreeOverrides(FMetaStoryReference
 	bool bChanged = false;
 	if (bValid)
 	{
-		LinkedAssetStateTreeOverrides = MoveTemp(InLinkedStateTreeOverrides);
-		bChanged = LinkedAssetStateTreeOverrides.GetOverrideItems().Num() > 0;
+		LinkedAssetMetaStoryOverrides = MoveTemp(InLinkedMetaStoryOverrides);
+		bChanged = LinkedAssetMetaStoryOverrides.GetOverrideItems().Num() > 0;
 	}
-	else if (LinkedAssetStateTreeOverrides.GetOverrideItems().Num() > 0)
+	else if (LinkedAssetMetaStoryOverrides.GetOverrideItems().Num() > 0)
 	{
-		LinkedAssetStateTreeOverrides.Reset();
+		LinkedAssetMetaStoryOverrides.Reset();
 		bChanged = true;
 	}
 
@@ -1185,18 +1185,18 @@ void FMetaStoryExecutionContext::SetLinkedStateTreeOverrides(FMetaStoryReference
 		TInstancedStruct<FMetaStoryExecutionExtension>& ExecutionExtension = Storage.GetMutableExecutionState().ExecutionExtension;
 		if (ExecutionExtension.IsValid())
 		{
-			ExecutionExtension.GetMutable().OnLinkedStateTreeOverridesSet(FMetaStoryExecutionExtension::FContextParameters(Owner, RootStateTree, Storage), LinkedAssetStateTreeOverrides);
+			ExecutionExtension.GetMutable().OnLinkedMetaStoryOverridesSet(FMetaStoryExecutionExtension::FContextParameters(Owner, RootMetaStory, Storage), LinkedAssetMetaStoryOverrides);
 		}
 	}
 }
 
-const FMetaStoryReference* FMetaStoryExecutionContext::GetLinkedStateTreeOverrideForTag(const FGameplayTag StateTag) const
+const FMetaStoryReference* FMetaStoryExecutionContext::GetLinkedMetaStoryOverrideForTag(const FGameplayTag StateTag) const
 {
-	for (const FMetaStoryReferenceOverrideItem& Item : LinkedAssetStateTreeOverrides.GetOverrideItems())
+	for (const FMetaStoryReferenceOverrideItem& Item : LinkedAssetMetaStoryOverrides.GetOverrideItems())
 	{
 		if (StateTag.MatchesTag(Item.GetStateTag()))
 		{
-			return &Item.GetStateTreeReference();
+			return &Item.GetMetaStoryReference();
 		}
 	}
 
@@ -1242,7 +1242,7 @@ bool FMetaStoryExecutionContext::AreContextDataViewsValid() const
 
 	bool bResult = true;
 
-	for (const FMetaStoryExternalDataDesc& DataDesc : RootStateTree.GetContextDataDescs())
+	for (const FMetaStoryExternalDataDesc& DataDesc : RootMetaStory.GetContextDataDescs())
 	{
 		const FMetaStoryDataView& DataView = ContextAndExternalDataViews[DataDesc.Handle.DataHandle.GetIndex()];
 
@@ -1269,7 +1269,7 @@ bool FMetaStoryExecutionContext::AreContextDataViewsValid() const
 
 bool FMetaStoryExecutionContext::SetContextDataByName(const FName Name, FMetaStoryDataView DataView)
 {
-	const FMetaStoryExternalDataDesc* Desc = RootStateTree.GetContextDataDescs().FindByPredicate([&Name](const FMetaStoryExternalDataDesc& Desc)
+	const FMetaStoryExternalDataDesc* Desc = RootMetaStory.GetContextDataDescs().FindByPredicate([&Name](const FMetaStoryExternalDataDesc& Desc)
 		{
 			return Desc.Name == Name;
 		});
@@ -1283,7 +1283,7 @@ bool FMetaStoryExecutionContext::SetContextDataByName(const FName Name, FMetaSto
 
 FMetaStoryDataView FMetaStoryExecutionContext::GetContextDataByName(const FName Name) const
 {
-	const FMetaStoryExternalDataDesc* Desc = RootStateTree.GetContextDataDescs().FindByPredicate([&Name](const FMetaStoryExternalDataDesc& Desc)
+	const FMetaStoryExternalDataDesc* Desc = RootMetaStory.GetContextDataDescs().FindByPredicate([&Name](const FMetaStoryExternalDataDesc& Desc)
 		{
 			return Desc.Name == Name;
 		});
@@ -1338,21 +1338,21 @@ void FMetaStoryExecutionContext::SetUpdatePhaseInExecutionState(FMetaStoryExecut
 
 	if (ExecutionState.CurrentPhase != EMetaStoryUpdatePhase::Unset)
 	{
-		UE_STATETREE_DEBUG_EXIT_PHASE(this, ExecutionState.CurrentPhase);
+		UE_METASTORY_DEBUG_EXIT_PHASE(this, ExecutionState.CurrentPhase);
 	}
 
 	ExecutionState.CurrentPhase = UpdatePhase;
 
 	if (ExecutionState.CurrentPhase != EMetaStoryUpdatePhase::Unset)
 	{
-		UE_STATETREE_DEBUG_ENTER_PHASE(this, ExecutionState.CurrentPhase);
+		UE_METASTORY_DEBUG_ENTER_PHASE(this, ExecutionState.CurrentPhase);
 	}
 }
 
 EMetaStoryRunStatus FMetaStoryExecutionContext::Start(FStartParameters Parameters)
 {
 	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(MetaStory_Start);
-	UE_STATETREE_CRASH_REPORTER_SCOPE(&Owner, &RootStateTree, UE::MetaStory::ExecutionContext::Private::Name_Start.Resolve());
+	UE_METASTORY_CRASH_REPORTER_SCOPE(&Owner, &RootMetaStory, UE::MetaStory::ExecutionContext::Private::Name_Start.Resolve());
 
 	using namespace UE::MetaStory;
 	using namespace UE::MetaStory::ExecutionContext;
@@ -1361,13 +1361,13 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::Start(FStartParameters Parameter
 	if (!IsValid())
 	{
 		METASTORY_LOG(Warning, TEXT("%hs: MetaStory context is not initialized properly ('%s' using MetaStory '%s')"),
-			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootStateTree));
+			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootMetaStory));
 		return EMetaStoryRunStatus::Failed;
 	}
 
 	FMetaStoryExecutionState& Exec = GetExecState();
 	if (!ensureMsgf(Exec.CurrentPhase == EMetaStoryUpdatePhase::Unset, TEXT("%hs can't be called while already in %s ('%s' using MetaStory '%s')."),
-		__FUNCTION__, *UEnum::GetDisplayValueAsText(Exec.CurrentPhase).ToString(), *GetNameSafe(&Owner), *GetFullNameSafe(&RootStateTree)))
+		__FUNCTION__, *UEnum::GetDisplayValueAsText(Exec.CurrentPhase).ToString(), *GetNameSafe(&Owner), *GetFullNameSafe(&RootMetaStory)))
 	{
 		return EMetaStoryRunStatus::Failed;
 	}
@@ -1382,7 +1382,7 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::Start(FStartParameters Parameter
 	InstanceData.Reset();
 
 	constexpr bool bWriteAccessAcquired = true;
-	Storage.GetRuntimeValidation().SetContext(&Owner, &RootStateTree, bWriteAccessAcquired);
+	Storage.GetRuntimeValidation().SetContext(&Owner, &RootMetaStory, bWriteAccessAcquired);
 	Exec.ExecutionExtension = MoveTemp(Parameters.ExecutionExtension);
 	if (Parameters.SharedEventQueue)
 	{
@@ -1396,7 +1396,7 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::Start(FStartParameters Parameter
 
 	if (!Parameters.GlobalParameters || !SetGlobalParameters(*Parameters.GlobalParameters))
 	{
-		SetGlobalParameters(RootStateTree.GetDefaultParameters());
+		SetGlobalParameters(RootMetaStory.GetDefaultParameters());
 	}
 
 	Exec.RandomStream.Initialize(Parameters.RandomSeed.IsSet() ? Parameters.RandomSeed.GetValue() : FPlatformTime::Cycles());
@@ -1410,7 +1410,7 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::Start(FStartParameters Parameter
 	TGuardValue<TSharedPtr<FSelectStateResult>> TemporaryStorageScope(CurrentlyProcessedTemporaryStorage, SelectStateResult);
 
 	const FActiveFrameID InitFrameID = FActiveFrameID(Storage.GenerateUniqueId());
-	const FMetaStoryExecutionFrameHandle InitFrameHandle = FMetaStoryExecutionFrameHandle(&RootStateTree, FMetaStoryStateHandle::Root);
+	const FMetaStoryExecutionFrameHandle InitFrameHandle = FMetaStoryExecutionFrameHandle(&RootMetaStory, FMetaStoryStateHandle::Root);
 	constexpr bool bIsGlobalFrame = true;
 	FMetaStoryExecutionFrame& InitFrame = SelectStateResult->MakeAndAddTemporaryFrame(InitFrameID, InitFrameHandle, bIsGlobalFrame);
 	InitFrame.ExecutionRuntimeIndexBase = FMetaStoryIndex16(Storage.AddExecutionRuntimeData(GetOwner(), InitFrameHandle));
@@ -1419,15 +1419,15 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::Start(FStartParameters Parameter
 	if (!CollectActiveExternalData(SelectStateResult->TemporaryFrames))
 	{
 		METASTORY_LOG(Warning, TEXT("%hs: Failed to collect external data ('%s' using MetaStory '%s')"),
-			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootStateTree));
+			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootMetaStory));
 		return EMetaStoryRunStatus::Failed;
 	}
 
 	// Must sent instance creation event first 
-	UE_STATETREE_DEBUG_INSTANCE_EVENT(this, EMetaStoryTraceEventType::Push);
+	UE_METASTORY_DEBUG_INSTANCE_EVENT(this, EMetaStoryTraceEventType::Push);
 
-	METASTORY_LOG(VeryVerbose, TEXT("%hs: Starting State Tree %s on owner '%s'."),
-		__FUNCTION__, *GetFullNameSafe(&RootStateTree), *GetNameSafe(&Owner));
+	METASTORY_LOG(VeryVerbose, TEXT("%hs: Starting MetaStory %s on owner '%s'."),
+		__FUNCTION__, *GetFullNameSafe(&RootMetaStory), *GetNameSafe(&Owner));
 
 	// From this point any calls to Stop should be deferred.
 	SetUpdatePhaseInExecutionState(Exec, EMetaStoryUpdatePhase::StartTree);
@@ -1448,9 +1448,9 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::Start(FStartParameters Parameter
 
 		FSelectStateArguments SelectStateArgs;
 		SelectStateArgs.SourceState = FActiveState(InitFrameID, FActiveStateID(), InitFrameHandle.GetRootState());
-		SelectStateArgs.TargetState = FStateHandleContext(InitFrameHandle.GetStateTree(), InitFrameHandle.GetRootState());
+		SelectStateArgs.TargetState = FStateHandleContext(InitFrameHandle.GetMetaStory(), InitFrameHandle.GetRootState());
 		SelectStateArgs.Behavior = ESelectStateBehavior::StateTransition;
-		SelectStateArgs.SelectionRules = InitFrameHandle.GetStateTree()->StateSelectionRules;
+		SelectStateArgs.SelectionRules = InitFrameHandle.GetMetaStory()->StateSelectionRules;
 		if (SelectState(SelectStateArgs, SelectStateResult))
 		{
 			check(SelectStateResult->SelectedStates.Num() > 0);
@@ -1462,7 +1462,7 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::Start(FStartParameters Parameter
 					__FUNCTION__,
 					LastSelectedStateHandle == FMetaStoryStateHandle::Succeeded ? TEXT("succeeded") : TEXT("failed"),
 					*GetNameSafe(&Owner),
-					*GetFullNameSafe(&RootStateTree)
+					*GetFullNameSafe(&RootMetaStory)
 				);
 				Exec.TreeRunStatus = LastSelectedStateHandle.ToCompletionStatus();
 			}
@@ -1488,7 +1488,7 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::Start(FStartParameters Parameter
 					GlobalTasksRunStatus = EMetaStoryRunStatus::Failed;
 					Exec.TreeRunStatus = EMetaStoryRunStatus::Failed;
 					METASTORY_LOG(Error, TEXT("%hs: Failed to enter the initial state on '%s' using MetaStory '%s'. Check that the MetaStory logic can always select a state at start."),
-						__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootStateTree));
+						__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootMetaStory));
 				}
 			}
 		}
@@ -1497,14 +1497,14 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::Start(FStartParameters Parameter
 			GlobalTasksRunStatus = EMetaStoryRunStatus::Failed;
 			Exec.TreeRunStatus = EMetaStoryRunStatus::Failed;
 			METASTORY_LOG(Error, TEXT("%hs: Failed to select initial state on '%s' using MetaStory '%s'. Check that the MetaStory logic can always select a state at start."),
-				__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootStateTree));
+				__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootMetaStory));
 		}
 	}
 	else
 	{
 		Exec.TreeRunStatus = GlobalTasksRunStatus;
 		METASTORY_LOG(VeryVerbose, TEXT("%hs: Start globals on '%s' using MetaStory '%s' completes."),
-			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootStateTree));
+			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootMetaStory));
 	}
 
 	if (Exec.TreeRunStatus != EMetaStoryRunStatus::Running)
@@ -1512,7 +1512,7 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::Start(FStartParameters Parameter
 		StopTemporaryEvaluatorsAndGlobalTasks(ParentInitFrame, InitFrame, GlobalTasksRunStatus);
 
 		METASTORY_LOG(VeryVerbose, TEXT("%hs: Global tasks completed the MetaStory %s on start in status '%s'."),
-			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootStateTree), *UEnum::GetDisplayValueAsText(GlobalTasksRunStatus).ToString());
+			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootMetaStory), *UEnum::GetDisplayValueAsText(GlobalTasksRunStatus).ToString());
 
 		// No active states or global tasks anymore, reset frames.
 		Exec.ActiveFrames.Reset();
@@ -1535,7 +1535,7 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::Start(FStartParameters Parameter
 		&& Exec.TreeRunStatus == EMetaStoryRunStatus::Running)
 	{
 		METASTORY_LOG(VeryVerbose, TEXT("Processing Deferred Stop"));
-		UE_STATETREE_DEBUG_LOG_EVENT(this, Log, TEXT("Processing Deferred Stop"));
+		UE_METASTORY_DEBUG_LOG_EVENT(this, Log, TEXT("Processing Deferred Stop"));
 		Result = Stop(Exec.RequestedStop);
 	}
 
@@ -1545,19 +1545,19 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::Start(FStartParameters Parameter
 EMetaStoryRunStatus FMetaStoryExecutionContext::Stop(EMetaStoryRunStatus CompletionStatus)
 {
 	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(MetaStory_Stop);
-	UE_STATETREE_CRASH_REPORTER_SCOPE(&Owner, &RootStateTree, UE::MetaStory::ExecutionContext::Private::Name_Stop.Resolve());
+	UE_METASTORY_CRASH_REPORTER_SCOPE(&Owner, &RootMetaStory, UE::MetaStory::ExecutionContext::Private::Name_Stop.Resolve());
 
 	if (!IsValid())
 	{
 		METASTORY_LOG(Warning, TEXT("%hs: MetaStory context is not initialized properly ('%s' using MetaStory '%s')"),
-			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootStateTree));
+			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootMetaStory));
 		return EMetaStoryRunStatus::Failed;
 	}
 
 	if (!CollectActiveExternalData())
 	{
 		METASTORY_LOG(Warning, TEXT("%hs: Failed to collect external data ('%s' using MetaStory '%s')"),
-			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootStateTree));
+			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootMetaStory));
 		return EMetaStoryRunStatus::Failed;
 	}
 
@@ -1576,7 +1576,7 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::Stop(EMetaStoryRunStatus Complet
 	if (Exec.CurrentPhase != EMetaStoryUpdatePhase::Unset)
 	{
 		METASTORY_LOG(VeryVerbose, TEXT("Deferring Stop at end of %s"), *UEnum::GetDisplayValueAsText(Exec.CurrentPhase).ToString());
-		UE_STATETREE_DEBUG_LOG_EVENT(this, Log, TEXT("Deferring Stop at end of %s"), *UEnum::GetDisplayValueAsText(Exec.CurrentPhase).ToString());
+		UE_METASTORY_DEBUG_LOG_EVENT(this, Log, TEXT("Deferring Stop at end of %s"), *UEnum::GetDisplayValueAsText(Exec.CurrentPhase).ToString());
 
 		Exec.RequestedStop = CompletionStatus;
 		return EMetaStoryRunStatus::Running;
@@ -1606,9 +1606,9 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::Stop(EMetaStoryRunStatus Complet
 	Exec.TreeRunStatus = CompletionStatus;
 
 	// Trace before resetting the instance data since it is required to provide all the event information
-	UE_STATETREE_DEBUG_ACTIVE_STATES_EVENT(this, {});
-	UE_STATETREE_DEBUG_EXIT_PHASE(this, EMetaStoryUpdatePhase::StopTree);
-	UE_STATETREE_DEBUG_INSTANCE_EVENT(this, EMetaStoryTraceEventType::Pop);
+	UE_METASTORY_DEBUG_ACTIVE_STATES_EVENT(this, {});
+	UE_METASTORY_DEBUG_EXIT_PHASE(this, EMetaStoryUpdatePhase::StopTree);
+	UE_METASTORY_DEBUG_INSTANCE_EVENT(this, EMetaStoryTraceEventType::Pop);
 
 	// Destruct all allocated instance data (does not shrink the buffer). This will invalidate Exec too.
 	InstanceData.Reset();
@@ -1624,14 +1624,14 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::TickPrelude()
 	if (!IsValid())
 	{
 		METASTORY_LOG(Warning, TEXT("%hs: MetaStory context is not initialized properly ('%s' using MetaStory '%s')"),
-			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootStateTree));
+			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootMetaStory));
 		return EMetaStoryRunStatus::Failed;
 	}
 
 	if (!CollectActiveExternalData())
 	{
 		METASTORY_LOG(Warning, TEXT("%hs: Failed to collect external data ('%s' using MetaStory '%s')"),
-			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootStateTree));
+			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootMetaStory));
 		return EMetaStoryRunStatus::Failed;
 	}
 
@@ -1644,13 +1644,13 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::TickPrelude()
 	}
 
 	if (!ensureMsgf(Exec.CurrentPhase == EMetaStoryUpdatePhase::Unset, TEXT("%hs can't be called while already in %s ('%s' using MetaStory '%s')."),
-		__FUNCTION__, *UEnum::GetDisplayValueAsText(Exec.CurrentPhase).ToString(), *GetNameSafe(&Owner), *GetFullNameSafe(&RootStateTree)))
+		__FUNCTION__, *UEnum::GetDisplayValueAsText(Exec.CurrentPhase).ToString(), *GetNameSafe(&Owner), *GetFullNameSafe(&RootMetaStory)))
 	{
 		return EMetaStoryRunStatus::Failed;
 	}
 
 	// From this point any calls to Stop should be deferred.
-	SetUpdatePhaseInExecutionState(Exec, EMetaStoryUpdatePhase::TickStateTree);
+	SetUpdatePhaseInExecutionState(Exec, EMetaStoryUpdatePhase::TickMetaStory);
 
 	return EMetaStoryRunStatus::Running;
 }
@@ -1669,7 +1669,7 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::TickPostlude()
 	if (Exec.RequestedStop != EMetaStoryRunStatus::Unset)
 	{
 		METASTORY_LOG(VeryVerbose, TEXT("Processing Deferred Stop"));
-		UE_STATETREE_DEBUG_LOG_EVENT(this, Log, TEXT("Processing Deferred Stop"));
+		UE_METASTORY_DEBUG_LOG_EVENT(this, Log, TEXT("Processing Deferred Stop"));
 
 		Result = Stop(Exec.RequestedStop);
 	}
@@ -1680,7 +1680,7 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::TickPostlude()
 EMetaStoryRunStatus FMetaStoryExecutionContext::Tick(const float DeltaTime)
 {
 	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(MetaStory_Tick);
-	UE_STATETREE_CRASH_REPORTER_SCOPE(&Owner, &RootStateTree, UE::MetaStory::ExecutionContext::Private::Name_Tick.Resolve());
+	UE_METASTORY_CRASH_REPORTER_SCOPE(&Owner, &RootMetaStory, UE::MetaStory::ExecutionContext::Private::Name_Tick.Resolve());
 
 	TGuardValue<bool> ScheduledNextTickScope(bAllowedToScheduleNextTick, false);
 
@@ -1699,7 +1699,7 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::Tick(const float DeltaTime)
 EMetaStoryRunStatus FMetaStoryExecutionContext::TickUpdateTasks(const float DeltaTime)
 {
 	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(MetaStory_Tick);
-	UE_STATETREE_CRASH_REPORTER_SCOPE(&Owner, &RootStateTree, UE::MetaStory::ExecutionContext::Private::Name_Tick.Resolve());
+	UE_METASTORY_CRASH_REPORTER_SCOPE(&Owner, &RootMetaStory, UE::MetaStory::ExecutionContext::Private::Name_Tick.Resolve());
 
 	TGuardValue<bool> ScheduledNextTickScope(bAllowedToScheduleNextTick, false);
 
@@ -1717,7 +1717,7 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::TickUpdateTasks(const float Delt
 EMetaStoryRunStatus FMetaStoryExecutionContext::TickTriggerTransitions()
 {
 	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(MetaStory_Tick);
-	UE_STATETREE_CRASH_REPORTER_SCOPE(&Owner, &RootStateTree, UE::MetaStory::ExecutionContext::Private::Name_Tick.Resolve());
+	UE_METASTORY_CRASH_REPORTER_SCOPE(&Owner, &RootMetaStory, UE::MetaStory::ExecutionContext::Private::Name_Tick.Resolve());
 
 	TGuardValue<bool> ScheduledNextTickScope(bAllowedToScheduleNextTick, false);
 
@@ -1756,7 +1756,7 @@ void FMetaStoryExecutionContext::TickUpdateTasksInternal(float DeltaTime)
 		{
 			if (Exec.RequestedStop != EMetaStoryRunStatus::Unset) // -V547
 			{
-				UE_STATETREE_DEBUG_LOG_EVENT(this, Log, TEXT("Global tasks completed (%s), stopping the tree"), *UEnum::GetDisplayValueAsText(Exec.RequestedStop).ToString());
+				UE_METASTORY_DEBUG_LOG_EVENT(this, Log, TEXT("Global tasks completed (%s), stopping the tree"), *UEnum::GetDisplayValueAsText(Exec.RequestedStop).ToString());
 				METASTORY_LOG(Log, TEXT("Global tasks completed (%s), stopping the tree"), *UEnum::GetDisplayValueAsText(Exec.RequestedStop).ToString());
 			}
 		};
@@ -1798,7 +1798,7 @@ void FMetaStoryExecutionContext::TickUpdateTasksInternal(float DeltaTime)
 				if (Exec.ActiveFrames.Num() > 0)
 				{
 					const UMetaStory* MetaStory = Exec.ActiveFrames[0].MetaStory;
-					check(MetaStory == &RootStateTree);
+					check(MetaStory == &RootMetaStory);
 					const ETaskCompletionStatus GlobalTaskStatus = Exec.ActiveFrames[0].ActiveTasksStatus.GetStatus(MetaStory).GetCompletionStatus();
 					const EMetaStoryRunStatus GlobalRunStatus = ExecutionContext::CastToRunStatus(GlobalTaskStatus);
 					if (GlobalRunStatus != EMetaStoryRunStatus::Running)
@@ -1826,7 +1826,7 @@ void FMetaStoryExecutionContext::TickUpdateTasksInternal(float DeltaTime)
 
 void FMetaStoryExecutionContext::TickTriggerTransitionsInternal()
 {
-	UE_STATETREE_DEBUG_SCOPED_PHASE(this, EMetaStoryUpdatePhase::TickTransitions);
+	UE_METASTORY_DEBUG_SCOPED_PHASE(this, EMetaStoryUpdatePhase::TickTransitions);
 
 	FMetaStoryExecutionState& Exec = GetExecState();
 
@@ -1849,8 +1849,8 @@ void FMetaStoryExecutionContext::TickTriggerTransitionsInternal()
 		if (TriggerTransitions())
 		{
 			check(RequestedTransition.IsValid());
-			UE_STATETREE_DEBUG_SCOPED_PHASE(this, EMetaStoryUpdatePhase::ApplyTransitions);
-			UE_STATETREE_DEBUG_TRANSITION_EVENT(this, RequestedTransition->Source, EMetaStoryTraceEventType::OnTransition);
+			UE_METASTORY_DEBUG_SCOPED_PHASE(this, EMetaStoryUpdatePhase::ApplyTransitions);
+			UE_METASTORY_DEBUG_TRANSITION_EVENT(this, RequestedTransition->Source, EMetaStoryTraceEventType::OnTransition);
 
 			BeginApplyTransition(RequestedTransition->Transition);
 
@@ -1901,7 +1901,7 @@ void FMetaStoryExecutionContext::BeginApplyTransition(const FMetaStoryTransition
 {
 	if (FMetaStoryExecutionExtension* ExecExtension = GetMutableExecutionExtension())
 	{
-		ExecExtension->OnBeginApplyTransition({ Owner, RootStateTree, Storage }, InTransitionResult);
+		ExecExtension->OnBeginApplyTransition({ Owner, RootMetaStory, Storage }, InTransitionResult);
 	}
 }
 
@@ -1915,7 +1915,7 @@ void FMetaStoryExecutionContext::BroadcastDelegate(const FMetaStoryDelegateDispa
 	if (!IsValid())
 	{
 		METASTORY_LOG(Warning, TEXT("%hs: MetaStory context is not initialized properly ('%s' using MetaStory '%s')"),
-			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootStateTree));
+			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootMetaStory));
 		return;
 	}
 
@@ -1947,7 +1947,7 @@ void FMetaStoryExecutionContext::BindDelegate(const FMetaStoryDelegateListener& 
 	if (!IsValid())
 	{
 		METASTORY_LOG(Warning, TEXT("%hs: MetaStory context is not initialized properly ('%s' using MetaStory '%s')"),
-			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootStateTree));
+			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootMetaStory));
 		return;
 	}
 
@@ -1977,7 +1977,7 @@ void FMetaStoryExecutionContext::UnbindDelegate(const FMetaStoryDelegateListener
 	if (!IsValid())
 	{
 		METASTORY_LOG(Warning, TEXT("%hs: MetaStory context is not initialized properly ('%s' using MetaStory '%s')"),
-			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootStateTree));
+			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootMetaStory));
 		return;
 	}
 
@@ -1988,7 +1988,7 @@ void FMetaStoryExecutionContext::ConsumeEvent(const FMetaStorySharedEvent& Event
 {
 	if (EventQueue && EventQueue->ConsumeEvent(Event))
 	{
-		UE_STATETREE_DEBUG_EVENT_CONSUMED(this, Event);
+		UE_METASTORY_DEBUG_EVENT_CONSUMED(this, Event);
 	}
 }
 
@@ -2002,7 +2002,7 @@ void FMetaStoryExecutionContext::RequestTransition(const FMetaStoryTransitionReq
 	if (!IsValid())
 	{
 		METASTORY_LOG(Warning, TEXT("%hs: MetaStory context is not initialized properly ('%s' using MetaStory '%s')"),
-			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootStateTree));
+			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootMetaStory));
 		return;
 	}
 
@@ -2034,7 +2034,7 @@ void FMetaStoryExecutionContext::RequestTransition(const FMetaStoryTransitionReq
 		if (RootFrame->ActiveStates.Num() == 0)
 		{
 			METASTORY_LOG(Warning, TEXT("%hs: RequestTransition called on %s using MetaStory %s without an active state. Start() must be called before requesting a transition."),
-				__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootStateTree));
+				__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootMetaStory));
 			return;
 		}
 
@@ -2052,7 +2052,7 @@ void FMetaStoryExecutionContext::RequestTransition(const FMetaStoryTransitionReq
 	else
 	{
 		METASTORY_LOG(Warning, TEXT("%hs: RequestTransition called on %s using MetaStory %s without an active frame. Start() must be called before requesting a transition."),
-			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootStateTree));
+			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootMetaStory));
 		return;
 	}
 }
@@ -2069,7 +2069,7 @@ void FMetaStoryExecutionContext::FinishTask(const FMetaStoryTaskBase& Task, EMet
 	if (!IsValid())
 	{
 		METASTORY_LOG(Warning, TEXT("%hs: MetaStory context is not initialized properly ('%s' using MetaStory '%s')"),
-			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootStateTree));
+			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootMetaStory));
 		return;
 	}
 
@@ -2083,13 +2083,13 @@ void FMetaStoryExecutionContext::FinishTask(const FMetaStoryTaskBase& Task, EMet
 
 	FMetaStoryExecutionState& Exec = GetExecState();
 
-	const UMetaStory* CurrentStateTree = CurrentlyProcessedFrame->MetaStory;
+	const UMetaStory* CurrentMetaStory = CurrentlyProcessedFrame->MetaStory;
 	const ETaskCompletionStatus TaskStatus = ExecutionContext::CastToTaskStatus(FinishType);
 
 	if (CurrentlyProcessedState.IsValid())
 	{
-		check(CurrentStateTree->States.IsValidIndex(CurrentlyProcessedState.Index));
-		const FMetaStoryCompactState& State = CurrentStateTree->States[CurrentlyProcessedState.Index];
+		check(CurrentMetaStory->States.IsValidIndex(CurrentlyProcessedState.Index));
+		const FMetaStoryCompactState& State = CurrentMetaStory->States[CurrentlyProcessedState.Index];
 
 		const int32 ActiveStateIndex = CurrentlyProcessedFrame->ActiveStates.IndexOfReverse(CurrentlyProcessedState);
 		check(ActiveStateIndex != INDEX_NONE);
@@ -2104,9 +2104,9 @@ void FMetaStoryExecutionContext::FinishTask(const FMetaStoryTaskBase& Task, EMet
 	else
 	{
 		// global frame
-		const int32 FrameTaskIndex = CurrentNodeIndex - CurrentStateTree->GlobalTasksBegin;
+		const int32 FrameTaskIndex = CurrentNodeIndex - CurrentMetaStory->GlobalTasksBegin;
 		check(FrameTaskIndex >= 0);
-		FTasksCompletionStatus GlobalTasksStatus = const_cast<FMetaStoryExecutionFrame*>(CurrentlyProcessedFrame)->ActiveTasksStatus.GetStatus(CurrentStateTree);
+		FTasksCompletionStatus GlobalTasksStatus = const_cast<FMetaStoryExecutionFrame*>(CurrentlyProcessedFrame)->ActiveTasksStatus.GetStatus(CurrentMetaStory);
 		GlobalTasksStatus.SetStatusWithPriority(FrameTaskIndex, TaskStatus);
 		Exec.bHasPendingCompletedState = Exec.bHasPendingCompletedState || GlobalTasksStatus.IsCompleted();
 	}
@@ -2200,7 +2200,7 @@ void FMetaStoryExecutionContext::UpdateInstanceData(const TSharedPtr<FSelectStat
 	if (Args)
 	{
 		FActiveFrameID CurrentFrameID;
-		const UMetaStory* CurrentStateTree = nullptr;
+		const UMetaStory* CurrentMetaStory = nullptr;
 		for (const FActiveState& SelectedState : Args->SelectedStates)
 		{
 			// Global
@@ -2213,15 +2213,15 @@ void FMetaStoryExecutionContext::UpdateInstanceData(const TSharedPtr<FSelectStat
 				{
 					check(Frame->MetaStory);
 
-					CurrentStateTree = Frame->MetaStory;
-					EstimatedNumStructs += CurrentStateTree->NumGlobalInstanceData;
+					CurrentMetaStory = Frame->MetaStory;
+					EstimatedNumStructs += CurrentMetaStory->NumGlobalInstanceData;
 				}
 			}
 
 			// State
-			if (ensure(CurrentStateTree))
+			if (ensure(CurrentMetaStory))
 			{
-				const FMetaStoryCompactState* CurrentState = CurrentStateTree->GetStateFromHandle(SelectedState.GetStateHandle());
+				const FMetaStoryCompactState* CurrentState = CurrentMetaStory->GetStateFromHandle(SelectedState.GetStateHandle());
 				if (ensure(CurrentState))
 				{
 					EstimatedNumStructs += CurrentState->InstanceDataNum;
@@ -2261,7 +2261,7 @@ void FMetaStoryExecutionContext::UpdateInstanceData(const TSharedPtr<FSelectStat
 	{
 		FActiveFrameID CurrentFrameID;
 		FMetaStoryExecutionFrame* CurrentFrame = nullptr;
-		const UMetaStory* CurrentStateTree = nullptr;
+		const UMetaStory* CurrentMetaStory = nullptr;
 		int32 CurrentFrameBaseIndex = 0;
 		for (int32 SelectedStateIndex = 0; SelectedStateIndex < Args->SelectedStates.Num(); ++SelectedStateIndex)
 		{
@@ -2281,7 +2281,7 @@ void FMetaStoryExecutionContext::UpdateInstanceData(const TSharedPtr<FSelectStat
 					CurrentFrame = Args->FindTemporaryFrame(SelectedState.GetFrameID());
 				}
 				check(CurrentFrame);
-				CurrentStateTree = CurrentFrame->MetaStory;
+				CurrentMetaStory = CurrentFrame->MetaStory;
 
 				// Global Nodes
 				if (CurrentFrame->bIsGlobalFrame)
@@ -2290,7 +2290,7 @@ void FMetaStoryExecutionContext::UpdateInstanceData(const TSharedPtr<FSelectStat
 					if (NextStateParameterDataHandle.IsValid())
 					{
 						// Point to the parameter block set by linked state.
-						check(NextStateParameterDataStruct == CurrentStateTree->GetDefaultParameters().GetPropertyBagStruct());
+						check(NextStateParameterDataStruct == CurrentMetaStory->GetDefaultParameters().GetPropertyBagStruct());
 						CurrentGlobalParameterDataHandle = NextStateParameterDataHandle;
 						NextStateParameterDataHandle = FMetaStoryDataHandle::Invalid; // Mark as used.
 					}
@@ -2298,14 +2298,14 @@ void FMetaStoryExecutionContext::UpdateInstanceData(const TSharedPtr<FSelectStat
 					const int32 BaseIndex = InstanceStructs.Num();
 					CurrentGlobalInstanceIndexBase = BaseIndex;
 
-					InstanceStructs.AddDefaulted(CurrentStateTree->NumGlobalInstanceData);
-					TempInstanceStructs.AddZeroed(CurrentStateTree->NumGlobalInstanceData);
+					InstanceStructs.AddDefaulted(CurrentMetaStory->NumGlobalInstanceData);
+					TempInstanceStructs.AddZeroed(CurrentMetaStory->NumGlobalInstanceData);
 
 					// Global Evals
-					for (int32 EvalIndex = CurrentStateTree->EvaluatorsBegin; EvalIndex < (CurrentStateTree->EvaluatorsBegin + CurrentStateTree->EvaluatorsNum); EvalIndex++)
+					for (int32 EvalIndex = CurrentMetaStory->EvaluatorsBegin; EvalIndex < (CurrentMetaStory->EvaluatorsBegin + CurrentMetaStory->EvaluatorsNum); EvalIndex++)
 					{
-						const FMetaStoryEvaluatorBase& Eval = CurrentStateTree->Nodes[EvalIndex].Get<const FMetaStoryEvaluatorBase>();
-						const FConstStructView EvalInstanceData = CurrentStateTree->DefaultInstanceData.GetStruct(Eval.InstanceTemplateIndex.Get());
+						const FMetaStoryEvaluatorBase& Eval = CurrentMetaStory->Nodes[EvalIndex].Get<const FMetaStoryEvaluatorBase>();
+						const FConstStructView EvalInstanceData = CurrentMetaStory->DefaultInstanceData.GetStruct(Eval.InstanceTemplateIndex.Get());
 						InstanceStructs[BaseIndex + Eval.InstanceDataHandle.GetIndex()] = EvalInstanceData;
 						if (!bIsFrameCommon)
 						{
@@ -2314,10 +2314,10 @@ void FMetaStoryExecutionContext::UpdateInstanceData(const TSharedPtr<FSelectStat
 					}
 
 					// Global tasks
-					for (int32 TaskIndex = CurrentStateTree->GlobalTasksBegin; TaskIndex < (CurrentStateTree->GlobalTasksBegin + CurrentStateTree->GlobalTasksNum); TaskIndex++)
+					for (int32 TaskIndex = CurrentMetaStory->GlobalTasksBegin; TaskIndex < (CurrentMetaStory->GlobalTasksBegin + CurrentMetaStory->GlobalTasksNum); TaskIndex++)
 					{
-						const FMetaStoryTaskBase& Task = CurrentStateTree->Nodes[TaskIndex].Get<const FMetaStoryTaskBase>();
-						const FConstStructView TaskInstanceData = CurrentStateTree->DefaultInstanceData.GetStruct(Task.InstanceTemplateIndex.Get());
+						const FMetaStoryTaskBase& Task = CurrentMetaStory->Nodes[TaskIndex].Get<const FMetaStoryTaskBase>();
+						const FConstStructView TaskInstanceData = CurrentMetaStory->DefaultInstanceData.GetStruct(Task.InstanceTemplateIndex.Get());
 						InstanceStructs[BaseIndex + Task.InstanceDataHandle.GetIndex()] = TaskInstanceData;
 						if (!bIsFrameCommon)
 						{
@@ -2339,10 +2339,10 @@ void FMetaStoryExecutionContext::UpdateInstanceData(const TSharedPtr<FSelectStat
 			}
 
 			// State Params and Nodes
-			if (ensure(CurrentStateTree))
+			if (ensure(CurrentMetaStory))
 			{
 				const FMetaStoryStateHandle CurrentStateHandle = SelectedState.GetStateHandle();
-				const FMetaStoryCompactState* CurrentState = CurrentStateTree->GetStateFromHandle(CurrentStateHandle);
+				const FMetaStoryCompactState* CurrentState = CurrentMetaStory->GetStateFromHandle(CurrentStateHandle);
 				if (ensure(CurrentState))
 				{
 					// Find if the state is common (before the transition or sustained from the transition).
@@ -2357,7 +2357,7 @@ void FMetaStoryExecutionContext::UpdateInstanceData(const TSharedPtr<FSelectStat
 					{
 						check(CurrentState->ParameterDataHandle.IsValid());
 						check(CurrentState->ParameterTemplateIndex.IsValid());
-						const FConstStructView ParamsInstanceData = CurrentStateTree->DefaultInstanceData.GetStruct(CurrentState->ParameterTemplateIndex.Get());
+						const FConstStructView ParamsInstanceData = CurrentMetaStory->DefaultInstanceData.GetStruct(CurrentState->ParameterTemplateIndex.Get());
 						if (!NextStateParameterDataHandle.IsValid())
 						{
 							// Parameters are not set by a linked state, create instance data.
@@ -2401,9 +2401,9 @@ void FMetaStoryExecutionContext::UpdateInstanceData(const TSharedPtr<FSelectStat
 								FConstStructView ParamsInstanceData;
 								if (CurrentState->Type == EMetaStoryStateType::LinkedAsset)
 								{
-									// This state is a container for the linked state tree.
-									// Its instance data matches the linked state tree parameters.
-									// The linked state tree asset is the next frame.
+									// This state is a container for the linked MetaStory.
+									// Its instance data matches the linked MetaStory parameters.
+									// The linked MetaStory asset is the next frame.
 									const bool bIsLastFrame = SelectedStateIndex == Args->SelectedStates.Num() - 1;
 									if (!bIsLastFrame)
 									{
@@ -2417,7 +2417,7 @@ void FMetaStoryExecutionContext::UpdateInstanceData(const TSharedPtr<FSelectStat
 								}
 								if (!ParamsInstanceData.IsValid())
 								{
-									ParamsInstanceData = CurrentStateTree->DefaultInstanceData.GetStruct(CurrentState->ParameterTemplateIndex.Get());
+									ParamsInstanceData = CurrentMetaStory->DefaultInstanceData.GetStruct(CurrentState->ParameterTemplateIndex.Get());
 								}
 								InstanceStructs[CurrentFrameBaseIndex + CurrentState->ParameterDataHandle.GetIndex()] = ParamsInstanceData;
 								Params = ParamsInstanceData.GetPtr<const FMetaStoryCompactParameters>();
@@ -2448,8 +2448,8 @@ void FMetaStoryExecutionContext::UpdateInstanceData(const TSharedPtr<FSelectStat
 
 					for (int32 TaskIndex = CurrentState->TasksBegin; TaskIndex < (CurrentState->TasksBegin + CurrentState->TasksNum); TaskIndex++)
 					{
-						const FMetaStoryTaskBase& Task = CurrentStateTree->Nodes[TaskIndex].Get<const FMetaStoryTaskBase>();
-						const FConstStructView TaskInstanceData = CurrentStateTree->DefaultInstanceData.GetStruct(Task.InstanceTemplateIndex.Get());
+						const FMetaStoryTaskBase& Task = CurrentMetaStory->Nodes[TaskIndex].Get<const FMetaStoryTaskBase>();
+						const FConstStructView TaskInstanceData = CurrentMetaStory->DefaultInstanceData.GetStruct(Task.InstanceTemplateIndex.Get());
 						InstanceStructs[CurrentFrameBaseIndex + Task.InstanceDataHandle.GetIndex()] = TaskInstanceData;
 						if (!bIsStateCommon)
 						{
@@ -2632,13 +2632,13 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::ForceTransition(const FMetaStory
 	TGuardValue<TSharedPtr<FSelectStateResult>> TemporaryStorageScope(CurrentlyProcessedTemporaryStorage, SelectStateResult);
 	if (!ForceTransitionInternal(StateContexts, SelectStateResult))
 	{
-		UE_STATETREE_DEBUG_LOG_EVENT(this, Verbose, TEXT("The force transition failed."));
+		UE_METASTORY_DEBUG_LOG_EVENT(this, Verbose, TEXT("The force transition failed."));
 		return EMetaStoryRunStatus::Unset;
 	}
 
 	if (SelectStateResult->SelectedStates.Num() != StateContexts.Num())
 	{
-		UE_STATETREE_DEBUG_LOG_EVENT(this, Verbose, TEXT("The force transition failed to find the target."));
+		UE_METASTORY_DEBUG_LOG_EVENT(this, Verbose, TEXT("The force transition failed to find the target."));
 		return EMetaStoryRunStatus::Unset;
 	}
 
@@ -2677,15 +2677,15 @@ namespace UE::MetaStory::ExecutionContext::Private
 {
 	bool TestStateContextPath(TNotNull<const FMetaStoryExecutionContext*> ExecutionContext, const TArrayView<const FStateHandleContext> StateContexts)
 	{
-		const UMetaStory* PreviousStateTree = ExecutionContext->GetStateTree();
+		const UMetaStory* PreviousMetaStory = ExecutionContext->GetMetaStory();
 		bool bNewTree = true;
 		bool bNewFrame = true;
 		for (int32 Index = 0; Index < StateContexts.Num(); ++Index)
 		{
 			const FStateHandleContext& StateContext = StateContexts[Index];
-			if (StateContext.MetaStory == nullptr || StateContext.MetaStory != PreviousStateTree)
+			if (StateContext.MetaStory == nullptr || StateContext.MetaStory != PreviousMetaStory)
 			{
-				// Child state has to have the same state tree.
+				// Child state has to have the same MetaStory.
 				return false;
 			}
 
@@ -2726,13 +2726,13 @@ namespace UE::MetaStory::ExecutionContext::Private
 				const FStateHandleContext& NextStateContext = StateContexts[Index + 1];
 				if (NextStateContext.MetaStory == nullptr
 					|| !NextStateContext.MetaStory->IsReadyToRun()
-					|| !NextStateContext.MetaStory->HasCompatibleContextData(ExecutionContext->GetStateTree())
-					|| NextStateContext.MetaStory->GetSchema()->GetClass() != ExecutionContext->GetStateTree()->GetSchema()->GetClass())
+					|| !NextStateContext.MetaStory->HasCompatibleContextData(ExecutionContext->GetMetaStory())
+					|| NextStateContext.MetaStory->GetSchema()->GetClass() != ExecutionContext->GetMetaStory()->GetSchema()->GetClass())
 				{
 					// The trees have to be compatible.
 					return false;
 				}
-				PreviousStateTree = NextStateContext.MetaStory;
+				PreviousMetaStory = NextStateContext.MetaStory;
 			}
 			if (State->Type == EMetaStoryStateType::Linked)
 			{
@@ -2758,19 +2758,19 @@ bool FMetaStoryExecutionContext::ForceTransitionInternal(const TArrayView<const 
 	if (!IsValid())
 	{
 		METASTORY_LOG(Warning, TEXT("%hs: MetaStory context is not initialized properly ('%s' using MetaStory '%s')"),
-			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootStateTree));
+			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootMetaStory));
 		return false;
 	}
 
 	if (StateContexts.IsEmpty())
 	{
-		UE_STATETREE_DEBUG_LOG_EVENT(this, Verbose, TEXT("There are no states in the transition."));
+		UE_METASTORY_DEBUG_LOG_EVENT(this, Verbose, TEXT("There are no states in the transition."));
 		return false;
 	}
 
 	if (!TestStateContextPath(this, StateContexts))
 	{
-		UE_STATETREE_DEBUG_LOG_EVENT(this, Verbose, TEXT("The StateContexts is invalid."));
+		UE_METASTORY_DEBUG_LOG_EVENT(this, Verbose, TEXT("The StateContexts is invalid."));
 		return false;
 	}
 
@@ -2779,14 +2779,14 @@ bool FMetaStoryExecutionContext::ForceTransitionInternal(const TArrayView<const 
 	// A reentrant call to ForceTransition or a call from Start, Tick or Stop must be deferred.
 	if (Exec.CurrentPhase != EMetaStoryUpdatePhase::Unset)
 	{
-		UE_STATETREE_DEBUG_LOG_EVENT(this, Warning, TEXT("Can't force a transition while %s"), *UEnum::GetDisplayValueAsText(Exec.CurrentPhase).ToString());
+		UE_METASTORY_DEBUG_LOG_EVENT(this, Warning, TEXT("Can't force a transition while %s"), *UEnum::GetDisplayValueAsText(Exec.CurrentPhase).ToString());
 		return false;
 	}
 
 	if (!CollectActiveExternalData())
 	{
 		METASTORY_LOG(Warning, TEXT("%hs: Failed to collect external data ('%s' using MetaStory '%s')"),
-			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootStateTree));
+			__FUNCTION__, *GetNameSafe(&Owner), *GetFullNameSafe(&RootMetaStory));
 		return false;
 	}
 
@@ -2794,7 +2794,7 @@ bool FMetaStoryExecutionContext::ForceTransitionInternal(const TArrayView<const 
 	GetActiveStatePath(Exec.ActiveFrames, CurrentActiveStatePath);
 	if (CurrentActiveStatePath.Num() == 0)
 	{
-		UE_STATETREE_DEBUG_LOG_EVENT(this, Verbose, TEXT("The tree needs active states to transition from."));
+		UE_METASTORY_DEBUG_LOG_EVENT(this, Verbose, TEXT("The tree needs active states to transition from."));
 		return false;
 	}
 
@@ -2803,7 +2803,7 @@ bool FMetaStoryExecutionContext::ForceTransitionInternal(const TArrayView<const 
 	SelectStateArgs.SourceState = SelectStateArgs.ActiveStates[0];
 	SelectStateArgs.TargetState = StateContexts.Last();
 	SelectStateArgs.Behavior = ESelectStateBehavior::Forced;
-	SelectStateArgs.SelectionRules = RootStateTree.StateSelectionRules;
+	SelectStateArgs.SelectionRules = RootMetaStory.StateSelectionRules;
 
 	FSelectStateInternalArguments InternalArgs;
 	InternalArgs.MissingActiveStates = MakeConstArrayView(CurrentActiveStatePath);
@@ -2814,7 +2814,7 @@ bool FMetaStoryExecutionContext::ForceTransitionInternal(const TArrayView<const 
 	FSelectStateResult SelectStateResult;
 	if (!SelectStateInternal(SelectStateArgs, InternalArgs, OutSelectionResult))
 	{
-		UE_STATETREE_DEBUG_LOG_EVENT(this, Verbose, TEXT("The force selection to target failed."));
+		UE_METASTORY_DEBUG_LOG_EVENT(this, Verbose, TEXT("The force selection to target failed."));
 		return false;
 	}
 	return true;
@@ -2971,7 +2971,7 @@ void FMetaStoryExecutionContext::CopyAllBindingsOnActiveInstances(const ECopyBin
 	{
 		FMetaStoryExecutionFrame* CurrentParentFrame = FrameIndex > 0 ? &Exec.ActiveFrames[FrameIndex - 1] : nullptr;
 		FMetaStoryExecutionFrame& CurrentFrame = Exec.ActiveFrames[FrameIndex];
-		const UMetaStory* CurrentStateTree = CurrentFrame.MetaStory;
+		const UMetaStory* CurrentMetaStory = CurrentFrame.MetaStory;
 		const int32 CurrentActiveNodeIndex = CurrentFrame.ActiveNodeIndex.AsInt32();
 
 		FCurrentlyProcessedFrameScope FrameScope(*this, CurrentParentFrame, CurrentFrame);
@@ -2979,12 +2979,12 @@ void FMetaStoryExecutionContext::CopyAllBindingsOnActiveInstances(const ECopyBin
 		const bool bShouldCallOnEvaluatorsAndGlobalTasks = CurrentFrame.bIsGlobalFrame;
 		if (bShouldCallOnEvaluatorsAndGlobalTasks)
 		{
-			const int32 EvaluatorEnd = CurrentStateTree->EvaluatorsBegin + CurrentStateTree->EvaluatorsNum;
-			for (int32 EvalIndex = CurrentStateTree->EvaluatorsBegin; EvalIndex < EvaluatorEnd; ++EvalIndex)
+			const int32 EvaluatorEnd = CurrentMetaStory->EvaluatorsBegin + CurrentMetaStory->EvaluatorsNum;
+			for (int32 EvalIndex = CurrentMetaStory->EvaluatorsBegin; EvalIndex < EvaluatorEnd; ++EvalIndex)
 			{
 				if (EvalIndex <= CurrentActiveNodeIndex)
 				{
-					const FMetaStoryEvaluatorBase& Eval = CurrentStateTree->Nodes[EvalIndex].Get<const FMetaStoryEvaluatorBase>();
+					const FMetaStoryEvaluatorBase& Eval = CurrentMetaStory->Nodes[EvalIndex].Get<const FMetaStoryEvaluatorBase>();
 					if (Eval.BindingsBatch.IsValid())
 					{
 						const FMetaStoryDataView EvalInstanceView = GetDataView(CurrentParentFrame, CurrentFrame, Eval.InstanceDataHandle);
@@ -2994,12 +2994,12 @@ void FMetaStoryExecutionContext::CopyAllBindingsOnActiveInstances(const ECopyBin
 				}
 			}
 
-			const int32 GlobalTasksEnd = CurrentStateTree->GlobalTasksBegin + CurrentStateTree->GlobalTasksNum;
-			for (int32 TaskIndex = CurrentStateTree->GlobalTasksBegin; TaskIndex < GlobalTasksEnd; ++TaskIndex)
+			const int32 GlobalTasksEnd = CurrentMetaStory->GlobalTasksBegin + CurrentMetaStory->GlobalTasksNum;
+			for (int32 TaskIndex = CurrentMetaStory->GlobalTasksBegin; TaskIndex < GlobalTasksEnd; ++TaskIndex)
 			{
 				if (TaskIndex <= CurrentActiveNodeIndex)
 				{
-					const FMetaStoryTaskBase& Task = CurrentStateTree->Nodes[TaskIndex].Get<const FMetaStoryTaskBase>();
+					const FMetaStoryTaskBase& Task = CurrentMetaStory->Nodes[TaskIndex].Get<const FMetaStoryTaskBase>();
 					const bool bTaskRequestCopy = (CopyType == ECopyBindings::ExitState && Task.bShouldCopyBoundPropertiesOnExitState)
 						|| (CopyType == ECopyBindings::EnterState)
 						|| (CopyType == ECopyBindings::Tick && Task.bShouldCopyBoundPropertiesOnTick);
@@ -3017,7 +3017,7 @@ void FMetaStoryExecutionContext::CopyAllBindingsOnActiveInstances(const ECopyBin
 		{
 			const FMetaStoryStateHandle CurrentStateHandle = CurrentFrame.ActiveStates.States[StateIndex];
 			const UE::MetaStory::FActiveStateID CurrentStateID = CurrentFrame.ActiveStates.StateIDs[StateIndex];
-			const FMetaStoryCompactState& CurrentState = CurrentStateTree->States[CurrentStateHandle.Index];
+			const FMetaStoryCompactState& CurrentState = CurrentMetaStory->States[CurrentStateHandle.Index];
 
 			FCurrentlyProcessedStateScope StateScope(*this, CurrentStateHandle);
 
@@ -3037,7 +3037,7 @@ void FMetaStoryExecutionContext::CopyAllBindingsOnActiveInstances(const ECopyBin
 			{
 				if (TaskIndex <= CurrentActiveNodeIndex)
 				{
-					const FMetaStoryTaskBase& Task = CurrentStateTree->Nodes[TaskIndex].Get<const FMetaStoryTaskBase>();
+					const FMetaStoryTaskBase& Task = CurrentMetaStory->Nodes[TaskIndex].Get<const FMetaStoryTaskBase>();
 
 					const bool bTaskRequestCopy = (CopyType == ECopyBindings::ExitState && Task.bShouldCopyBoundPropertiesOnExitState)
 						|| (CopyType == ECopyBindings::EnterState)
@@ -3178,7 +3178,7 @@ FMetaStoryIndex16 FMetaStoryExecutionContext::CollectExternalData(const UMetaSto
 		return FMetaStoryIndex16::Invalid;
 	}
 
-	// If one of the active states share the same state tree, get the external data from there.
+	// If one of the active states share the same MetaStory, get the external data from there.
 	for (const FCollectedExternalDataCache& Cache : CollectedExternalCache)
 	{
 		if (Cache.MetaStory == MetaStory)
@@ -3247,7 +3247,7 @@ FMetaStoryIndex16 FMetaStoryExecutionContext::CollectExternalData(const UMetaSto
 
 bool FMetaStoryExecutionContext::SetGlobalParameters(const FInstancedPropertyBag& Parameters)
 {
-	if (ensureMsgf(RootStateTree.GetDefaultParameters().GetPropertyBagStruct() == Parameters.GetPropertyBagStruct(),
+	if (ensureMsgf(RootMetaStory.GetDefaultParameters().GetPropertyBagStruct() == Parameters.GetPropertyBagStruct(),
 		TEXT("Parameters must be of the same struct type. Make sure to migrate the provided parameters to the same type as the MetaStory default parameters.")))
 	{
 		Storage.SetGlobalParameters(Parameters);
@@ -3379,10 +3379,10 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::EnterState(const TSharedPtr<FSel
 	EMetaStoryRunStatus Result = EMetaStoryRunStatus::Running;
 
 	METASTORY_LOG(Log, TEXT("Enter state '%s' (%d)")
-		, *UE::MetaStory::ExecutionContext::Private::GetStatePathAsString(&RootStateTree, Args.SelectedStates)
+		, *UE::MetaStory::ExecutionContext::Private::GetStatePathAsString(&RootMetaStory, Args.SelectedStates)
 		, Exec.StateChangeCount
 	);
-	UE_STATETREE_DEBUG_ENTER_PHASE(this, EMetaStoryUpdatePhase::EnterStates);
+	UE_METASTORY_DEBUG_ENTER_PHASE(this, EMetaStoryUpdatePhase::EnterStates);
 
 	bool bTargetReached = false;
 	FActiveFrameID CurrentFrameID;
@@ -3427,7 +3427,7 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::EnterState(const TSharedPtr<FSel
 		}
 
 		FMetaStoryExecutionFrame* CurrentParentFrame = FrameIndex > 0 ? &Exec.ActiveFrames[FrameIndex - 1] : nullptr;
-		const UMetaStory* CurrentStateTree = CurrentFrame.MetaStory;
+		const UMetaStory* CurrentMetaStory = CurrentFrame.MetaStory;
 
 		// Create the status. We lost the previous tasks' completion status.
 		if (!ensureMsgf(CurrentFrame.ActiveTasksStatus.IsValid(), TEXT("Frame is not formed correct.")))
@@ -3454,7 +3454,7 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::EnterState(const TSharedPtr<FSel
 		FCurrentlyProcessedFrameScope FrameScope(*this, CurrentParentFrame, CurrentFrame);
 		{
 			const FMetaStoryStateHandle CurrentStateHandle = SelectedState.GetStateHandle();
-			const FMetaStoryCompactState& CurrentState = CurrentStateTree->States[CurrentStateHandle.Index];
+			const FMetaStoryCompactState& CurrentState = CurrentMetaStory->States[CurrentStateHandle.Index];
 			const UE::MetaStory::FActiveStateID CurrentStateID = SelectedState.GetStateID();
 
 			checkf(CurrentState.bEnabled, TEXT("Only enabled states are in SelectedStates."));
@@ -3469,7 +3469,7 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::EnterState(const TSharedPtr<FSel
 					ensureMsgf(false, TEXT("Reached max execution depth when trying to enter state '%s'. '%s' using MetaStory '%s'."),
 						*GetStateStatusString(Exec),
 						*GetNameSafe(&Owner),
-						*GetFullNameSafe(&RootStateTree)
+						*GetFullNameSafe(&RootMetaStory)
 					);
 					break;
 				}
@@ -3493,10 +3493,10 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::EnterState(const TSharedPtr<FSel
 			CurrentTransition.CurrentState = CurrentStateHandle;
 			CurrentTransition.ChangeType = ChangeType;
 
-			UE_STATETREE_DEBUG_STATE_EVENT(this, CurrentStateHandle, EMetaStoryTraceEventType::OnEntering);
+			UE_METASTORY_DEBUG_STATE_EVENT(this, CurrentStateHandle, EMetaStoryTraceEventType::OnEntering);
 			METASTORY_LOG(Log, TEXT("%*sState '%s' (%s)"),
 				(FrameIndex + ActiveStateIndex + 1) * UE::MetaStory::Debug::IndentSize, TEXT(""),
-				*GetSafeStateName(CurrentStateTree, CurrentStateHandle),
+				*GetSafeStateName(CurrentMetaStory, CurrentStateHandle),
 				*UEnum::GetDisplayValueAsText(CurrentTransition.ChangeType).ToString()
 			);
 
@@ -3507,7 +3507,7 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::EnterState(const TSharedPtr<FSel
 				const int32 EnterConditionsEnd = CurrentState.EnterConditionsBegin + CurrentState.EnterConditionsNum;
 				for (int32 ConditionIndex = CurrentState.EnterConditionsBegin; ConditionIndex < EnterConditionsEnd; ++ConditionIndex)
 				{
-					const FMetaStoryConditionBase& Cond = CurrentStateTree->Nodes[ConditionIndex].Get<const FMetaStoryConditionBase>();
+					const FMetaStoryConditionBase& Cond = CurrentMetaStory->Nodes[ConditionIndex].Get<const FMetaStoryConditionBase>();
 					if (Cond.bHasShouldCallStateChangeEvents)
 					{
 						const bool bShouldCallEnterState = CurrentTransition.ChangeType == EMetaStoryStateChangeType::Changed
@@ -3523,7 +3523,7 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::EnterState(const TSharedPtr<FSel
 								CopyBatchOnActiveInstances(CurrentParentFrame, CurrentFrame, ConditionInstanceView, Cond.BindingsBatch);
 							}
 
-							UE_STATETREE_DEBUG_CONDITION_ENTER_STATE(this, CurrentFrame.MetaStory, FMetaStoryIndex16(ConditionIndex));
+							UE_METASTORY_DEBUG_CONDITION_ENTER_STATE(this, CurrentFrame.MetaStory, FMetaStoryIndex16(ConditionIndex));
 							Cond.EnterState(*this, CurrentTransition);
 
 							// Reset copied properties that might contain object references.
@@ -3541,7 +3541,7 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::EnterState(const TSharedPtr<FSel
 			for (int32 StateTaskIndex = 0; StateTaskIndex < CurrentState.TasksNum; ++StateTaskIndex)
 			{
 				const int32 AssetTaskIndex = CurrentState.TasksBegin + StateTaskIndex;
-				const FMetaStoryTaskBase& Task = CurrentStateTree->Nodes[AssetTaskIndex].Get<const FMetaStoryTaskBase>();
+				const FMetaStoryTaskBase& Task = CurrentMetaStory->Nodes[AssetTaskIndex].Get<const FMetaStoryTaskBase>();
 				const FMetaStoryDataView TaskInstanceView = GetDataView(CurrentParentFrame, CurrentFrame, Task.InstanceDataHandle);
 
 				// Ignore disabled task
@@ -3567,7 +3567,7 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::EnterState(const TSharedPtr<FSel
 				if (bShouldCallEnterState)
 				{
 					METASTORY_LOG(Verbose, TEXT("%*sTask '%s'.EnterState()"), (FrameIndex + ActiveStateIndex + 1) * UE::MetaStory::Debug::IndentSize, TEXT(""), *Task.Name.ToString());
-					UE_STATETREE_DEBUG_TASK_ENTER_STATE(this, CurrentStateTree, FMetaStoryIndex16(AssetTaskIndex));
+					UE_METASTORY_DEBUG_TASK_ENTER_STATE(this, CurrentMetaStory, FMetaStoryIndex16(AssetTaskIndex));
 
 					EMetaStoryRunStatus TaskRunStatus = EMetaStoryRunStatus::Unset;
 					{
@@ -3586,7 +3586,7 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::EnterState(const TSharedPtr<FSel
 						CopyBatchOnActiveInstances(CurrentlyProcessedParentFrame, *CurrentlyProcessedFrame, TaskInstanceView, Task.OutputBindingsBatch);
 					}
 
-					UE_STATETREE_DEBUG_TASK_EVENT(this, AssetTaskIndex, TaskInstanceView, EMetaStoryTraceEventType::OnEntered, TaskRunStatus);
+					UE_METASTORY_DEBUG_TASK_EVENT(this, AssetTaskIndex, TaskInstanceView, EMetaStoryTraceEventType::OnEntered, TaskRunStatus);
 
 					if (CurrentStateTasksStatus.IsConsideredForCompletion(StateTaskIndex))
 					{
@@ -3598,7 +3598,7 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::EnterState(const TSharedPtr<FSel
 					}
 				}
 			}
-			UE_STATETREE_DEBUG_STATE_EVENT(this, CurrentStateHandle, EMetaStoryTraceEventType::OnEntered);
+			UE_METASTORY_DEBUG_STATE_EVENT(this, CurrentStateHandle, EMetaStoryTraceEventType::OnEntered);
 		}
 
 		if (Result == EMetaStoryRunStatus::Failed)
@@ -3607,8 +3607,8 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::EnterState(const TSharedPtr<FSel
 		}
 	}
 
-	UE_STATETREE_DEBUG_EXIT_PHASE(this, EMetaStoryUpdatePhase::EnterStates);
-	UE_STATETREE_DEBUG_ACTIVE_STATES_EVENT(this, Exec.ActiveFrames);
+	UE_METASTORY_DEBUG_EXIT_PHASE(this, EMetaStoryUpdatePhase::EnterStates);
+	UE_METASTORY_DEBUG_ACTIVE_STATES_EVENT(this, Exec.ActiveFrames);
 
 	Exec.bHasPendingCompletedState = Result != EMetaStoryRunStatus::Running;
 	return Result;
@@ -3647,7 +3647,7 @@ void FMetaStoryExecutionContext::ExitState(const TSharedPtr<const FSelectStateRe
 	CopyAllBindingsOnActiveInstances(ECopyBindings::ExitState);
 
 	METASTORY_LOG(Log, TEXT("Exit state '%s' (%d)"), *DebugGetStatePath(Exec.ActiveFrames), Exec.StateChangeCount);
-	UE_STATETREE_DEBUG_SCOPED_PHASE(this, EMetaStoryUpdatePhase::ExitStates);
+	UE_METASTORY_DEBUG_SCOPED_PHASE(this, EMetaStoryUpdatePhase::ExitStates);
 
 	FActiveStateInlineArray ActiveStates;
 	GetActiveStatePath(GetExecState().ActiveFrames, ActiveStates);
@@ -3691,14 +3691,14 @@ void FMetaStoryExecutionContext::ExitState(const TSharedPtr<const FSelectStateRe
 	{
 		FMetaStoryExecutionFrame* CurrentParentFrame = FrameIndex > 0 ? &Exec.ActiveFrames[FrameIndex - 1] : nullptr;
 		FMetaStoryExecutionFrame& CurrentFrame = Exec.ActiveFrames[FrameIndex];
-		const UMetaStory* CurrentStateTree = CurrentFrame.MetaStory;
+		const UMetaStory* CurrentMetaStory = CurrentFrame.MetaStory;
 
 		FCurrentlyProcessedFrameScope FrameScope(*this, CurrentParentFrame, CurrentFrame);
 		for (int32 StateIndex = CurrentFrame.ActiveStates.Num() - 1; bContinue && StateIndex >= 0; --StateIndex)
 		{
 			const FMetaStoryStateHandle CurrentHandle = CurrentFrame.ActiveStates[StateIndex];
 			const FActiveStateID CurrentStateID = CurrentFrame.ActiveStates.StateIDs[StateIndex];
-			const FMetaStoryCompactState& CurrentState = CurrentStateTree->States[CurrentHandle.Index];
+			const FMetaStoryCompactState& CurrentState = CurrentMetaStory->States[CurrentHandle.Index];
 
 			const FActiveState CurrentActiveState(CurrentFrame.FrameID, CurrentStateID, CurrentHandle);
 			const bool bIsStateCommon = !ChangedStates.Contains(CurrentActiveState);
@@ -3728,11 +3728,11 @@ void FMetaStoryExecutionContext::ExitState(const TSharedPtr<const FSelectStateRe
 				, *UEnum::GetDisplayValueAsText(CurrentTransition.ChangeType).ToString());
 
 			FCurrentlyProcessedStateScope StateScope(*this, CurrentHandle);
-			UE_STATETREE_DEBUG_STATE_EVENT(this, CurrentHandle, EMetaStoryTraceEventType::OnExiting);
+			UE_METASTORY_DEBUG_STATE_EVENT(this, CurrentHandle, EMetaStoryTraceEventType::OnExiting);
 
 			for (int32 TaskIndex = (CurrentState.TasksBegin + CurrentState.TasksNum) - 1; TaskIndex >= CurrentState.TasksBegin; --TaskIndex)
 			{
-				const FMetaStoryTaskBase& Task = CurrentStateTree->Nodes[TaskIndex].Get<const FMetaStoryTaskBase>();
+				const FMetaStoryTaskBase& Task = CurrentMetaStory->Nodes[TaskIndex].Get<const FMetaStoryTaskBase>();
 
 				// Ignore disabled task
 				if (Task.bTaskEnabled)
@@ -3750,7 +3750,7 @@ void FMetaStoryExecutionContext::ExitState(const TSharedPtr<const FSelectStateRe
 						if (bShouldCallStateChange)
 						{
 							METASTORY_LOG(Verbose, TEXT("%*sTask '%s'.ExitState()"), (FrameIndex + StateIndex + 1) * UE::MetaStory::Debug::IndentSize, TEXT(""), *Task.Name.ToString());
-							UE_STATETREE_DEBUG_TASK_EXIT_STATE(this, CurrentStateTree, FMetaStoryIndex16(TaskIndex));
+							UE_METASTORY_DEBUG_TASK_EXIT_STATE(this, CurrentMetaStory, FMetaStoryIndex16(TaskIndex));
 							{
 								QUICK_SCOPE_CYCLE_COUNTER(MetaStory_Task_ExitState);
 								CSV_SCOPED_TIMING_STAT_EXCLUSIVE(MetaStory_Task_ExitState);
@@ -3762,7 +3762,7 @@ void FMetaStoryExecutionContext::ExitState(const TSharedPtr<const FSelectStateRe
 								CopyBatchOnActiveInstances(CurrentlyProcessedParentFrame, CurrentFrame, TaskInstanceView, Task.OutputBindingsBatch);
 							}
 
-							UE_STATETREE_DEBUG_TASK_EVENT(this, TaskIndex, TaskInstanceView, EMetaStoryTraceEventType::OnExited, Transition.CurrentRunStatus);
+							UE_METASTORY_DEBUG_TASK_EVENT(this, TaskIndex, TaskInstanceView, EMetaStoryTraceEventType::OnExited, Transition.CurrentRunStatus);
 						}
 					}
 				}
@@ -3795,7 +3795,7 @@ void FMetaStoryExecutionContext::ExitState(const TSharedPtr<const FSelectStateRe
 								CopyBatchOnActiveInstances(CurrentParentFrame, CurrentFrame, ConditionInstanceView, Cond.BindingsBatch);
 							}
 
-							UE_STATETREE_DEBUG_CONDITION_EXIT_STATE(this, CurrentFrame.MetaStory, FMetaStoryIndex16(ConditionIndex));
+							UE_METASTORY_DEBUG_CONDITION_EXIT_STATE(this, CurrentFrame.MetaStory, FMetaStoryIndex16(ConditionIndex));
 							Cond.ExitState(*this, CurrentTransition);
 
 							// Reset copied properties that might contain object references.
@@ -3825,7 +3825,7 @@ void FMetaStoryExecutionContext::ExitState(const TSharedPtr<const FSelectStateRe
 				check(PoppedState == CurrentHandle);
 			}
 
-			UE_STATETREE_DEBUG_STATE_EVENT(this, CurrentHandle, EMetaStoryTraceEventType::OnExited);
+			UE_METASTORY_DEBUG_STATE_EVENT(this, CurrentHandle, EMetaStoryTraceEventType::OnExited);
 		}
 
 		// The previous frame is not in the new
@@ -3850,7 +3850,7 @@ void FMetaStoryExecutionContext::StateCompleted()
 	}
 
 	METASTORY_LOG(Verbose, TEXT("State Completed %s (%d)"), *UEnum::GetDisplayValueAsText(Exec.LastTickStatus).ToString(), Exec.StateChangeCount);
-	UE_STATETREE_DEBUG_SCOPED_PHASE(this, EMetaStoryUpdatePhase::StateCompleted);
+	UE_METASTORY_DEBUG_SCOPED_PHASE(this, EMetaStoryUpdatePhase::StateCompleted);
 
 	// Call from child towards root to allow to pass results back.
 	// Note: Completed is assumed to be called immediately after tick or enter state, we want to preserve the status of instance data for tasks.
@@ -3858,7 +3858,7 @@ void FMetaStoryExecutionContext::StateCompleted()
 	{
 		const FMetaStoryExecutionFrame* CurrentParentFrame = FrameIndex > 0 ? &Exec.ActiveFrames[FrameIndex - 1] : nullptr;
 		const FMetaStoryExecutionFrame& CurrentFrame = Exec.ActiveFrames[FrameIndex];
-		const UMetaStory* CurrentStateTree = CurrentFrame.MetaStory;
+		const UMetaStory* CurrentMetaStory = CurrentFrame.MetaStory;
 		const int32 CurrentActiveNodeIndex = CurrentFrame.ActiveNodeIndex.AsInt32();
 
 		FCurrentlyProcessedFrameScope FrameScope(*this, CurrentParentFrame, CurrentFrame);
@@ -3866,10 +3866,10 @@ void FMetaStoryExecutionContext::StateCompleted()
 		for (int32 StateIndex = CurrentFrame.ActiveStates.Num() - 1; StateIndex >= 0; StateIndex--)
 		{
 			const FMetaStoryStateHandle CurrentHandle = CurrentFrame.ActiveStates[StateIndex];
-			const FMetaStoryCompactState& State = CurrentStateTree->States[CurrentHandle.Index];
+			const FMetaStoryCompactState& State = CurrentMetaStory->States[CurrentHandle.Index];
 
 			FCurrentlyProcessedStateScope StateScope(*this, CurrentHandle);
-			UE_STATETREE_DEBUG_STATE_EVENT(this, CurrentHandle, EMetaStoryTraceEventType::OnStateCompleted);
+			UE_METASTORY_DEBUG_STATE_EVENT(this, CurrentHandle, EMetaStoryTraceEventType::OnStateCompleted);
 			METASTORY_LOG(Verbose, TEXT("%*sState '%s'"), (FrameIndex + StateIndex + 1) * UE::MetaStory::Debug::IndentSize, TEXT(""), *GetSafeStateName(CurrentFrame, CurrentHandle));
 
 			// Notify Tasks
@@ -3878,7 +3878,7 @@ void FMetaStoryExecutionContext::StateCompleted()
 				// Call task completed only if EnterState() was called.
 				if (TaskIndex <= CurrentActiveNodeIndex)
 				{
-					const FMetaStoryTaskBase& Task = CurrentStateTree->Nodes[TaskIndex].Get<const FMetaStoryTaskBase>();
+					const FMetaStoryTaskBase& Task = CurrentMetaStory->Nodes[TaskIndex].Get<const FMetaStoryTaskBase>();
 
 					// Ignore disabled task
 					if (Task.bTaskEnabled == false)
@@ -3943,15 +3943,15 @@ void FMetaStoryExecutionContext::TickGlobalEvaluatorsForFrameInternal(const floa
 {
 	check(Frame.bIsGlobalFrame);
 
-	const UMetaStory* CurrentStateTree = Frame.MetaStory;
-	const int32 EvaluatorEnd = CurrentStateTree->EvaluatorsBegin + CurrentStateTree->EvaluatorsNum;
-	if (CurrentStateTree->EvaluatorsBegin < EvaluatorEnd)
+	const UMetaStory* CurrentMetaStory = Frame.MetaStory;
+	const int32 EvaluatorEnd = CurrentMetaStory->EvaluatorsBegin + CurrentMetaStory->EvaluatorsNum;
+	if (CurrentMetaStory->EvaluatorsBegin < EvaluatorEnd)
 	{
 		FCurrentlyProcessedFrameScope FrameScope(*this, ParentFrame, Frame);
 
-		for (int32 EvalIndex = CurrentStateTree->EvaluatorsBegin; EvalIndex < EvaluatorEnd; ++EvalIndex)
+		for (int32 EvalIndex = CurrentMetaStory->EvaluatorsBegin; EvalIndex < EvaluatorEnd; ++EvalIndex)
 		{
-			const FMetaStoryEvaluatorBase& Eval = CurrentStateTree->Nodes[EvalIndex].Get<const FMetaStoryEvaluatorBase>();
+			const FMetaStoryEvaluatorBase& Eval = CurrentMetaStory->Nodes[EvalIndex].Get<const FMetaStoryEvaluatorBase>();
 			FMetaStoryDataView EvalInstanceView = bOnActiveInstances
 				? GetDataView(ParentFrame, Frame, Eval.InstanceDataHandle)
 				: GetDataViewOrTemporary(ParentFrame, Frame, Eval.InstanceDataHandle);
@@ -3971,11 +3971,11 @@ void FMetaStoryExecutionContext::TickGlobalEvaluatorsForFrameInternal(const floa
 			}
 
 			METASTORY_LOG(VeryVerbose, TEXT("  Tick: '%s'"), *Eval.Name.ToString());
-			UE_STATETREE_DEBUG_EVALUATOR_TICK(this, CurrentStateTree, EvalIndex);
+			UE_METASTORY_DEBUG_EVALUATOR_TICK(this, CurrentMetaStory, EvalIndex);
 			{
 				QUICK_SCOPE_CYCLE_COUNTER(MetaStory_Eval_Tick);
 				Eval.Tick(*this, DeltaTime);
-				UE_STATETREE_DEBUG_EVALUATOR_EVENT(this, EvalIndex, EvalInstanceView, EMetaStoryTraceEventType::OnTicked);
+				UE_METASTORY_DEBUG_EVALUATOR_EVENT(this, EvalIndex, EvalInstanceView, EMetaStoryTraceEventType::OnTicked);
 			}
 
 			// Copy bound properties.
@@ -4001,7 +4001,7 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::TickEvaluatorsAndGlobalTasks(con
 	// When a global task fails, stop ticking the following tasks.
 
 	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(MetaStory_TickEvaluators);
-	UE_STATETREE_DEBUG_SCOPED_PHASE(this, EMetaStoryUpdatePhase::TickingGlobalTasks);
+	UE_METASTORY_DEBUG_SCOPED_PHASE(this, EMetaStoryUpdatePhase::TickingGlobalTasks);
 
 	METASTORY_LOG(VeryVerbose, TEXT("Ticking Evaluators & Global Tasks"));
 
@@ -4044,18 +4044,18 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::TickEvaluatorsAndGlobalTasksForF
 	{
 		using namespace UE::MetaStory;
 
-		const UMetaStory* CurrentStateTree = CurrentFrame->MetaStory;
-		FTasksCompletionStatus CurrentGlobalTasksStatus = CurrentFrame->ActiveTasksStatus.GetStatus(CurrentStateTree);
+		const UMetaStory* CurrentMetaStory = CurrentFrame->MetaStory;
+		FTasksCompletionStatus CurrentGlobalTasksStatus = CurrentFrame->ActiveTasksStatus.GetStatus(CurrentMetaStory);
 		if (!CurrentGlobalTasksStatus.HasAnyFailed())
 		{
 			const bool bHasEvents = EventQueue && EventQueue->HasEvents();
-			if (ExecutionContext::Private::bCopyBoundPropertiesOnNonTickedTask || CurrentStateTree->ShouldTickGlobalTasks(bHasEvents))
+			if (ExecutionContext::Private::bCopyBoundPropertiesOnNonTickedTask || CurrentMetaStory->ShouldTickGlobalTasks(bHasEvents))
 			{
 				// Update Tasks data and tick if possible (ie. if no task has yet failed and bShouldTickTasks is true)
 				FTickTaskArguments TickArgs;
 				TickArgs.DeltaTime = DeltaTime;
-				TickArgs.TasksBegin = CurrentStateTree->GlobalTasksBegin;
-				TickArgs.TasksNum = CurrentStateTree->GlobalTasksNum;
+				TickArgs.TasksBegin = CurrentMetaStory->GlobalTasksBegin;
+				TickArgs.TasksNum = CurrentMetaStory->GlobalTasksNum;
 				TickArgs.Indent = FrameIndex + 1;
 				TickArgs.ParentFrame = CurrentParentFrame;
 				TickArgs.Frame = CurrentFrame;
@@ -4095,27 +4095,27 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::StartGlobalsForFrameInternal(con
 	}
 
 	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(MetaStory_StartEvaluators);
-	UE_STATETREE_DEBUG_SCOPED_PHASE(this, EMetaStoryUpdatePhase::StartGlobalTasks);
+	UE_METASTORY_DEBUG_SCOPED_PHASE(this, EMetaStoryUpdatePhase::StartGlobalTasks);
 
 	FMetaStoryExecutionState& Exec = GetExecState();
 	FCurrentlyProcessedFrameScope FrameScope(*this, CurrentParentFrame, CurrentFrame);
 	if constexpr (!bOnActiveInstances)
 	{
-		UE_STATETREE_DEBUG_ENTER_PHASE(this, EMetaStoryUpdatePhase::StartGlobalTasksForSelection);
+		UE_METASTORY_DEBUG_ENTER_PHASE(this, EMetaStoryUpdatePhase::StartGlobalTasksForSelection);
 	}
 
 	CurrentFrame.bHaveEntered = true;
 
 	EMetaStoryRunStatus Result = EMetaStoryRunStatus::Running;
 	const UE::MetaStory::FActiveFrameID CurrentFrameID = CurrentFrame.FrameID;
-	const UMetaStory* CurrentStateTree = CurrentFrame.MetaStory;
-	UE::MetaStory::FTasksCompletionStatus CurrentTasksStatus = CurrentFrame.ActiveTasksStatus.GetStatus(CurrentStateTree);
+	const UMetaStory* CurrentMetaStory = CurrentFrame.MetaStory;
+	UE::MetaStory::FTasksCompletionStatus CurrentTasksStatus = CurrentFrame.ActiveTasksStatus.GetStatus(CurrentMetaStory);
 
 	// Start evaluators
-	const int32 EvaluatorsEnd = CurrentStateTree->EvaluatorsBegin + CurrentStateTree->EvaluatorsNum;
-	for (int32 EvalIndex = CurrentStateTree->EvaluatorsBegin; EvalIndex < EvaluatorsEnd; ++EvalIndex)
+	const int32 EvaluatorsEnd = CurrentMetaStory->EvaluatorsBegin + CurrentMetaStory->EvaluatorsNum;
+	for (int32 EvalIndex = CurrentMetaStory->EvaluatorsBegin; EvalIndex < EvaluatorsEnd; ++EvalIndex)
 	{
-		const FMetaStoryEvaluatorBase& Eval = CurrentStateTree->Nodes[EvalIndex].Get<const FMetaStoryEvaluatorBase>();
+		const FMetaStoryEvaluatorBase& Eval = CurrentMetaStory->Nodes[EvalIndex].Get<const FMetaStoryEvaluatorBase>();
 		FMetaStoryDataView EvalInstanceView = bOnActiveInstances
 			? GetDataView(CurrentParentFrame, CurrentFrame, Eval.InstanceDataHandle)
 			: GetDataViewOrTemporary(CurrentParentFrame, CurrentFrame, Eval.InstanceDataHandle);
@@ -4145,12 +4145,12 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::StartGlobalsForFrameInternal(con
 		}
 
 		METASTORY_LOG(Verbose, TEXT("  Start: '%s'"), *Eval.Name.ToString());
-		UE_STATETREE_DEBUG_EVALUATOR_ENTER_TREE(this, CurrentStateTree, FMetaStoryIndex16(EvalIndex));
+		UE_METASTORY_DEBUG_EVALUATOR_ENTER_TREE(this, CurrentMetaStory, FMetaStoryIndex16(EvalIndex));
 		{
 			QUICK_SCOPE_CYCLE_COUNTER(MetaStory_Eval_TreeStart);
 			Eval.TreeStart(*this);
 
-			UE_STATETREE_DEBUG_EVALUATOR_EVENT(this, EvalIndex, EvalInstanceView, EMetaStoryTraceEventType::OnTreeStarted);
+			UE_METASTORY_DEBUG_EVALUATOR_EVENT(this, EvalIndex, EvalInstanceView, EMetaStoryTraceEventType::OnTreeStarted);
 		}
 
 		// Copy output bound properties.
@@ -4169,10 +4169,10 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::StartGlobalsForFrameInternal(con
 
 	// Start Global tasks
 	// Even if we call Enter/ExitState() on global tasks, they do not enter any specific state.
-	for (int32 GlobalTaskIndex = 0; GlobalTaskIndex < CurrentStateTree->GlobalTasksNum; ++GlobalTaskIndex)
+	for (int32 GlobalTaskIndex = 0; GlobalTaskIndex < CurrentMetaStory->GlobalTasksNum; ++GlobalTaskIndex)
 	{
-		const int32 AssetTaskIndex = CurrentStateTree->GlobalTasksBegin + GlobalTaskIndex;
-		const FMetaStoryTaskBase& Task = CurrentStateTree->Nodes[AssetTaskIndex].Get<const FMetaStoryTaskBase>();
+		const int32 AssetTaskIndex = CurrentMetaStory->GlobalTasksBegin + GlobalTaskIndex;
+		const FMetaStoryTaskBase& Task = CurrentMetaStory->Nodes[AssetTaskIndex].Get<const FMetaStoryTaskBase>();
 
 		// Ignore disabled task
 		if (Task.bTaskEnabled == false)
@@ -4210,7 +4210,7 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::StartGlobalsForFrameInternal(con
 		}
 
 		METASTORY_LOG(Verbose, TEXT("  Start: '%s'"), *Task.Name.ToString());
-		UE_STATETREE_DEBUG_TASK_ENTER_STATE(this, CurrentStateTree, FMetaStoryIndex16(AssetTaskIndex));
+		UE_METASTORY_DEBUG_TASK_ENTER_STATE(this, CurrentMetaStory, FMetaStoryIndex16(AssetTaskIndex));
 
 		EMetaStoryRunStatus TaskRunStatus = EMetaStoryRunStatus::Unset;
 		{
@@ -4222,7 +4222,7 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::StartGlobalsForFrameInternal(con
 		TaskStatus = CurrentTasksStatus.SetStatusWithPriority(GlobalTaskIndex, TaskStatus);
 
 		TaskRunStatus = UE::MetaStory::ExecutionContext::CastToRunStatus(TaskStatus);
-		UE_STATETREE_DEBUG_TASK_EVENT(this, AssetTaskIndex, TaskDataView, EMetaStoryTraceEventType::OnEntered, TaskRunStatus);
+		UE_METASTORY_DEBUG_TASK_EVENT(this, AssetTaskIndex, TaskDataView, EMetaStoryTraceEventType::OnEntered, TaskRunStatus);
 
 		// Copy output bound properties if the task didn't fail
 		if (TaskRunStatus != EMetaStoryRunStatus::Failed && Task.OutputBindingsBatch.IsValid())
@@ -4249,7 +4249,7 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::StartGlobalsForFrameInternal(con
 
 	if constexpr (!bOnActiveInstances)
 	{
-		UE_STATETREE_DEBUG_EXIT_PHASE(this, EMetaStoryUpdatePhase::StartGlobalTasksForSelection);
+		UE_METASTORY_DEBUG_EXIT_PHASE(this, EMetaStoryUpdatePhase::StartGlobalTasksForSelection);
 	}
 
 	return Result;
@@ -4263,7 +4263,7 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::StartEvaluatorsAndGlobalTasks(FM
 
 EMetaStoryRunStatus FMetaStoryExecutionContext::StartEvaluatorsAndGlobalTasks()
 {
-	UE_STATETREE_DEBUG_SCOPED_PHASE(this, EMetaStoryUpdatePhase::StartGlobalTasks);
+	UE_METASTORY_DEBUG_SCOPED_PHASE(this, EMetaStoryUpdatePhase::StartGlobalTasks);
 
 	METASTORY_LOG(Verbose, TEXT("Start Evaluators & Global tasks"));
 
@@ -4308,7 +4308,7 @@ void FMetaStoryExecutionContext::StopEvaluatorsAndGlobalTasks(const EMetaStoryRu
 void FMetaStoryExecutionContext::StopEvaluatorsAndGlobalTasks(const EMetaStoryRunStatus CompletionStatus)
 {
 	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(MetaStory_StopEvaluators);
-	UE_STATETREE_DEBUG_SCOPED_PHASE(this, EMetaStoryUpdatePhase::StopGlobalTasks);
+	UE_METASTORY_DEBUG_SCOPED_PHASE(this, EMetaStoryUpdatePhase::StopGlobalTasks);
 
 	METASTORY_LOG(Verbose, TEXT("Stop Evaluators & Global Tasks"));
 
@@ -4357,17 +4357,17 @@ void FMetaStoryExecutionContext::StopGlobalsForFrameInternal(const FMetaStoryExe
 	FCurrentlyProcessedFrameScope FrameScope(*this, ParentFrame, Frame);
 	if constexpr (bOnActiveInstances)
 	{
-		UE_STATETREE_DEBUG_ENTER_PHASE(this, EMetaStoryUpdatePhase::StopGlobalTasksForSelection);
+		UE_METASTORY_DEBUG_ENTER_PHASE(this, EMetaStoryUpdatePhase::StopGlobalTasksForSelection);
 	}
 
-	const UMetaStory* CurrentStateTree = Frame.MetaStory;
+	const UMetaStory* CurrentMetaStory = Frame.MetaStory;
 
-	const int32 GlobalTasksEnd = CurrentStateTree->GlobalTasksBegin + CurrentStateTree->GlobalTasksNum;
-	for (int32 TaskIndex = GlobalTasksEnd - 1; TaskIndex >= CurrentStateTree->GlobalTasksBegin; --TaskIndex)
+	const int32 GlobalTasksEnd = CurrentMetaStory->GlobalTasksBegin + CurrentMetaStory->GlobalTasksNum;
+	for (int32 TaskIndex = GlobalTasksEnd - 1; TaskIndex >= CurrentMetaStory->GlobalTasksBegin; --TaskIndex)
 	{
 		if (TaskIndex <= Frame.ActiveNodeIndex.AsInt32())
 		{
-			const FMetaStoryTaskBase& Task = CurrentStateTree->Nodes[TaskIndex].Get<const FMetaStoryTaskBase>();
+			const FMetaStoryTaskBase& Task = CurrentMetaStory->Nodes[TaskIndex].Get<const FMetaStoryTaskBase>();
 			const FMetaStoryDataView TaskInstanceView = bOnActiveInstances
 				? GetDataView(ParentFrame, Frame, Task.InstanceDataHandle)
 				: GetDataViewOrTemporary(ParentFrame, Frame, Task.InstanceDataHandle);
@@ -4381,7 +4381,7 @@ void FMetaStoryExecutionContext::StopGlobalsForFrameInternal(const FMetaStoryExe
 			else
 			{
 				METASTORY_LOG(Verbose, TEXT("  Stop: '%s'"), *Task.Name.ToString());
-				UE_STATETREE_DEBUG_TASK_EXIT_STATE(this, CurrentStateTree, FMetaStoryIndex16(TaskIndex));
+				UE_METASTORY_DEBUG_TASK_EXIT_STATE(this, CurrentMetaStory, FMetaStoryIndex16(TaskIndex));
 				{
 					QUICK_SCOPE_CYCLE_COUNTER(MetaStory_Task_TreeStop);
 					Task.ExitState(*this, Transition);
@@ -4399,25 +4399,25 @@ void FMetaStoryExecutionContext::StopGlobalsForFrameInternal(const FMetaStoryExe
 					}
 				}
 
-				UE_STATETREE_DEBUG_TASK_EVENT(this, TaskIndex, TaskInstanceView, EMetaStoryTraceEventType::OnExited, Transition.CurrentRunStatus);
+				UE_METASTORY_DEBUG_TASK_EVENT(this, TaskIndex, TaskInstanceView, EMetaStoryTraceEventType::OnExited, Transition.CurrentRunStatus);
 			}
 		}
 		Frame.ActiveNodeIndex = FMetaStoryIndex16(TaskIndex - 1);
 	}
 
-	const int32 EvaluatorsEnd = CurrentStateTree->EvaluatorsBegin + CurrentStateTree->EvaluatorsNum;
-	for (int32 EvalIndex = EvaluatorsEnd - 1; EvalIndex >= CurrentStateTree->EvaluatorsBegin; --EvalIndex)
+	const int32 EvaluatorsEnd = CurrentMetaStory->EvaluatorsBegin + CurrentMetaStory->EvaluatorsNum;
+	for (int32 EvalIndex = EvaluatorsEnd - 1; EvalIndex >= CurrentMetaStory->EvaluatorsBegin; --EvalIndex)
 	{
 		if (EvalIndex <= Frame.ActiveNodeIndex.AsInt32())
 		{
-			const FMetaStoryEvaluatorBase& Eval = CurrentStateTree->Nodes[EvalIndex].Get<const FMetaStoryEvaluatorBase>();
+			const FMetaStoryEvaluatorBase& Eval = CurrentMetaStory->Nodes[EvalIndex].Get<const FMetaStoryEvaluatorBase>();
 			const FMetaStoryDataView EvalInstanceView = bOnActiveInstances
 				? GetDataView(ParentFrame, Frame, Eval.InstanceDataHandle)
 				: GetDataViewOrTemporary(ParentFrame, Frame, Eval.InstanceDataHandle);
 			FNodeInstanceDataScope DataScope(*this, &Eval, EvalIndex, Eval.InstanceDataHandle, EvalInstanceView);
 
 			METASTORY_LOG(Verbose, TEXT("  Stop: '%s'"), *Eval.Name.ToString());
-			UE_STATETREE_DEBUG_EVALUATOR_EXIT_TREE(this, CurrentStateTree, FMetaStoryIndex16(EvalIndex));
+			UE_METASTORY_DEBUG_EVALUATOR_EXIT_TREE(this, CurrentMetaStory, FMetaStoryIndex16(EvalIndex));
 			{
 				QUICK_SCOPE_CYCLE_COUNTER(MetaStory_Eval_TreeStop);
 				Eval.TreeStop(*this);
@@ -4434,7 +4434,7 @@ void FMetaStoryExecutionContext::StopGlobalsForFrameInternal(const FMetaStoryExe
 					}
 				}
 
-				UE_STATETREE_DEBUG_EVALUATOR_EVENT(this, EvalIndex, EvalInstanceView, EMetaStoryTraceEventType::OnTreeStopped);
+				UE_METASTORY_DEBUG_EVALUATOR_EVENT(this, EvalIndex, EvalInstanceView, EMetaStoryTraceEventType::OnTreeStopped);
 			}
 		}
 		Frame.ActiveNodeIndex = FMetaStoryIndex16(EvalIndex - 1);
@@ -4445,7 +4445,7 @@ void FMetaStoryExecutionContext::StopGlobalsForFrameInternal(const FMetaStoryExe
 
 	if constexpr (bOnActiveInstances)
 	{
-		UE_STATETREE_DEBUG_EXIT_PHASE(this, EMetaStoryUpdatePhase::StopGlobalTasksForSelection);
+		UE_METASTORY_DEBUG_EXIT_PHASE(this, EMetaStoryUpdatePhase::StopGlobalTasksForSelection);
 	}
 }
 
@@ -4482,7 +4482,7 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::TickTasks(const float DeltaTime)
 	// When no task ticks, then the leaf completes.
 
 	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(MetaStory_TickTasks);
-	UE_STATETREE_DEBUG_SCOPED_PHASE(this, EMetaStoryUpdatePhase::TickingTasks);
+	UE_METASTORY_DEBUG_SCOPED_PHASE(this, EMetaStoryUpdatePhase::TickingTasks);
 
 	using namespace UE::MetaStory;
 
@@ -4508,7 +4508,7 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::TickTasks(const float DeltaTime)
 	{
 		TickArgs.ParentFrame = FrameIndex > 0 ? &Exec.ActiveFrames[FrameIndex - 1] : nullptr;
 		TickArgs.Frame = &Exec.ActiveFrames[FrameIndex];
-		const UMetaStory* CurrentStateTree = TickArgs.Frame->MetaStory;
+		const UMetaStory* CurrentMetaStory = TickArgs.Frame->MetaStory;
 
 		FCurrentlyProcessedFrameScope FrameScope(*this, TickArgs.ParentFrame, *TickArgs.Frame);
 
@@ -4534,14 +4534,14 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::TickTasks(const float DeltaTime)
 		for (int32 StateIndex = 0; StateIndex < TickArgs.Frame->ActiveStates.Num(); ++StateIndex)
 		{
 			const FMetaStoryStateHandle CurrentHandle = TickArgs.Frame->ActiveStates[StateIndex];
-			const FMetaStoryCompactState& CurrentState = CurrentStateTree->States[CurrentHandle.Index];
+			const FMetaStoryCompactState& CurrentState = CurrentMetaStory->States[CurrentHandle.Index];
 			FTasksCompletionStatus CurrentCompletionStatus = TickArgs.Frame->ActiveTasksStatus.GetStatus(CurrentState);
 
 			TickArgs.StateID = TickArgs.Frame->ActiveStates.StateIDs[StateIndex];
 			TickArgs.TasksCompletionStatus = &CurrentCompletionStatus;
 
 			FCurrentlyProcessedStateScope StateScope(*this, CurrentHandle);
-			UE_STATETREE_DEBUG_SCOPED_STATE(this, CurrentHandle);
+			UE_METASTORY_DEBUG_SCOPED_STATE(this, CurrentHandle);
 
 			METASTORY_CLOG(CurrentState.TasksNum > 0, VeryVerbose, TEXT("%*sState '%s'")
 				, (FrameIndex + StateIndex + 1) * Debug::IndentSize, TEXT("")
@@ -4593,10 +4593,10 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::TickTasks(const float DeltaTime)
 		using namespace UE::MetaStory::ExecutionContext::Private;
 
 		const FMetaStoryExecutionFrame& CurrentFrame = Exec.ActiveFrames[FrameIndex];
-		const UMetaStory* CurrentStateTree = CurrentFrame.MetaStory;
+		const UMetaStory* CurrentMetaStory = CurrentFrame.MetaStory;
 		if (CurrentFrame.bIsGlobalFrame)
 		{
-			const ETaskCompletionStatus GlobalTasksStatus = CurrentFrame.ActiveTasksStatus.GetStatus(CurrentStateTree).GetCompletionStatus();
+			const ETaskCompletionStatus GlobalTasksStatus = CurrentFrame.ActiveTasksStatus.GetStatus(CurrentMetaStory).GetCompletionStatus();
 			if (FrameIndex == 0)
 			{
 				FirstFrameResult = CastToRunStatus(GlobalTasksStatus);
@@ -4607,7 +4607,7 @@ EMetaStoryRunStatus FMetaStoryExecutionContext::TickTasks(const float DeltaTime)
 		for (int32 StateIndex = 0; StateIndex < CurrentFrame.ActiveStates.Num() && StateResult != EMetaStoryRunStatus::Failed; ++StateIndex)
 		{
 			const FMetaStoryStateHandle CurrentHandle = CurrentFrame.ActiveStates[StateIndex];
-			const FMetaStoryCompactState& State = CurrentStateTree->States[CurrentHandle.Index];
+			const FMetaStoryCompactState& State = CurrentMetaStory->States[CurrentHandle.Index];
 			const ETaskCompletionStatus StateTasksStatus = CurrentFrame.ActiveTasksStatus.GetStatus(State).GetCompletionStatus();
 			StateResult = GetPriorityRunStatus(StateResult, CastToRunStatus(StateTasksStatus));
 		}
@@ -4662,15 +4662,15 @@ FMetaStoryExecutionContext::FTickTaskResult FMetaStoryExecutionContext::TickTask
 
 	FMetaStoryExecutionState& Exec = GetExecState();
 	const bool bCopyBoundPropertiesOnNonTickedTask = ExecutionContext::Private::bCopyBoundPropertiesOnNonTickedTask;
-	const UMetaStory* CurrentStateTree = Args.Frame->MetaStory;
+	const UMetaStory* CurrentMetaStory = Args.Frame->MetaStory;
 	const FActiveFrameID CurrentFrameID = Args.Frame->FrameID;
 	const int32 CurrentActiveNodeIndex = Args.Frame->ActiveNodeIndex.AsInt32();
-	check(CurrentStateTree);
+	check(CurrentMetaStory);
 
 	for (int32 OwnerTaskIndex = 0; OwnerTaskIndex < Args.TasksNum; ++OwnerTaskIndex)
 	{
 		const int32 AssetTaskIndex = Args.TasksBegin + OwnerTaskIndex;
-		const FMetaStoryTaskBase& Task = CurrentStateTree->Nodes[AssetTaskIndex].Get<const FMetaStoryTaskBase>();
+		const FMetaStoryTaskBase& Task = CurrentMetaStory->Nodes[AssetTaskIndex].Get<const FMetaStoryTaskBase>();
 
 		// Ignore disabled task
 		if (Task.bTaskEnabled == false)
@@ -4719,8 +4719,8 @@ FMetaStoryExecutionContext::FTickTaskResult FMetaStoryExecutionContext::TickTask
 			continue;
 		}
 
-		//UE_STATETREE_DEBUG_TASK_EVENT(this, AssetTaskIndex, TaskDataView, EMetaStoryTraceEventType::OnTickingTask, EMetaStoryRunStatus::Running);
-		UE_STATETREE_DEBUG_TASK_TICK(this, CurrentStateTree, AssetTaskIndex);
+		//UE_METASTORY_DEBUG_TASK_EVENT(this, AssetTaskIndex, TaskDataView, EMetaStoryTraceEventType::OnTickingTask, EMetaStoryRunStatus::Running);
+		UE_METASTORY_DEBUG_TASK_TICK(this, CurrentMetaStory, AssetTaskIndex);
 
 		EMetaStoryRunStatus TaskRunStatus = EMetaStoryRunStatus::Unset;
 		{
@@ -4743,7 +4743,7 @@ FMetaStoryExecutionContext::FTickTaskResult FMetaStoryExecutionContext::TickTask
 			CopyBatchOnActiveInstances(Args.ParentFrame, *Args.Frame, TaskInstanceView, Task.OutputBindingsBatch);
 		}
 
-		UE_STATETREE_DEBUG_TASK_EVENT(this, AssetTaskIndex, TaskInstanceView,
+		UE_METASTORY_DEBUG_TASK_EVENT(this, AssetTaskIndex, TaskInstanceView,
 			TaskRunStatus != EMetaStoryRunStatus::Running ? EMetaStoryTraceEventType::OnTaskCompleted : EMetaStoryTraceEventType::OnTicked,
 			TaskRunStatus);
 
@@ -4792,7 +4792,7 @@ bool FMetaStoryExecutionContext::TestAllConditionsInternal(const FMetaStoryExecu
 	FCurrentlyProcessedFrameScope FrameScope(*this, CurrentParentFrame, CurrentFrame);
 	FCurrentlyProcessedStateScope StateScope(*this, CurrentStateHandle);
 
-	UE_STATETREE_DEBUG_SCOPED_PHASE(this, Phase);
+	UE_METASTORY_DEBUG_SCOPED_PHASE(this, Phase);
 
 	TStaticArray<EMetaStoryExpressionOperand, UE::MetaStory::MaxExpressionIndent + 1> Operands(InPlace, EMetaStoryExpressionOperand::Copy);
 	TStaticArray<bool, UE::MetaStory::MaxExpressionIndent + 1> Values(InPlace, false);
@@ -4832,18 +4832,18 @@ bool FMetaStoryExecutionContext::TestAllConditionsInternal(const FMetaStoryExecu
 				{
 					// If the source data cannot be accessed, the whole expression evaluates to false.
 					static constexpr TCHAR Message[] = TEXT("Evaluation forced to false: source data cannot be accessed (e.g. enter conditions trying to access inactive parent state)");
-					UE_STATETREE_DEBUG_CONDITION_EVENT(this, ConditionIndex, ConditionInstanceView, EMetaStoryTraceEventType::InternalForcedFailure);
-					UE_STATETREE_DEBUG_LOG_EVENT(this, Warning, Message);
+					UE_METASTORY_DEBUG_CONDITION_EVENT(this, ConditionIndex, ConditionInstanceView, EMetaStoryTraceEventType::InternalForcedFailure);
+					UE_METASTORY_DEBUG_LOG_EVENT(this, Warning, Message);
 					METASTORY_LOG(Warning, TEXT("%s"), Message);
 					Values[0] = false;
 					break;
 				}
 			}
 
-			UE_STATETREE_DEBUG_CONDITION_TEST_CONDITION(this, CurrentFrame.MetaStory, Index);
+			UE_METASTORY_DEBUG_CONDITION_TEST_CONDITION(this, CurrentFrame.MetaStory, Index);
 
 			bValue = Cond.TestCondition(*this);
-			UE_STATETREE_DEBUG_CONDITION_EVENT(this, ConditionIndex, ConditionInstanceView, bValue ? EMetaStoryTraceEventType::Passed : EMetaStoryTraceEventType::Failed);
+			UE_METASTORY_DEBUG_CONDITION_EVENT(this, ConditionIndex, ConditionInstanceView, bValue ? EMetaStoryTraceEventType::Passed : EMetaStoryTraceEventType::Failed);
 
 			// Reset copied properties that might contain object references.
 			if (Cond.BindingsBatch.IsValid())
@@ -4854,7 +4854,7 @@ bool FMetaStoryExecutionContext::TestAllConditionsInternal(const FMetaStoryExecu
 		else
 		{
 			bValue = Cond.EvaluationMode == EMetaStoryConditionEvaluationMode::ForcedTrue;
-			UE_STATETREE_DEBUG_CONDITION_EVENT(this, ConditionIndex, FMetaStoryDataView{}, bValue ? EMetaStoryTraceEventType::ForcedSuccess : EMetaStoryTraceEventType::ForcedFailure);
+			UE_METASTORY_DEBUG_CONDITION_EVENT(this, ConditionIndex, FMetaStoryDataView{}, bValue ? EMetaStoryTraceEventType::ForcedSuccess : EMetaStoryTraceEventType::ForcedFailure);
 		}
 
 		const int32 DeltaIndent = Cond.DeltaIndent;
@@ -5342,7 +5342,7 @@ PRAGMA_DISABLE_DEPRECATION_WARNINGS
 		{
 			OutTransitionResult.SourceState = SourceFrame.ActiveStates.FindStateHandle(SourceStateID);
 		}
-		OutTransitionResult.SourceStateTree = SourceFrame.MetaStory;
+		OutTransitionResult.SourceMetaStory = SourceFrame.MetaStory;
 		OutTransitionResult.SourceRootState = SourceFrame.RootState;
 
 		FMetaStoryExecutionFrame& NewFrame = OutTransitionResult.NextActiveFrames.AddDefaulted_GetRef();
@@ -5372,7 +5372,7 @@ bool FMetaStoryExecutionContext::TriggerTransitions()
 	//4. If transition occurs, check if there are any frame (sub-tree) that completed.
 
 	CSV_SCOPED_TIMING_STAT_EXCLUSIVE(MetaStory_TriggerTransition);
-	UE_STATETREE_DEBUG_SCOPED_PHASE(this, EMetaStoryUpdatePhase::TriggerTransitions);
+	UE_METASTORY_DEBUG_SCOPED_PHASE(this, EMetaStoryUpdatePhase::TriggerTransitions);
 
 	// Set flag for the scope of this function to allow direct transitions without buffering.
 	FAllowDirectTransitionsScope AllowDirectTransitionsScope(*this);
@@ -5382,7 +5382,7 @@ bool FMetaStoryExecutionContext::TriggerTransitions()
 	if (EventQueue && EventQueue->HasEvents())
 	{
 		METASTORY_LOG(Verbose, TEXT("Trigger transitions with events: %s"), *DebugGetEventsAsString());
-		UE_STATETREE_DEBUG_LOG_EVENT(this, Log, TEXT("Trigger transitions with events: %s"), *DebugGetEventsAsString());
+		UE_METASTORY_DEBUG_LOG_EVENT(this, Log, TEXT("Trigger transitions with events: %s"), *DebugGetEventsAsString());
 	}
 
 	RequestedTransition.Reset();
@@ -5476,14 +5476,14 @@ bool FMetaStoryExecutionContext::TriggerTransitions()
 		for (int32 FrameIndex = EndFrameIndex; FrameIndex >= 0; FrameIndex--)
 		{
 			FMetaStoryExecutionFrame& CurrentFrame = Exec.ActiveFrames[FrameIndex];
-			const UMetaStory* CurrentStateTree = CurrentFrame.MetaStory;
+			const UMetaStory* CurrentMetaStory = CurrentFrame.MetaStory;
 			const int32 CurrentActiveNodeIndex = CurrentFrame.ActiveNodeIndex.AsInt32();
 
 			for (int32 StateIndex = CurrentFrame.ActiveStates.Num() - 1; StateIndex >= 0; StateIndex--)
 			{
 				const FMetaStoryStateHandle StateHandle = CurrentFrame.ActiveStates[StateIndex];
 				const UE::MetaStory::FActiveStateID StateID = CurrentFrame.ActiveStates.StateIDs[StateIndex];
-				const FMetaStoryCompactState& State = CurrentStateTree->States[StateHandle.Index];
+				const FMetaStoryCompactState& State = CurrentMetaStory->States[StateHandle.Index];
 
 				checkf(State.bEnabled, TEXT("Only enabled states are in ActiveStates."));
 
@@ -5493,14 +5493,14 @@ bool FMetaStoryExecutionContext::TriggerTransitions()
 					bool bAdded = false;
 					for (int32 TaskIndex = (State.TasksBegin + State.TasksNum) - 1; TaskIndex >= State.TasksBegin; TaskIndex--)
 					{
-						const FMetaStoryTaskBase& Task = CurrentStateTree->Nodes[TaskIndex].Get<const FMetaStoryTaskBase>();
+						const FMetaStoryTaskBase& Task = CurrentMetaStory->Nodes[TaskIndex].Get<const FMetaStoryTaskBase>();
 						if (Task.bShouldAffectTransitions && Task.bTaskEnabled && TaskIndex <= CurrentActiveNodeIndex)
 						{
 							TransitionHandlers.Emplace(FrameIndex, StateHandle, StateID, FMetaStoryIndex16(TaskIndex), Task.TransitionHandlingPriority);
 							bAdded = true;
 						}
 					}
-					ensureMsgf(bAdded, TEXT("bHasTransitionTasks is set but not task were added for the State: '%s' inside theStateTree %s"), *State.Name.ToString(), *CurrentStateTree->GetPathName());
+					ensureMsgf(bAdded, TEXT("bHasTransitionTasks is set but not task were added for the State: '%s' inside the MetaStory %s"), *State.Name.ToString(), *CurrentMetaStory->GetPathName());
 				}
 
 				// Has expired transition delayed.
@@ -5524,16 +5524,16 @@ bool FMetaStoryExecutionContext::TriggerTransitions()
 				if (CurrentFrame.MetaStory->bHasGlobalTransitionTasks)
 				{
 					bool bAdded = false;
-					for (int32 TaskIndex = (CurrentStateTree->GlobalTasksBegin + CurrentStateTree->GlobalTasksNum) - 1; TaskIndex >= CurrentFrame.MetaStory->GlobalTasksBegin; TaskIndex--)
+					for (int32 TaskIndex = (CurrentMetaStory->GlobalTasksBegin + CurrentMetaStory->GlobalTasksNum) - 1; TaskIndex >= CurrentFrame.MetaStory->GlobalTasksBegin; TaskIndex--)
 					{
-						const FMetaStoryTaskBase& Task = CurrentStateTree->Nodes[TaskIndex].Get<const FMetaStoryTaskBase>();
+						const FMetaStoryTaskBase& Task = CurrentMetaStory->Nodes[TaskIndex].Get<const FMetaStoryTaskBase>();
 						if (Task.bShouldAffectTransitions && Task.bTaskEnabled)
 						{
 							TransitionHandlers.Emplace(FrameIndex, FMetaStoryStateHandle(), UE::MetaStory::FActiveStateID::Invalid, FMetaStoryIndex16(TaskIndex), Task.TransitionHandlingPriority);
 							bAdded = true;
 						}
 					}
-					ensureMsgf(bAdded, TEXT("bHasGlobalTransitionTasks is set but not task were added for the MetaStory `%s`"), *CurrentStateTree->GetPathName());
+					ensureMsgf(bAdded, TEXT("bHasGlobalTransitionTasks is set but not task were added for the MetaStory `%s`"), *CurrentMetaStory->GetPathName());
 				}
 			}
 		}
@@ -5551,15 +5551,15 @@ bool FMetaStoryExecutionContext::TriggerTransitions()
 		FMetaStoryExecutionFrame* CurrentParentFrame = FrameIndex > 0 ? &Exec.ActiveFrames[FrameIndex - 1] : nullptr;
 		FMetaStoryExecutionFrame& CurrentFrame = Exec.ActiveFrames[FrameIndex];
 		const UE::MetaStory::FActiveFrameID CurrentFrameID = CurrentFrame.FrameID;
-		const UMetaStory* CurrentStateTree = CurrentFrame.MetaStory;
+		const UMetaStory* CurrentMetaStory = CurrentFrame.MetaStory;
 
 		FCurrentlyProcessedFrameScope FrameScope(*this, CurrentParentFrame, CurrentFrame);
 		FCurrentlyProcessedStateScope StateScope(*this, Handler.StateHandle);
-		UE_STATETREE_DEBUG_SCOPED_STATE(this, Handler.StateHandle);
+		UE_METASTORY_DEBUG_SCOPED_STATE(this, Handler.StateHandle);
 
 		if (Handler.TaskIndex.IsValid())
 		{
-			const FMetaStoryTaskBase& Task = CurrentStateTree->Nodes[Handler.TaskIndex.Get()].Get<const FMetaStoryTaskBase>();
+			const FMetaStoryTaskBase& Task = CurrentMetaStory->Nodes[Handler.TaskIndex.Get()].Get<const FMetaStoryTaskBase>();
 
 			// Ignore disabled task
 			if (Task.bTaskEnabled == false)
@@ -5578,7 +5578,7 @@ bool FMetaStoryExecutionContext::TriggerTransitions()
 			}
 
 			METASTORY_LOG(VeryVerbose, TEXT("%*sTriggerTransitions: '%s'"), UE::MetaStory::Debug::IndentSize, TEXT(""), *Task.Name.ToString());
-			UE_STATETREE_DEBUG_TASK_EVENT(this, Handler.TaskIndex.Get(), TaskInstanceView, EMetaStoryTraceEventType::OnEvaluating, EMetaStoryRunStatus::Running);
+			UE_METASTORY_DEBUG_TASK_EVENT(this, Handler.TaskIndex.Get(), TaskInstanceView, EMetaStoryTraceEventType::OnEvaluating, EMetaStoryRunStatus::Running);
 			check(TaskInstanceView.IsValid());
 
 			Task.TriggerTransitions(*this);
@@ -5586,14 +5586,14 @@ bool FMetaStoryExecutionContext::TriggerTransitions()
 		else if (Handler.StateHandle.IsValid())
 		{
 			check(Handler.StateID.IsValid());
-			const FMetaStoryCompactState& State = CurrentStateTree->States[Handler.StateHandle.Index];
+			const FMetaStoryCompactState& State = CurrentMetaStory->States[Handler.StateHandle.Index];
 
 			// Transitions
 			for (uint8 TransitionCounter = 0; TransitionCounter < State.TransitionsNum; ++TransitionCounter)
 			{
 				// All transition conditions must pass
 				const int16 TransitionIndex = State.TransitionsBegin + TransitionCounter;
-				const FMetaStoryCompactStateTransition& Transition = CurrentStateTree->Transitions[TransitionIndex];
+				const FMetaStoryCompactStateTransition& Transition = CurrentMetaStory->Transitions[TransitionIndex];
 
 				// Skip disabled transitions
 				if (Transition.bTransitionEnabled == false)
@@ -5659,7 +5659,7 @@ bool FMetaStoryExecutionContext::TriggerTransitions()
 					bool bPassed = false;
 					{
 						FCurrentlyProcessedTransitionEventScope TransitionEventScope(*this, TransitionEvent.IsValid() ? TransitionEvent.Get() : nullptr);
-						UE_STATETREE_DEBUG_TRANSITION_EVENT(this, FMetaStoryTransitionSource(CurrentFrame.MetaStory, FMetaStoryIndex16(TransitionIndex), Transition.State, Transition.Priority), EMetaStoryTraceEventType::OnEvaluating);
+						UE_METASTORY_DEBUG_TRANSITION_EVENT(this, FMetaStoryTransitionSource(CurrentFrame.MetaStory, FMetaStoryIndex16(TransitionIndex), Transition.State, Transition.Priority), EMetaStoryTraceEventType::OnEvaluating);
 						bPassed = TestAllConditionsOnActiveInstances(CurrentParentFrame, CurrentFrame, Handler.StateHandle, Transition.ConditionEvaluationScopeMemoryRequirement, Transition.ConditionsBegin, Transition.ConditionsNum, EMetaStoryUpdatePhase::TransitionConditions);
 					}
 
@@ -5717,7 +5717,7 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 							}
 						}
 
-						UE_STATETREE_DEBUG_TRANSITION_EVENT(this, FMetaStoryTransitionSource(CurrentFrame.MetaStory, FMetaStoryIndex16(TransitionIndex), Transition.State, Transition.Priority), EMetaStoryTraceEventType::OnRequesting);
+						UE_METASTORY_DEBUG_TRANSITION_EVENT(this, FMetaStoryTransitionSource(CurrentFrame.MetaStory, FMetaStoryIndex16(TransitionIndex), Transition.State, Transition.Priority), EMetaStoryTraceEventType::OnRequesting);
 						const UE::MetaStory::ExecutionContext::FStateHandleContext TargetState(CurrentFrame.MetaStory, Transition.State);
 						FTransitionArguments TransitionArgs;
 						TransitionArgs.Priority = Transition.Priority;
@@ -5768,8 +5768,8 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 			using namespace UE::MetaStory::ExecutionContext::Private;
 
 			const FMetaStoryExecutionFrame& CurrentFrame = Exec.ActiveFrames[FrameIndex];
-			const UMetaStory* CurrentStateTree = CurrentFrame.MetaStory;
-			const ETaskCompletionStatus FrameTasksStatus = CurrentFrame.ActiveTasksStatus.GetStatus(CurrentStateTree).GetCompletionStatus();
+			const UMetaStory* CurrentMetaStory = CurrentFrame.MetaStory;
+			const ETaskCompletionStatus FrameTasksStatus = CurrentFrame.ActiveTasksStatus.GetStatus(CurrentMetaStory).GetCompletionStatus();
 			if (CurrentFrame.bIsGlobalFrame && FrameTasksStatus != ETaskCompletionStatus::Running)
 			{
 				if (FrameIndex == 0)
@@ -5806,7 +5806,7 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 			for (int32 StateIndex = 0; StateIndex < CurrentFrame.ActiveStates.Num(); ++StateIndex)
 			{
 				const FMetaStoryStateHandle CurrentHandle = CurrentFrame.ActiveStates[StateIndex];
-				const FMetaStoryCompactState& State = CurrentStateTree->States[CurrentHandle.Index];
+				const FMetaStoryCompactState& State = CurrentMetaStory->States[CurrentHandle.Index];
 				const ETaskCompletionStatus StateTasksStatus = CurrentFrame.ActiveTasksStatus.GetStatus(State).GetCompletionStatus();
 				if (StateTasksStatus != ETaskCompletionStatus::Running)
 				{
@@ -5837,7 +5837,7 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 			{
 				FMetaStoryExecutionFrame* CurrentParentFrame = FrameIndex > 0 ? &Exec.ActiveFrames[FrameIndex - 1] : nullptr;
 				FMetaStoryExecutionFrame& CurrentFrame = Exec.ActiveFrames[FrameIndex];
-				const UMetaStory* CurrentStateTree = CurrentFrame.MetaStory;
+				const UMetaStory* CurrentMetaStory = CurrentFrame.MetaStory;
 
 				FCurrentlyProcessedFrameScope FrameScope(*this, CurrentParentFrame, CurrentFrame);
 
@@ -5848,18 +5848,18 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 				{
 					const FMetaStoryStateHandle CurrentStateHandle = CurrentFrame.ActiveStates[StateIndex];
 					const UE::MetaStory::FActiveStateID CurrentStateID = CurrentFrame.ActiveStates.StateIDs[StateIndex];
-					const FMetaStoryCompactState& CurrentState = CurrentStateTree->States[CurrentStateHandle.Index];
+					const FMetaStoryCompactState& CurrentState = CurrentMetaStory->States[CurrentStateHandle.Index];
 
 					if (CurrentState.ShouldTickCompletionTransitions(bIsCurrentStatusSucceeded, bIsCurrentStatusFailed))
 					{
 						FCurrentlyProcessedStateScope StateScope(*this, CurrentStateHandle);
-						UE_STATETREE_DEBUG_SCOPED_STATE_PHASE(this, CurrentStateHandle, EMetaStoryUpdatePhase::TriggerTransitions);
+						UE_METASTORY_DEBUG_SCOPED_STATE_PHASE(this, CurrentStateHandle, EMetaStoryUpdatePhase::TriggerTransitions);
 
 						for (uint8 TransitionCounter = 0; TransitionCounter < CurrentState.TransitionsNum; ++TransitionCounter)
 						{
 							// All transition conditions must pass
 							const int16 TransitionIndex = CurrentState.TransitionsBegin + TransitionCounter;
-							const FMetaStoryCompactStateTransition& Transition = CurrentStateTree->Transitions[TransitionIndex];
+							const FMetaStoryCompactStateTransition& Transition = CurrentMetaStory->Transitions[TransitionIndex];
 
 							// Skip disabled transitions
 							if (!Transition.bTransitionEnabled)
@@ -5874,7 +5874,7 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 							{
 								bool bPassed = false;
 								{
-									UE_STATETREE_DEBUG_TRANSITION_EVENT(this, FMetaStoryTransitionSource(CurrentFrame.MetaStory, FMetaStoryIndex16(TransitionIndex), Transition.State, Transition.Priority), EMetaStoryTraceEventType::OnEvaluating);
+									UE_METASTORY_DEBUG_TRANSITION_EVENT(this, FMetaStoryTransitionSource(CurrentFrame.MetaStory, FMetaStoryIndex16(TransitionIndex), Transition.State, Transition.Priority), EMetaStoryTraceEventType::OnEvaluating);
 									bPassed = TestAllConditionsOnActiveInstances(CurrentParentFrame, CurrentFrame, CurrentStateHandle, Transition.ConditionEvaluationScopeMemoryRequirement, Transition.ConditionsBegin, Transition.ConditionsNum, EMetaStoryUpdatePhase::TransitionConditions);
 								}
 
@@ -5882,7 +5882,7 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 								{
 									// No delay allowed on completion conditions.
 									// No priority on completion transitions, use the priority to signal that state is selected.
-									UE_STATETREE_DEBUG_TRANSITION_EVENT(this, FMetaStoryTransitionSource(CurrentFrame.MetaStory, FMetaStoryIndex16(TransitionIndex), Transition.State, Transition.Priority), EMetaStoryTraceEventType::OnRequesting);
+									UE_METASTORY_DEBUG_TRANSITION_EVENT(this, FMetaStoryTransitionSource(CurrentFrame.MetaStory, FMetaStoryIndex16(TransitionIndex), Transition.State, Transition.Priority), EMetaStoryTraceEventType::OnRequesting);
 									const UE::MetaStory::ExecutionContext::FStateHandleContext TargetState(CurrentFrame.MetaStory, Transition.State);
 									FTransitionArguments TransitionArgs;
 									TransitionArgs.Priority = EMetaStoryTransitionPriority::Normal;
@@ -5915,7 +5915,7 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 			if (!RequestedTransition.IsValid())
 			{
 				METASTORY_LOG(Verbose, TEXT("Could not trigger completion transition, jump back to root state."));
-				UE_STATETREE_DEBUG_LOG_EVENT(this, Log, TEXT("Could not trigger completion transition, jump back to root state."));
+				UE_METASTORY_DEBUG_LOG_EVENT(this, Log, TEXT("Could not trigger completion transition, jump back to root state."));
 
 				check(!Exec.ActiveFrames.IsEmpty());
 				FMetaStoryExecutionFrame& RootFrame = Exec.ActiveFrames[0];
@@ -5924,7 +5924,7 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 				FCurrentlyProcessedStateScope RootStateScope(*this, FMetaStoryStateHandle::Root);
 
 				UE::MetaStory::ExecutionContext::FStateHandleContext TargetState(RootFrame.MetaStory, FMetaStoryStateHandle::Root);
-				UE_STATETREE_DEBUG_TRANSITION_EVENT(this, FMetaStoryTransitionSource(RootFrame.MetaStory, EMetaStoryTransitionSourceType::Internal, FMetaStoryStateHandle::Root, EMetaStoryTransitionPriority::Normal), EMetaStoryTraceEventType::OnRequesting);
+				UE_METASTORY_DEBUG_TRANSITION_EVENT(this, FMetaStoryTransitionSource(RootFrame.MetaStory, EMetaStoryTransitionSourceType::Internal, FMetaStoryStateHandle::Root, EMetaStoryTransitionPriority::Normal), EMetaStoryTraceEventType::OnRequesting);
 
 				if (RequestTransitionInternal(RootFrame, RootFrame.ActiveStates.StateIDs[0], TargetState, FTransitionArguments()))
 				{
@@ -5933,7 +5933,7 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 				else
 				{
 					METASTORY_LOG(Warning, TEXT("Failed to select root state. Stopping the tree with failure."));
-					UE_STATETREE_DEBUG_LOG_EVENT(this, Error, TEXT("Failed to select root state. Stopping the tree with failure."));
+					UE_METASTORY_DEBUG_LOG_EVENT(this, Error, TEXT("Failed to select root state. Stopping the tree with failure."));
 
 					Exec.RequestedStop = UE::MetaStory::ExecutionContext::GetPriorityRunStatus(Exec.RequestedStop, EMetaStoryRunStatus::Failed);
 
@@ -6039,8 +6039,8 @@ PRAGMA_DISABLE_DEPRECATION_WARNINGS
 		{
 			if (RecordedTransition.NextActiveFrameEvents.IsValidIndex(EventIdx))
 			{
-				const FMetaStoryEvent& RecordedStateTreeEvent = RecordedTransition.NextActiveFrameEvents[EventIdx];
-				MetaStoryFrameStateSelectionEvents.Events[EventIdx] = FMetaStorySharedEvent(RecordedStateTreeEvent);
+				const FMetaStoryEvent& RecordedMetaStoryEvent = RecordedTransition.NextActiveFrameEvents[EventIdx];
+				MetaStoryFrameStateSelectionEvents.Events[EventIdx] = FMetaStorySharedEvent(RecordedMetaStoryEvent);
 			}
 		}
 	}
@@ -6051,12 +6051,12 @@ PRAGMA_DISABLE_DEPRECATION_WARNINGS
 		return {};
 	}
 
-	if (RecordedTransition.SourceStateTree == nullptr)
+	if (RecordedTransition.SourceMetaStory == nullptr)
 	{
 		return {};
 	}
 
-	if (RecordedTransition.SourceStateTree->GetFrameFromHandle(RecordedTransition.SourceRootState) == nullptr)
+	if (RecordedTransition.SourceMetaStory->GetFrameFromHandle(RecordedTransition.SourceRootState) == nullptr)
 	{
 		return {};
 	}
@@ -6064,7 +6064,7 @@ PRAGMA_DISABLE_DEPRECATION_WARNINGS
 	// Try to find the same frame and the same state in the currently active frames.
 	// Recorded transitions can be saved and replayed out of context.
 	const FMetaStoryExecutionState& Exec = GetExecState();
-	const FMetaStoryExecutionFrame* ExecFrame = Exec.ActiveFrames.FindByPredicate([MetaStory = RecordedTransition.SourceStateTree, RootState = RecordedTransition.SourceRootState](const FMetaStoryExecutionFrame& Frame)
+	const FMetaStoryExecutionFrame* ExecFrame = Exec.ActiveFrames.FindByPredicate([MetaStory = RecordedTransition.SourceMetaStory, RootState = RecordedTransition.SourceRootState](const FMetaStoryExecutionFrame& Frame)
 		{
 			return Frame.HasRoot(MetaStory, RootState);
 		});
@@ -6080,7 +6080,7 @@ PRAGMA_DISABLE_DEPRECATION_WARNINGS
 	Result.TargetState = RecordedTransition.TargetState;
 	Result.Priority = RecordedTransition.Priority;
 	Result.SourceState = RecordedTransition.SourceState;
-	Result.SourceStateTree = RecordedTransition.SourceStateTree;
+	Result.SourceMetaStory = RecordedTransition.SourceMetaStory;
 	Result.SourceRootState = RecordedTransition.SourceRootState;
 PRAGMA_ENABLE_DEPRECATION_WARNINGS
 #endif //WITH_EDITOR
@@ -6120,7 +6120,7 @@ PRAGMA_DISABLE_DEPRECATION_WARNINGS
 	const FMetaStoryExecutionState& Exec = GetExecState();
 	if (const FMetaStoryExecutionFrame* FoundSourceFrame = Exec.FindActiveFrame(Transition.SourceFrameID))
 	{
-		Result.SourceStateTree = FoundSourceFrame->MetaStory;
+		Result.SourceMetaStory = FoundSourceFrame->MetaStory;
 		Result.SourceRootState = FoundSourceFrame->RootState;
 		const int32 ActiveStateIndex = FoundSourceFrame->ActiveStates.IndexOfReverse(Transition.SourceStateID);
 		if (ActiveStateIndex != INDEX_NONE)
@@ -6130,7 +6130,7 @@ PRAGMA_DISABLE_DEPRECATION_WARNINGS
 	}
 	else
 	{
-		Result.SourceStateTree = Transition.SourceStateTree;
+		Result.SourceMetaStory = Transition.SourceMetaStory;
 		Result.SourceRootState = Transition.SourceRootState;
 		Result.SourceState = Transition.SourceState;
 	}
@@ -6291,14 +6291,14 @@ bool FMetaStoryExecutionContext::SelectState(const FSelectStateArguments& Args, 
 			*GetSafeStateName(Args.TargetState.MetaStory, Args.TargetState.StateHandle),
 			*GetStateStatusString(Exec),
 			*GetNameSafe(&Owner),
-			*GetFullNameSafe(&RootStateTree)
+			*GetFullNameSafe(&RootMetaStory)
 		);
 		return false;
 	}
 	check(!PathToTargetState.IsEmpty());
 
 	const FMetaStoryExecutionFrameHandle TargetFrameHandle = FMetaStoryExecutionFrameHandle(Args.TargetState.MetaStory, PathToTargetState[0].StateHandle);
-	const FMetaStoryCompactFrame* TargetFrame = TargetFrameHandle.GetStateTree()->GetFrameFromHandle(TargetFrameHandle.GetRootState());
+	const FMetaStoryCompactFrame* TargetFrame = TargetFrameHandle.GetMetaStory()->GetFrameFromHandle(TargetFrameHandle.GetRootState());
 	checkf(TargetFrame, TEXT("The frame was not compiled."));
 
 	// Build the source path from the active path. Includes all the states from the previous frames.
@@ -6314,7 +6314,7 @@ bool FMetaStoryExecutionContext::SelectState(const FSelectStateArguments& Args, 
 					*GetSafeStateName(Args.TargetState.MetaStory, Args.TargetState.StateHandle),
 					*GetStateStatusString(Exec),
 					*GetNameSafe(&Owner),
-					*GetFullNameSafe(&RootStateTree)
+					*GetFullNameSafe(&RootMetaStory)
 				);
 				return false;
 			}
@@ -6389,7 +6389,7 @@ bool FMetaStoryExecutionContext::SelectState(const FSelectStateArguments& Args, 
 			int32 FoundActiveStateIndex = SourceStates.Num() - 1;
 			{
 				bool bFoundRootState = false;
-				bool bFoundStateTree = false;
+				bool bFoundMetaStory = false;
 				FActiveFrameID CurrentFrameID;
 				for (; FoundActiveStateIndex >= 0; --FoundActiveStateIndex)
 				{
@@ -6401,9 +6401,9 @@ bool FMetaStoryExecutionContext::SelectState(const FSelectStateArguments& Args, 
 						{
 							return false;
 						}
-						if (ProcessFrame->MetaStory == TargetFrameHandle.GetStateTree())
+						if (ProcessFrame->MetaStory == TargetFrameHandle.GetMetaStory())
 						{
-							bFoundStateTree = true;
+							bFoundMetaStory = true;
 							if (ProcessFrame->RootState == TargetFrameHandle.GetRootState())
 							{
 								bFoundRootState = true;
@@ -6414,21 +6414,21 @@ bool FMetaStoryExecutionContext::SelectState(const FSelectStateArguments& Args, 
 								break;
 							}
 						}
-						else if (bFoundStateTree)
+						else if (bFoundMetaStory)
 						{
 							break;
 						}
 					}
 				}
 
-				if (FoundActiveStateIndex < 0 && !bFoundStateTree)
+				if (FoundActiveStateIndex < 0 && !bFoundMetaStory)
 				{
 					METASTORY_LOG(Error, TEXT("%hs: Encountered unrecognized state %s during state selection from '%s'.  '%s' using MetaStory '%s'."),
 						__FUNCTION__,
 						*GetSafeStateName(Args.TargetState.MetaStory, Args.TargetState.StateHandle),
 						*GetStateStatusString(Exec),
 						*GetNameSafe(&Owner),
-						*GetFullNameSafe(&RootStateTree)
+						*GetFullNameSafe(&RootMetaStory)
 					);
 					return false;
 				}
@@ -6454,7 +6454,7 @@ bool FMetaStoryExecutionContext::SelectState(const FSelectStateArguments& Args, 
 				*GetSafeStateName(Args.TargetState.MetaStory, Args.TargetState.StateHandle),
 				*GetStateStatusString(Exec),
 				*GetNameSafe(&Owner),
-				*GetFullNameSafe(&RootStateTree)
+				*GetFullNameSafe(&RootMetaStory)
 			);
 			return false;
 		}
@@ -6534,21 +6534,21 @@ bool FMetaStoryExecutionContext::SelectStateInternal(
 	}
 
 	const FStateHandleContext& NextStateContext = InternalArgs.MissingStatesToReachTarget[0];
-	const UMetaStory* NextStateTree = NextStateContext.MetaStory;
+	const UMetaStory* NextMetaStory = NextStateContext.MetaStory;
 	const FMetaStoryStateHandle NextStateHandle = NextStateContext.StateHandle;
-	if (!ensure(NextStateTree != nullptr && NextStateHandle.IsValid()))
+	if (!ensure(NextMetaStory != nullptr && NextStateHandle.IsValid()))
 	{
 		return false;
 	}
 
-	const FMetaStoryCompactState& NextState = NextStateTree->States[NextStateHandle.Index];
+	const FMetaStoryCompactState& NextState = NextMetaStory->States[NextStateHandle.Index];
 	if (!NextState.bEnabled)
 	{
 		METASTORY_LOG(VeryVerbose, TEXT("%hs: Ignoring disabled state '%s'.  '%s' using MetaStory '%s'."),
 			__FUNCTION__,
 			*NextState.Name.ToString(),
 			*GetNameSafe(&Owner),
-			*GetFullNameSafe(NextStateTree)
+			*GetFullNameSafe(NextMetaStory)
 		);
 		return false;
 	}
@@ -6558,7 +6558,7 @@ bool FMetaStoryExecutionContext::SelectStateInternal(
 			__FUNCTION__,
 			*NextState.Name.ToString(),
 			*GetNameSafe(&Owner),
-			*GetFullNameSafe(NextStateTree)
+			*GetFullNameSafe(NextMetaStory)
 		);
 		return false;
 	}
@@ -6599,7 +6599,7 @@ bool FMetaStoryExecutionContext::SelectStateInternal(
 					__FUNCTION__,
 					*NextState.Name.ToString(),
 					*GetNameSafe(&Owner),
-					*GetFullNameSafe(NextStateTree)
+					*GetFullNameSafe(NextMetaStory)
 				);
 				return false;
 			}
@@ -6607,7 +6607,7 @@ bool FMetaStoryExecutionContext::SelectStateInternal(
 			const FActiveState PreviousSelectedState = OutSelectionResult->SelectedStates.Last();
 			FMetaStoryExecutionFrame* PreviousFramePtr = FindExecutionFrame(PreviousSelectedState.GetFrameID(), MakeArrayView(GetExecState().ActiveFrames), MakeArrayView(OutSelectionResult->TemporaryFrames));
 			check(PreviousFramePtr);
-			check(PreviousFramePtr->MetaStory == NextStateTree);
+			check(PreviousFramePtr->MetaStory == NextMetaStory);
 
 			if (PreviousSelectedState.GetStateHandle() != NextState.Parent)
 			{
@@ -6625,7 +6625,7 @@ bool FMetaStoryExecutionContext::SelectStateInternal(
 			const FActiveFrameID MissingFrameID = InternalArgs.MissingSourceStates.Num() != 0 ? InternalArgs.MissingSourceStates[0].GetFrameID() : InternalArgs.MissingSourceFrameID;
 			FMetaStoryExecutionFrame* MissingFramePtr = FindExecutionFrame(MissingFrameID, MakeArrayView(GetExecState().ActiveFrames), MakeArrayView(OutSelectionResult->TemporaryFrames));
 			check(MissingFramePtr);
-			if (!ensure(MissingFramePtr->MetaStory == NextStateTree))
+			if (!ensure(MissingFramePtr->MetaStory == NextMetaStory))
 			{
 				return false;
 			}
@@ -6697,16 +6697,16 @@ bool FMetaStoryExecutionContext::SelectStateInternal(
 	// Save the current result to use SelectionEvents in GetDataView
 	TGuardValue<FSelectStateResult*> GuardCurrentlyProcessedStateSelectionResult(CurrentlyProcessedStateSelectionResult, &OutSelectionResult.Get());
 
-	UE_STATETREE_DEBUG_SCOPED_STATE_PHASE(this, NextStateHandle, EMetaStoryUpdatePhase::StateSelection);
+	UE_METASTORY_DEBUG_SCOPED_STATE_PHASE(this, NextStateHandle, EMetaStoryUpdatePhase::StateSelection);
 
 	// Look up linked state overrides
 	const UMetaStory* NextLinkedStateAsset = NextState.LinkedAsset;
 	const FInstancedPropertyBag* NextLinkedStateParameterOverride = nullptr;
 	if (NextState.Type == EMetaStoryStateType::LinkedAsset)
 	{
-		if (const FMetaStoryReference* Override = GetLinkedStateTreeOverrideForTag(NextState.Tag))
+		if (const FMetaStoryReference* Override = GetLinkedMetaStoryOverrideForTag(NextState.Tag))
 		{
-			NextLinkedStateAsset = Override->GetStateTree();
+			NextLinkedStateAsset = Override->GetMetaStory();
 			NextLinkedStateParameterOverride = &Override->GetParameters();
 
 			METASTORY_LOG(VeryVerbose, TEXT("%hs: In state '%s', overriding linked asset '%s' with '%s'. '%s' using MetaStory '%s'."),
@@ -6865,7 +6865,7 @@ bool FMetaStoryExecutionContext::SelectStateInternal(
 				*GetSafeStateName(*NextFrame, NextStateHandle),
 				*GetFullNameSafe(NextFrame->MetaStory),
 				*GetNameSafe(&Owner),
-				*GetFullNameSafe(&RootStateTree)
+				*GetFullNameSafe(&RootMetaStory)
 			);
 			return false;
 		}
@@ -6958,7 +6958,7 @@ bool FMetaStoryExecutionContext::SelectStateInternal(
 			switch (NextState.SelectionBehavior)
 			{
 			case EMetaStoryStateSelectionBehavior::TryEnterState:
-				UE_STATETREE_DEBUG_STATE_EVENT(this, NextStateHandle, EMetaStoryTraceEventType::OnStateSelected);
+				UE_METASTORY_DEBUG_STATE_EVENT(this, NextStateHandle, EMetaStoryTraceEventType::OnStateSelected);
 				OnExitScope.bSucceededToSelectState = true;
 				break;
 			case EMetaStoryStateSelectionBehavior::TrySelectChildrenInOrder:
@@ -7082,7 +7082,7 @@ TOptional<bool> FMetaStoryExecutionContext::SelectStateFromSourceInternal(
 						*GetFullNameSafe(NextFrame.MetaStory)
 					);
 
-					UE_STATETREE_DEBUG_LOG_EVENT(this, Log, TEXT("Selection fails because parent state '%s' is completed."), *NextState.Name.ToString());
+					UE_METASTORY_DEBUG_LOG_EVENT(this, Log, TEXT("Selection fails because parent state '%s' is completed."), *NextState.Name.ToString());
 
 					bSelectStateInternalSucceeded = false;
 				}
@@ -7146,7 +7146,7 @@ bool FMetaStoryExecutionContext::SelectStateInternal_Linked(
 	const FSelectStateArguments& Args,
 	const FSelectStateInternalArguments& InternalArgs,
 	const TSharedRef<FSelectStateResult>& OutSelectionResult,
-	TNotNull<const UMetaStory*> NextStateTree,
+	TNotNull<const UMetaStory*> NextMetaStory,
 	const FMetaStoryCompactState& TargetState,
 	bool bShouldCreateNewState)
 {
@@ -7162,25 +7162,25 @@ bool FMetaStoryExecutionContext::SelectStateInternal_Linked(
 			__FUNCTION__,
 			*GetStateStatusString(Exec),
 			*Owner.GetName(),
-			*NextStateTree->GetFullName()
+			*NextMetaStory->GetFullName()
 		);
 		return false;
 	}
 
-	const FMetaStoryExecutionFrameHandle LinkStateFrameHandle = FMetaStoryExecutionFrameHandle(NextStateTree, TargetState.LinkedState);
+	const FMetaStoryExecutionFrameHandle LinkStateFrameHandle = FMetaStoryExecutionFrameHandle(NextMetaStory, TargetState.LinkedState);
 
 	const bool bHasMissingState = InternalArgs.MissingStatesToReachTarget.Num() > 0 && Args.Behavior == ESelectStateBehavior::Forced;
 	if (bHasMissingState)
 	{
 		// In a force transition, the root could be different from what is expected.
 		//Ex: a previous transition go to root, then another transition go to another top level state (new root)
-		if (InternalArgs.MissingStatesToReachTarget[0].MetaStory != LinkStateFrameHandle.GetStateTree()
+		if (InternalArgs.MissingStatesToReachTarget[0].MetaStory != LinkStateFrameHandle.GetMetaStory()
 			|| InternalArgs.MissingStatesToReachTarget[0].StateHandle != LinkStateFrameHandle.GetRootState())
 		{
-			METASTORY_LOG(Error, TEXT("%hs: The missing state is not from the same state tree. '%s' using MetaStory '%s'."),
+			METASTORY_LOG(Error, TEXT("%hs: The missing state is not from the same MetaStory. '%s' using MetaStory '%s'."),
 				__FUNCTION__,
 				*Owner.GetName(),
-				*NextStateTree->GetFullName()
+				*NextMetaStory->GetFullName()
 			);
 			return false;
 		}
@@ -7190,23 +7190,23 @@ bool FMetaStoryExecutionContext::SelectStateInternal_Linked(
 	{
 		METASTORY_LOG(Error, TEXT("%hs: Trying to recursively enter subtree '%s' from '%s'. '%s' using MetaStory '%s'."),
 			__FUNCTION__,
-			*GetSafeStateName(LinkStateFrameHandle.GetStateTree(), LinkStateFrameHandle.GetRootState()),
+			*GetSafeStateName(LinkStateFrameHandle.GetMetaStory(), LinkStateFrameHandle.GetRootState()),
 			*GetStateStatusString(Exec),
 			*Owner.GetName(),
-			*NextStateTree->GetFullName()
+			*NextMetaStory->GetFullName()
 		);
 		return false;
 	}
 
-	const FMetaStoryCompactFrame* LinkStateTreeFrame = FindStateTreeFrame(LinkStateFrameHandle);
-	if (LinkStateTreeFrame == nullptr)
+	const FMetaStoryCompactFrame* LinkMetaStoryFrame = FindMetaStoryFrame(LinkStateFrameHandle);
+	if (LinkMetaStoryFrame == nullptr)
 	{
 		METASTORY_LOG(Error, TEXT("%hs: The frame '%s' from '%s' does not exist. '%s' using MetaStory '%s'."),
 			__FUNCTION__,
-			*GetSafeStateName(LinkStateFrameHandle.GetStateTree(), LinkStateFrameHandle.GetRootState()),
+			*GetSafeStateName(LinkStateFrameHandle.GetMetaStory(), LinkStateFrameHandle.GetRootState()),
 			*GetStateStatusString(Exec),
 			*Owner.GetName(),
-			*NextStateTree->GetFullName()
+			*NextMetaStory->GetFullName()
 		);
 		return false;
 	}
@@ -7223,10 +7223,10 @@ bool FMetaStoryExecutionContext::SelectStateInternal_Linked(
 		{
 			METASTORY_LOG(Error, TEXT("%hs: The frame '%s' from '%s' does not have the same root as the active frame. '%s' using MetaStory '%s'."),
 				__FUNCTION__,
-				*GetSafeStateName(LinkStateFrameHandle.GetStateTree(), LinkStateFrameHandle.GetRootState()),
+				*GetSafeStateName(LinkStateFrameHandle.GetMetaStory(), LinkStateFrameHandle.GetRootState()),
 				*GetStateStatusString(Exec),
 				*Owner.GetName(),
-				*NextStateTree->GetFullName()
+				*NextMetaStory->GetFullName()
 			);
 			return false;
 		}
@@ -7261,7 +7261,7 @@ bool FMetaStoryExecutionContext::SelectStateInternal_Linked(
 	OutSelectionResult->SelectedFrames.Add(SelectedFrame->FrameID);
 
 	// Select the root state of the new frame.
-	const FStateHandleContext RootState = FStateHandleContext(LinkStateFrameHandle.GetStateTree(), LinkStateFrameHandle.GetRootState());
+	const FStateHandleContext RootState = FStateHandleContext(LinkStateFrameHandle.GetMetaStory(), LinkStateFrameHandle.GetRootState());
 	const FSelectStateInternalArguments NewInternalArgs = FSelectStateInternalArguments{
 		.MissingActiveStates = bIsNewFrame ? TArrayView<const FActiveState>() : InternalArgs.MissingActiveStates,
 		.MissingSourceFrameID = SelectedFrame->FrameID,
@@ -7286,7 +7286,7 @@ bool FMetaStoryExecutionContext::SelectStateInternal_LinkedAsset(
 	const FSelectStateArguments& Args,
 	const FSelectStateInternalArguments& InternalArgs,
 	const TSharedRef<FSelectStateResult>& OutSelectionResult,
-	TNotNull<const UMetaStory*> NextStateTree,
+	TNotNull<const UMetaStory*> NextMetaStory,
 	const FMetaStoryCompactState& NextState,
 	const UMetaStory* NextLinkedStateAsset,
 	bool bShouldCreateNewState)
@@ -7305,10 +7305,10 @@ bool FMetaStoryExecutionContext::SelectStateInternal_LinkedAsset(
 	if (NextLinkedStateAsset->States.Num() == 0
 		|| !NextLinkedStateAsset->IsReadyToRun())
 	{
-		METASTORY_LOG(Error, TEXT("%hs: The linked State Tree is invalid. '%s' using MetaStory '%s'."),
+		METASTORY_LOG(Error, TEXT("%hs: The linked MetaStory is invalid. '%s' using MetaStory '%s'."),
 			__FUNCTION__,
 			*Owner.GetName(),
-			*NextStateTree->GetFullName()
+			*NextMetaStory->GetFullName()
 		);
 		return false;
 	}
@@ -7321,10 +7321,10 @@ bool FMetaStoryExecutionContext::SelectStateInternal_LinkedAsset(
 		//Ex: a previous transition go to root, then another transition go to another top level state (new root)
 		if (InternalArgs.MissingStatesToReachTarget[0].MetaStory != NextLinkedStateAsset)
 		{
-			METASTORY_LOG(Error, TEXT("%hs: The missing state is not from the same state tree. '%s' using MetaStory '%s'."),
+			METASTORY_LOG(Error, TEXT("%hs: The missing state is not from the same MetaStory. '%s' using MetaStory '%s'."),
 				__FUNCTION__,
 				*Owner.GetName(),
-				*NextStateTree->GetFullName()
+				*NextMetaStory->GetFullName()
 			);
 			return false;
 		}
@@ -7333,17 +7333,17 @@ bool FMetaStoryExecutionContext::SelectStateInternal_LinkedAsset(
 
 	const FMetaStoryExecutionFrameHandle LinkStateFrameHandle = FMetaStoryExecutionFrameHandle(NextLinkedStateAsset, NextLinkedStateRoot);
 
-	// The linked state tree should have compatible context requirements.
-	if (!NextLinkedStateAsset->HasCompatibleContextData(RootStateTree)
-		|| NextLinkedStateAsset->GetSchema()->GetClass() != NextStateTree->GetSchema()->GetClass())
+	// The linked MetaStory should have compatible context requirements.
+	if (!NextLinkedStateAsset->HasCompatibleContextData(RootMetaStory)
+		|| NextLinkedStateAsset->GetSchema()->GetClass() != NextMetaStory->GetSchema()->GetClass())
 	{
-		METASTORY_LOG(Error, TEXT("%hs: The linked State Tree '%s' does not have compatible schema, trying to select state %s from '%s'. '%s' using MetaStory '%s'."),
+		METASTORY_LOG(Error, TEXT("%hs: The linked MetaStory '%s' does not have compatible schema, trying to select state %s from '%s'. '%s' using MetaStory '%s'."),
 			__FUNCTION__,
 			*GetFullNameSafe(NextLinkedStateAsset),
-			*GetSafeStateName(LinkStateFrameHandle.GetStateTree(), LinkStateFrameHandle.GetRootState()),
+			*GetSafeStateName(LinkStateFrameHandle.GetMetaStory(), LinkStateFrameHandle.GetRootState()),
 			*GetStateStatusString(Exec),
 			*Owner.GetName(),
-			*NextStateTree->GetFullName()
+			*NextMetaStory->GetFullName()
 		);
 		return false;
 	}
@@ -7352,30 +7352,30 @@ bool FMetaStoryExecutionContext::SelectStateInternal_LinkedAsset(
 	{
 		METASTORY_LOG(Error, TEXT("%hs: Trying to recursively enter subtree '%s' from '%s'. '%s' using MetaStory '%s'."),
 			__FUNCTION__,
-			*GetSafeStateName(LinkStateFrameHandle.GetStateTree(), LinkStateFrameHandle.GetRootState()),
+			*GetSafeStateName(LinkStateFrameHandle.GetMetaStory(), LinkStateFrameHandle.GetRootState()),
 			*GetStateStatusString(Exec),
 			*Owner.GetName(),
-			*NextStateTree->GetFullName()
+			*NextMetaStory->GetFullName()
 		);
 		return false;
 	}
 
-	const FMetaStoryCompactFrame* LinkStateTreeFrame = FindStateTreeFrame(LinkStateFrameHandle);
-	if (LinkStateTreeFrame == nullptr)
+	const FMetaStoryCompactFrame* LinkMetaStoryFrame = FindMetaStoryFrame(LinkStateFrameHandle);
+	if (LinkMetaStoryFrame == nullptr)
 	{
 		METASTORY_LOG(Error, TEXT("%hs: The frame '%s' from '%s' does not exist. '%s' using MetaStory '%s'."),
 			__FUNCTION__,
-			*GetSafeStateName(LinkStateFrameHandle.GetStateTree(), LinkStateFrameHandle.GetRootState()),
+			*GetSafeStateName(LinkStateFrameHandle.GetMetaStory(), LinkStateFrameHandle.GetRootState()),
 			*GetStateStatusString(Exec),
 			*Owner.GetName(),
-			*NextStateTree->GetFullName()
+			*NextMetaStory->GetFullName()
 		);
 		return false;
 	}
 
 	// Do we have an existing frame.
 	// Do not use the transition override selection rules. A transition outside the frame should not impact the current frame.
-	const EMetaStoryStateSelectionRules StateSelectionRules = LinkStateFrameHandle.GetStateTree()->GetStateSelectionRules();
+	const EMetaStoryStateSelectionRules StateSelectionRules = LinkStateFrameHandle.GetMetaStory()->GetStateSelectionRules();
 	FMetaStoryExecutionFrame* SelectedFrame = SelectedFrameLinkedFrame(Exec, bShouldCreateNewState, InternalArgs.MissingActiveStates, LinkStateFrameHandle, StateSelectionRules);
 	if (SelectedFrame && !SelectedFrame->HasRoot(LinkStateFrameHandle))
 	{
@@ -7387,10 +7387,10 @@ bool FMetaStoryExecutionContext::SelectStateInternal_LinkedAsset(
 		{
 			METASTORY_LOG(Error, TEXT("%hs: The frame '%s' from '%s' does not have the same root as the active frame. '%s' using MetaStory '%s'."),
 				__FUNCTION__,
-				*GetSafeStateName(LinkStateFrameHandle.GetStateTree(), LinkStateFrameHandle.GetRootState()),
+				*GetSafeStateName(LinkStateFrameHandle.GetMetaStory(), LinkStateFrameHandle.GetRootState()),
 				*GetStateStatusString(Exec),
 				*Owner.GetName(),
-				*NextStateTree->GetFullName()
+				*NextMetaStory->GetFullName()
 			);
 			return false;
 		}
@@ -7400,16 +7400,16 @@ bool FMetaStoryExecutionContext::SelectStateInternal_LinkedAsset(
 	if (bIsNewFrame)
 	{
 		// Collect external data if needed
-		const FMetaStoryIndex16 ExternalDataBaseIndex = CollectExternalData(LinkStateFrameHandle.GetStateTree());
+		const FMetaStoryIndex16 ExternalDataBaseIndex = CollectExternalData(LinkStateFrameHandle.GetMetaStory());
 		if (!ExternalDataBaseIndex.IsValid())
 		{
 			METASTORY_LOG(VeryVerbose, TEXT("%hs: Cannot select state '%s' because failed to collect external data for nested tree '%s' from '%s'. '%s' using MetaStory '%s'."),
 				__FUNCTION__,
-				*GetSafeStateName(LinkStateFrameHandle.GetStateTree(), LinkStateFrameHandle.GetRootState()),
+				*GetSafeStateName(LinkStateFrameHandle.GetMetaStory(), LinkStateFrameHandle.GetRootState()),
 				*GetFullNameSafe(NextLinkedStateAsset),
 				*GetStateStatusString(Exec),
 				*Owner.GetName(),
-				*NextStateTree->GetFullName()
+				*NextMetaStory->GetFullName()
 			);
 			return false;
 		}
@@ -7420,7 +7420,7 @@ bool FMetaStoryExecutionContext::SelectStateInternal_LinkedAsset(
 		// Pass the linked state's parameters as global parameters to the linked asset.
 		NewFrame.GlobalParameterDataHandle = NextState.ParameterDataHandle;
 		// The state parameters will be from the root state.
-		const FMetaStoryCompactState& NewFrameRootState = LinkStateFrameHandle.GetStateTree()->States[NewFrame.RootState.Index];
+		const FMetaStoryCompactState& NewFrameRootState = LinkStateFrameHandle.GetMetaStory()->States[NewFrame.RootState.Index];
 		NewFrame.StateParameterDataHandle = NewFrameRootState.ParameterDataHandle;
 
 		SelectedFrame = &NewFrame;
@@ -7441,10 +7441,10 @@ bool FMetaStoryExecutionContext::SelectStateInternal_LinkedAsset(
 		{
 			METASTORY_LOG(VeryVerbose, TEXT("%hs: Cannot select state '%s' because cannot start nested tree's '%s' global tasks and evaluators. '%s' using MetaStory '%s'."),
 				__FUNCTION__,
-				*GetSafeStateName(LinkStateFrameHandle.GetStateTree(), LinkStateFrameHandle.GetRootState()),
+				*GetSafeStateName(LinkStateFrameHandle.GetMetaStory(), LinkStateFrameHandle.GetRootState()),
 				*GetFullNameSafe(NextLinkedStateAsset),
 				*Owner.GetName(),
-				*NextStateTree->GetFullName()
+				*NextMetaStory->GetFullName()
 			);
 
 			StopTemporaryEvaluatorsAndGlobalTasks(NextParentFrame, *NextFrame, StartResult);
@@ -7456,7 +7456,7 @@ bool FMetaStoryExecutionContext::SelectStateInternal_LinkedAsset(
 	}
 
 	// Select the root state of the new frame.
-	const FStateHandleContext RootState = FStateHandleContext(LinkStateFrameHandle.GetStateTree(), LinkStateFrameHandle.GetRootState());
+	const FStateHandleContext RootState = FStateHandleContext(LinkStateFrameHandle.GetMetaStory(), LinkStateFrameHandle.GetRootState());
 	FSelectStateArguments NewArgs = Args;
 	NewArgs.SelectionRules = StateSelectionRules;
 	const FSelectStateInternalArguments NewInternalArgs = FSelectStateInternalArguments{
@@ -7490,7 +7490,7 @@ bool FMetaStoryExecutionContext::SelectStateInternal_TrySelectChildrenInOrder(
 	const FSelectStateArguments& Args,
 	const FSelectStateInternalArguments& InternalArgs,
 	const TSharedRef<FSelectStateResult>& OutSelectionResult,
-	TNotNull<const UMetaStory*> NextStateTree,
+	TNotNull<const UMetaStory*> NextMetaStory,
 	const FMetaStoryCompactState& NextState,
 	const FMetaStoryStateHandle NextStateHandle)
 {
@@ -7499,17 +7499,17 @@ bool FMetaStoryExecutionContext::SelectStateInternal_TrySelectChildrenInOrder(
 	if (!NextState.HasChildren())
 	{
 		// Select this state (For backwards compatibility)
-		UE_STATETREE_DEBUG_STATE_EVENT(this, NextStateHandle, EMetaStoryTraceEventType::OnStateSelected);
+		UE_METASTORY_DEBUG_STATE_EVENT(this, NextStateHandle, EMetaStoryTraceEventType::OnStateSelected);
 		return true;
 	}
 
-	UE_STATETREE_DEBUG_SCOPED_STATE_PHASE(this, NextStateHandle, EMetaStoryUpdatePhase::TrySelectBehavior);
+	UE_METASTORY_DEBUG_SCOPED_STATE_PHASE(this, NextStateHandle, EMetaStoryUpdatePhase::TrySelectBehavior);
 
 	// If the state has children, proceed to select children.
 	bool bSucceededToSelectState = false;
-	for (uint16 ChildStateIndex = NextState.ChildrenBegin; ChildStateIndex < NextState.ChildrenEnd; ChildStateIndex = NextStateTree->States[ChildStateIndex].GetNextSibling())
+	for (uint16 ChildStateIndex = NextState.ChildrenBegin; ChildStateIndex < NextState.ChildrenEnd; ChildStateIndex = NextMetaStory->States[ChildStateIndex].GetNextSibling())
 	{
-		FStateHandleContext ChildState = FStateHandleContext(NextStateTree, FMetaStoryStateHandle(ChildStateIndex));
+		FStateHandleContext ChildState = FStateHandleContext(NextMetaStory, FMetaStoryStateHandle(ChildStateIndex));
 		FSelectStateInternalArguments NewInternalArgs = InternalArgs;
 		NewInternalArgs.MissingStatesToReachTarget = MakeArrayView(&ChildState, 1);
 		if (SelectStateInternal(Args, NewInternalArgs, OutSelectionResult))
@@ -7527,7 +7527,7 @@ bool FMetaStoryExecutionContext::SelectStateInternal_TrySelectChildrenAtRandom(
 	const FSelectStateArguments& Args,
 	const FSelectStateInternalArguments& InternalArgs,
 	const TSharedRef<FSelectStateResult>& OutSelectionResult,
-	TNotNull<const UMetaStory*> NextStateTree,
+	TNotNull<const UMetaStory*> NextMetaStory,
 	const FMetaStoryCompactState& NextState,
 	const FMetaStoryStateHandle NextStateHandle)
 {
@@ -7536,15 +7536,15 @@ bool FMetaStoryExecutionContext::SelectStateInternal_TrySelectChildrenAtRandom(
 	if (!NextState.HasChildren())
 	{
 		// Select this state (For backwards compatibility)
-		UE_STATETREE_DEBUG_STATE_EVENT(this, NextStateHandle, EMetaStoryTraceEventType::OnStateSelected);
+		UE_METASTORY_DEBUG_STATE_EVENT(this, NextStateHandle, EMetaStoryTraceEventType::OnStateSelected);
 		return true;
 	}
 
-	UE_STATETREE_DEBUG_SCOPED_STATE_PHASE(this, NextStateHandle, EMetaStoryUpdatePhase::TrySelectBehavior);
+	UE_METASTORY_DEBUG_SCOPED_STATE_PHASE(this, NextStateHandle, EMetaStoryUpdatePhase::TrySelectBehavior);
 
 	TArray<uint16, TInlineAllocator<16, FNonconcurrentLinearArrayAllocator>> NextLevelChildStates;
 	NextLevelChildStates.Reserve(NextState.ChildrenEnd - NextState.ChildrenBegin);
-	for (uint16 ChildStateIndex = NextState.ChildrenBegin; ChildStateIndex < NextState.ChildrenEnd; ChildStateIndex = NextStateTree->States[ChildStateIndex].GetNextSibling())
+	for (uint16 ChildStateIndex = NextState.ChildrenBegin; ChildStateIndex < NextState.ChildrenEnd; ChildStateIndex = NextMetaStory->States[ChildStateIndex].GetNextSibling())
 	{
 		NextLevelChildStates.Push(ChildStateIndex);
 	}
@@ -7553,7 +7553,7 @@ bool FMetaStoryExecutionContext::SelectStateInternal_TrySelectChildrenAtRandom(
 	while (!NextLevelChildStates.IsEmpty())
 	{
 		const int32 ChildStateIndex = Exec.RandomStream.RandRange(0, NextLevelChildStates.Num() - 1);
-		FStateHandleContext ChildState = FStateHandleContext(NextStateTree, FMetaStoryStateHandle(NextLevelChildStates[ChildStateIndex]));
+		FStateHandleContext ChildState = FStateHandleContext(NextMetaStory, FMetaStoryStateHandle(NextLevelChildStates[ChildStateIndex]));
 		FSelectStateInternalArguments NewInternalArgs = InternalArgs;
 		NewInternalArgs.MissingStatesToReachTarget = MakeArrayView(&ChildState, 1);
 		if (SelectStateInternal(Args, NewInternalArgs, OutSelectionResult))
@@ -7573,7 +7573,7 @@ bool FMetaStoryExecutionContext::SelectStateInternal_TrySelectChildrenWithHighes
 	const FSelectStateArguments& Args,
 	const FSelectStateInternalArguments& InternalArgs,
 	const TSharedRef<FSelectStateResult>& OutSelectionResult,
-	TNotNull<const UMetaStory*> NextStateTree,
+	TNotNull<const UMetaStory*> NextMetaStory,
 	const FMetaStoryCompactState& NextState,
 	const FMetaStoryStateHandle NextStateHandle)
 {
@@ -7582,11 +7582,11 @@ bool FMetaStoryExecutionContext::SelectStateInternal_TrySelectChildrenWithHighes
 	if (!NextState.HasChildren())
 	{
 		// Select this state (For backwards compatibility)
-		UE_STATETREE_DEBUG_STATE_EVENT(this, NextStateHandle, EMetaStoryTraceEventType::OnStateSelected);
+		UE_METASTORY_DEBUG_STATE_EVENT(this, NextStateHandle, EMetaStoryTraceEventType::OnStateSelected);
 		return true;
 	}
 
-	UE_STATETREE_DEBUG_SCOPED_STATE_PHASE(this, NextStateHandle, EMetaStoryUpdatePhase::TrySelectBehavior);
+	UE_METASTORY_DEBUG_SCOPED_STATE_PHASE(this, NextStateHandle, EMetaStoryUpdatePhase::TrySelectBehavior);
 
 	TArray<TPair<uint16, float>, TInlineAllocator<16, FNonconcurrentLinearArrayAllocator>> NextLevelChildStates;
 	NextLevelChildStates.Reserve(NextState.ChildrenEnd - NextState.ChildrenBegin);
@@ -7598,9 +7598,9 @@ bool FMetaStoryExecutionContext::SelectStateInternal_TrySelectChildrenWithHighes
 		FMetaStoryExecutionFrame* NextFrame = FindExecutionFrame(OutSelectionResult->SelectedFrames.Last(), MakeArrayView(GetExecState().ActiveFrames), MakeArrayView(OutSelectionResult->TemporaryFrames));
 		check(NextFrame);
 
-		for (uint16 ChildState = NextState.ChildrenBegin; ChildState < NextState.ChildrenEnd; ChildState = NextStateTree->States[ChildState].GetNextSibling())
+		for (uint16 ChildState = NextState.ChildrenBegin; ChildState < NextState.ChildrenEnd; ChildState = NextMetaStory->States[ChildState].GetNextSibling())
 		{
-			const FMetaStoryCompactState& CurrentState = NextStateTree->States[ChildState];
+			const FMetaStoryCompactState& CurrentState = NextMetaStory->States[ChildState];
 			const float Score = EvaluateUtilityWithValidation(NextParentFrame, *NextFrame, FMetaStoryStateHandle(ChildState), CurrentState.ConsiderationEvaluationScopeMemoryRequirement, CurrentState.UtilityConsiderationsBegin, CurrentState.UtilityConsiderationsNum, CurrentState.Weight);
 			NextLevelChildStates.Emplace(ChildState, Score);
 		}
@@ -7626,7 +7626,7 @@ bool FMetaStoryExecutionContext::SelectStateInternal_TrySelectChildrenWithHighes
 			return false;
 		}
 
-		FStateHandleContext ChildState = FStateHandleContext(NextStateTree, FMetaStoryStateHandle(NextLevelChildStates[ArrayIndexWithHighestScore].Get<0>()));
+		FStateHandleContext ChildState = FStateHandleContext(NextMetaStory, FMetaStoryStateHandle(NextLevelChildStates[ArrayIndexWithHighestScore].Get<0>()));
 		FSelectStateInternalArguments NewInternalArgs = InternalArgs;
 		NewInternalArgs.MissingStatesToReachTarget = MakeArrayView(&ChildState, 1);
 		if (SelectStateInternal(Args, NewInternalArgs, OutSelectionResult))
@@ -7646,7 +7646,7 @@ bool FMetaStoryExecutionContext::SelectStateInternal_TrySelectChildrenAtRandomWe
 	const FSelectStateArguments& Args,
 	const FSelectStateInternalArguments& InternalArgs,
 	const TSharedRef<FSelectStateResult>& OutSelectionResult,
-	TNotNull<const UMetaStory*> NextStateTree,
+	TNotNull<const UMetaStory*> NextMetaStory,
 	const FMetaStoryCompactState& NextState,
 	const FMetaStoryStateHandle NextStateHandle)
 {
@@ -7655,11 +7655,11 @@ bool FMetaStoryExecutionContext::SelectStateInternal_TrySelectChildrenAtRandomWe
 	if (!NextState.HasChildren())
 	{
 		// Select this state (For backwards compatibility)
-		UE_STATETREE_DEBUG_STATE_EVENT(this, NextStateHandle, EMetaStoryTraceEventType::OnStateSelected);
+		UE_METASTORY_DEBUG_STATE_EVENT(this, NextStateHandle, EMetaStoryTraceEventType::OnStateSelected);
 		return true;
 	}
 
-	UE_STATETREE_DEBUG_SCOPED_STATE_PHASE(this, NextStateHandle, EMetaStoryUpdatePhase::TrySelectBehavior);
+	UE_METASTORY_DEBUG_SCOPED_STATE_PHASE(this, NextStateHandle, EMetaStoryUpdatePhase::TrySelectBehavior);
 
 	TArray<TTuple<uint16, float>, TInlineAllocator<16, FNonconcurrentLinearArrayAllocator>> NextLevelChildStates;
 	NextLevelChildStates.Reserve(NextState.ChildrenEnd - NextState.ChildrenBegin);
@@ -7673,9 +7673,9 @@ bool FMetaStoryExecutionContext::SelectStateInternal_TrySelectChildrenAtRandomWe
 		FMetaStoryExecutionFrame* NextFrame = FindExecutionFrame(OutSelectionResult->SelectedFrames.Last(), MakeArrayView(GetExecState().ActiveFrames), MakeArrayView(OutSelectionResult->TemporaryFrames));
 		check(NextFrame);
 
-		for (uint16 ChildState = NextState.ChildrenBegin; ChildState < NextState.ChildrenEnd; ChildState = NextStateTree->States[ChildState].GetNextSibling())
+		for (uint16 ChildState = NextState.ChildrenBegin; ChildState < NextState.ChildrenEnd; ChildState = NextMetaStory->States[ChildState].GetNextSibling())
 		{
-			const FMetaStoryCompactState& CurrentState = NextStateTree->States[ChildState];
+			const FMetaStoryCompactState& CurrentState = NextMetaStory->States[ChildState];
 			const float Score = EvaluateUtilityWithValidation(NextParentFrame, *NextFrame, FMetaStoryStateHandle(ChildState), CurrentState.ConsiderationEvaluationScopeMemoryRequirement, CurrentState.UtilityConsiderationsBegin, CurrentState.UtilityConsiderationsNum, CurrentState.Weight);
 			if (Score > 0.0f)
 			{
@@ -7699,7 +7699,7 @@ bool FMetaStoryExecutionContext::SelectStateInternal_TrySelectChildrenAtRandomWe
 
 			if (RandomScore <= AccumulatedScore || (Index == (NextLevelChildStates.Num() - 1)))
 			{
-				FStateHandleContext ChildState = FStateHandleContext(NextStateTree, FMetaStoryStateHandle(StateIndex));
+				FStateHandleContext ChildState = FStateHandleContext(NextMetaStory, FMetaStoryStateHandle(StateIndex));
 				FSelectStateInternalArguments NewInternalArgs = InternalArgs;
 				NewInternalArgs.MissingStatesToReachTarget = MakeArrayView(&ChildState, 1);
 				if (SelectStateInternal(Args, NewInternalArgs, OutSelectionResult))
@@ -7722,7 +7722,7 @@ bool FMetaStoryExecutionContext::SelectStateInternal_TryFollowTransitions(
 	const FSelectStateArguments& Args,
 	const FSelectStateInternalArguments& InternalArgs,
 	const TSharedRef<FSelectStateResult>& OutSelectionResult,
-	TNotNull<const UMetaStory*> NextStateTree,
+	TNotNull<const UMetaStory*> NextMetaStory,
 	const FMetaStoryCompactState& NextState,
 	const FMetaStoryStateHandle NextStateHandle)
 {
@@ -7730,7 +7730,7 @@ bool FMetaStoryExecutionContext::SelectStateInternal_TryFollowTransitions(
 	using namespace UE::MetaStory::ExecutionContext;
 	using namespace UE::MetaStory::ExecutionContext::Private;
 
-	UE_STATETREE_DEBUG_SCOPED_STATE_PHASE(this, NextStateHandle, EMetaStoryUpdatePhase::TrySelectBehavior);
+	UE_METASTORY_DEBUG_SCOPED_STATE_PHASE(this, NextStateHandle, EMetaStoryUpdatePhase::TrySelectBehavior);
 
 	bool bSucceededToSelectState = false;
 	EMetaStoryTransitionPriority CurrentPriority = EMetaStoryTransitionPriority::None;
@@ -7738,7 +7738,7 @@ bool FMetaStoryExecutionContext::SelectStateInternal_TryFollowTransitions(
 	for (uint8 Index = 0; Index < NextState.TransitionsNum; ++Index)
 	{
 		const int32 TransitionIndex = NextState.TransitionsBegin + Index;
-		const FMetaStoryCompactStateTransition& Transition = NextStateTree->Transitions[TransitionIndex];
+		const FMetaStoryCompactStateTransition& Transition = NextMetaStory->Transitions[TransitionIndex];
 
 		// Skip disabled transitions
 		if (Transition.bTransitionEnabled == false)
@@ -7780,11 +7780,11 @@ bool FMetaStoryExecutionContext::SelectStateInternal_TryFollowTransitions(
 		{
 			METASTORY_LOG(Warning, TEXT("%hs: Loop detected when trying to select state %s from '%s'. Prior states: %s.  '%s' using MetaStory '%s'.")
 				, __FUNCTION__
-				, *GetSafeStateName(NextStateTree, Transition.State)
+				, *GetSafeStateName(NextMetaStory, Transition.State)
 				, *GetStateStatusString(GetExecState())
-				, *GetStatePathAsString(&RootStateTree, OutSelectionResult->SelectedStates)
+				, *GetStatePathAsString(&RootMetaStory, OutSelectionResult->SelectedStates)
 				, *Owner.GetName()
-				, *NextStateTree->GetFullName());
+				, *NextMetaStory->GetFullName());
 			continue;
 		}
 
@@ -7803,7 +7803,7 @@ bool FMetaStoryExecutionContext::SelectStateInternal_TryFollowTransitions(
 				check(NextFrame);
 
 				FCurrentlyProcessedTransitionEventScope TransitionEventScope(*this, SelectedStateTransitionEvent.IsValid() ? SelectedStateTransitionEvent.Get() : nullptr);
-				UE_STATETREE_DEBUG_TRANSITION_EVENT(this, FMetaStoryTransitionSource(NextStateTree, FMetaStoryIndex16(TransitionIndex), Transition.State, Transition.Priority), EMetaStoryTraceEventType::OnEvaluating);
+				UE_METASTORY_DEBUG_TRANSITION_EVENT(this, FMetaStoryTransitionSource(NextMetaStory, FMetaStoryIndex16(TransitionIndex), Transition.State, Transition.Priority), EMetaStoryTraceEventType::OnEvaluating);
 				bTransitionConditionsPassed = TestAllConditionsWithValidation(NextParentFrame, *NextFrame, NextStateHandle, Transition.ConditionEvaluationScopeMemoryRequirement, Transition.ConditionsBegin, Transition.ConditionsNum, EMetaStoryUpdatePhase::TransitionConditions);
 			}
 
@@ -7820,10 +7820,10 @@ bool FMetaStoryExecutionContext::SelectStateInternal_TryFollowTransitions(
 				{
 					SelectStateArgs.SourceState = CopySelectStateResult.SelectedStates.Last();
 				}
-				SelectStateArgs.TargetState = FStateHandleContext(NextStateTree, Transition.State);
+				SelectStateArgs.TargetState = FStateHandleContext(NextMetaStory, Transition.State);
 				SelectStateArgs.TransitionEvent = SelectedStateTransitionEvent;
 				SelectStateArgs.Fallback = Transition.Fallback;
-				SelectStateArgs.SelectionRules = NextStateTree->StateSelectionRules;
+				SelectStateArgs.SelectionRules = NextMetaStory->StateSelectionRules;
 
 				OutSelectionResult->SelectedStates.Reset();
 				OutSelectionResult->SelectedFrames.Reset();
@@ -7883,7 +7883,7 @@ FString FMetaStoryExecutionContext::GetSafeStateName(const UMetaStory* MetaStory
 FString FMetaStoryExecutionContext::DebugGetStatePath(TConstArrayView<FMetaStoryExecutionFrame> ActiveFrames, const FMetaStoryExecutionFrame* CurrentFrame, const int32 ActiveStateIndex) const
 {
 	FString StatePath;
-	const UMetaStory* LastStateTree = &RootStateTree;
+	const UMetaStory* LastMetaStory = &RootMetaStory;
 
 	for (const FMetaStoryExecutionFrame& Frame : ActiveFrames)
 	{
@@ -7899,10 +7899,10 @@ FString FMetaStoryExecutionContext::DebugGetStatePath(TConstArrayView<FMetaStory
 			Num = ActiveStateIndex + 1;
 		}
 
-		if (Frame.MetaStory != LastStateTree)
+		if (Frame.MetaStory != LastMetaStory)
 		{
 			StatePath.Appendf(TEXT("[%s]"), *GetNameSafe(Frame.MetaStory));
-			LastStateTree = Frame.MetaStory;
+			LastMetaStory = Frame.MetaStory;
 		}
 
 		for (int32 i = 0; i < Num; i++)

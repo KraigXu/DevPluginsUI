@@ -21,7 +21,7 @@ struct UE_DEPRECATED(5.6, "FMetaStoryStrongTaskRef is deprecated. We now use Tas
 	explicit FMetaStoryStrongTaskRef(TStrongObjectPtr<const UMetaStory> MetaStory, const FMetaStoryTaskBase* Task, FMetaStoryIndex16 NodeIndex);
 #endif
 
-	METASTORYMODULE_API const UMetaStory* GetStateTree() const;
+	METASTORYMODULE_API const UMetaStory* GetMetaStory() const;
 	METASTORYMODULE_API const FMetaStoryTaskBase* GetTask() const;
 	FMetaStoryIndex16 GetTaskIndex() const
 	{

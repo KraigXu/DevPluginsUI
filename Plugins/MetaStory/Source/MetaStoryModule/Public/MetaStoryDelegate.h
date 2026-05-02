@@ -8,11 +8,11 @@
 
 /**
  * MetaStory's delegates are used to send events through the state's hierarchy.
- * Similar to events but more control. As a designer, you know exactly which delegate can be broadcast in the state tree asset.
+ * Similar to events but more control. As a designer, you know exactly which delegate can be broadcast in the MetaStory asset.
  * Delegates can be used in transitions (like events) and to trigger callbacks.
  * They are primarily used in async tasks. Instead of ticking every frame (polling), you can register a delegate and wait for the callback to request a new transition.
  * Delegates are designed to be bound in the editor (dispatcher and listener).
- * By design, you cannot share delegates between state tree assets.
+ * By design, you cannot share delegates between MetaStory assets.
  *
  * MetaStory's delegates are composed of a sender (dispatcher) and a receiver (listener).
  * The listener is linked to a simple callback at execution with FMetaStoryExecutionContext.BindDelegate.

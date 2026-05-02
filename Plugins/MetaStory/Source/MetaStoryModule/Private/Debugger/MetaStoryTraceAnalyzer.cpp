@@ -53,16 +53,16 @@ bool FMetaStoryTraceAnalyzer::OnEvent(const uint16 RouteId, EStyle Style, const 
 			EventData.GetString("TreeName", ObjectName);
 			EventData.GetString("TreePath", ObjectPathName);
 
-			TWeakObjectPtr<const UMetaStory> WeakStateTree;
+			TWeakObjectPtr<const UMetaStory> WeakMetaStory;
 			{
 				// This might not work when using a debugger on a client but should be fine in Editor as long as
 				// we are not trying to find the object during GC. We might not currently be in the game thread.  
 				// @todo STDBG: eventually errors should be reported in the UI
 				FGCScopeGuard Guard;
-				WeakStateTree = FindObject<UMetaStory>(nullptr, *ObjectPathName);
+				WeakMetaStory = FindObject<UMetaStory>(nullptr, *ObjectPathName);
 			}
 
-			if (const UMetaStory* MetaStory = WeakStateTree.Get())
+			if (const UMetaStory* MetaStory = WeakMetaStory.Get())
 			{
 				const uint32 CompiledDataHash = EventData.GetValue<uint32>("CompiledDataHash");
 				if (MetaStory->LastCompiledEditorDataHash == CompiledDataHash)
@@ -95,10 +95,10 @@ bool FMetaStoryTraceAnalyzer::OnEvent(const uint16 RouteId, EStyle Style, const 
 		}
 	case RouteId_InstanceFrame:
 		{
-			TWeakObjectPtr<const UMetaStory> WeakStateTree;
-			if (Provider.GetAssetFromDebugId(FMetaStoryIndex16(EventData.GetValue<uint16>("AssetDebugId")), WeakStateTree))
+			TWeakObjectPtr<const UMetaStory> WeakMetaStory;
+			if (Provider.GetAssetFromDebugId(FMetaStoryIndex16(EventData.GetValue<uint16>("AssetDebugId")), WeakMetaStory))
 			{
-				const FMetaStoryTraceInstanceFrameEvent Event(WorldTime, EMetaStoryTraceEventType::Push, WeakStateTree.Get());
+				const FMetaStoryTraceInstanceFrameEvent Event(WorldTime, EMetaStoryTraceEventType::Push, WeakMetaStory.Get());
 			
 				Provider.AppendEvent(FMetaStoryInstanceDebugId(EventData.GetValue<uint32>("InstanceId"), EventData.GetValue<uint32>("InstanceSerial")),
 					Context.EventTime.AsSeconds(EventData.GetValue<uint64>("Cycle")),
@@ -227,15 +227,15 @@ bool FMetaStoryTraceAnalyzer::OnEvent(const uint16 RouteId, EStyle Style, const 
 			if (ensureMsgf(ActiveStates.Num() == AssetDebugIds.Num(), TEXT("Each state is expected to have a matching asset id")))
 			{
 				FMetaStoryInstanceDebugId InstanceDebugId(EventData.GetValue<uint32>("InstanceId"), EventData.GetValue<uint32>("InstanceSerial"));
-				TWeakObjectPtr<const UMetaStory> WeakStateTree;
+				TWeakObjectPtr<const UMetaStory> WeakMetaStory;
 
 				// If empty, we create the event with an empty list of states for the main MetaStory.
 				if (ActiveStates.IsEmpty())
 				{
-					if (Provider.GetAssetFromInstanceId(InstanceDebugId, WeakStateTree))
+					if (Provider.GetAssetFromInstanceId(InstanceDebugId, WeakMetaStory))
 					{
 						FMetaStoryTraceActiveStates::FAssetActiveStates& NewPair = Event.ActiveStates.PerAssetStates.Emplace_GetRef();
-						NewPair.WeakStateTree = WeakStateTree;
+						NewPair.WeakMetaStory = WeakMetaStory;
 					}
 				}
 				else
@@ -247,10 +247,10 @@ bool FMetaStoryTraceAnalyzer::OnEvent(const uint16 RouteId, EStyle Style, const 
 						FMetaStoryIndex16 AssetDebugId(AssetDebugIds[Index]);
 						if (AssetDebugId != LastAssetDebugId)
 						{
-							if (Provider.GetAssetFromDebugId(AssetDebugId, WeakStateTree))
+							if (Provider.GetAssetFromDebugId(AssetDebugId, WeakMetaStory))
 							{
 								FMetaStoryTraceActiveStates::FAssetActiveStates& NewPair = Event.ActiveStates.PerAssetStates.Emplace_GetRef();
-								NewPair.WeakStateTree = WeakStateTree;
+								NewPair.WeakMetaStory = WeakMetaStory;
 								AssetActiveStates = &NewPair;
 								LastAssetDebugId = AssetDebugId;
 							}

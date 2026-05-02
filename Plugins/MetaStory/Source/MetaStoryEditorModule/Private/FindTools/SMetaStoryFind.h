@@ -116,7 +116,7 @@ private:
 	TWeakPtr<IMetaStoryEditorHost> EditorHost;
 
 	/** Tree processed during . */
-	TSet<FObjectKey> ProcessedStateTrees;
+	TSet<FObjectKey> ProcessedMetaStories;
 
 	/** Object to search. */
 	TArray<FObjectKey> MetaStorysToProcess;

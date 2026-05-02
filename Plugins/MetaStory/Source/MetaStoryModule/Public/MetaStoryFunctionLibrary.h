@@ -10,7 +10,7 @@ struct FMetaStoryReference;
 class UMetaStory;
 
 /**
- * A collection of blueprint functions for state tree.
+ * Blueprint helpers for MetaStory references and related utilities.
  */
 UCLASS(MinimalAPI, Abstract)
 class UMetaStoryFunctionLibrary : public UBlueprintFunctionLibrary
@@ -19,10 +19,10 @@ class UMetaStoryFunctionLibrary : public UBlueprintFunctionLibrary
 
 public:
 	UFUNCTION(BlueprintCallable, Category = "MetaStory|Reference")
-	static UE_API void SetStateTree(UPARAM(ref)FMetaStoryReference& Reference, UMetaStory* MetaStory);
+	static UE_API void SetMetaStory(UPARAM(ref)FMetaStoryReference& Reference, UMetaStory* MetaStory);
 
-	UFUNCTION(BlueprintCallable, DisplayName = "Make State Tree Reference", Category = "MetaStory|Reference", meta = (Keywords = "construct build", NativeMakeFunc, BlueprintInternalUseOnly = "true"))
-	static UE_API FMetaStoryReference MakeStateTreeReference(UMetaStory* MetaStory);
+	UFUNCTION(BlueprintCallable, DisplayName = "Make MetaStory Reference", Category = "MetaStory|Reference", meta = (Keywords = "construct build", NativeMakeFunc, BlueprintInternalUseOnly = "true"))
+	static UE_API FMetaStoryReference MakeMetaStoryReference(UMetaStory* MetaStory);
 
 	UFUNCTION(BlueprintCallable, CustomThunk, DisplayName = "Set Parameter Property", Category = "MetaStory|Reference", meta = (BlueprintInternalUseOnly = "true", CustomStructureParam = "NewValue"))
 	static UE_API void K2_SetParametersProperty(UPARAM(ref)FMetaStoryReference& Reference, FGuid PropertyID, UPARAM(ref) const int32& NewValue);

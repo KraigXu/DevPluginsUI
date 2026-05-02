@@ -17,7 +17,7 @@ class FAsyncDiff : public TAsyncTreeDifferences<TWeakObjectPtr<UMetaStoryState>>
 public:
 	UE_API FAsyncDiff(const TSharedRef<SMetaStoryView>& LeftTree, const TSharedRef<SMetaStoryView>& RightTree);
 
-	UE_API void GetStateTreeDifferences(TArray<FSingleDiffEntry>& OutDiffEntries) const;
+	UE_API void GetMetaStoryDifferences(TArray<FSingleDiffEntry>& OutDiffEntries) const;
 
 private:
 	UE_API void GetStatesDifferences(TArray<FSingleDiffEntry>& OutDiffEntries) const;

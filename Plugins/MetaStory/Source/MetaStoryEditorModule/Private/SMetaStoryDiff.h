@@ -22,10 +22,10 @@ namespace UE::MetaStory::Diff
 	struct FStateSoftPath;
 
 
-/** Panel used to display the state tree */
+/** Panel used to display the MetaStory */
 struct FDiffPanel
 {
-	/** The asset that owns the state tree view we are showing */
+	/** The asset that owns the MetaStory view we are showing */
 	TStrongObjectPtr<const UMetaStory> MetaStory = nullptr;
 
 	/** Revision information for this asset */
@@ -60,10 +60,10 @@ public:
 	UE_API virtual ~SDiffWidget();
 
 	/** Helper function to create a window that holds a diff widget */
-	static UE_API TSharedRef<SDiffWidget> CreateDiffWindow(FText WindowTitle, TNotNull<const UMetaStory*> OldStateTree, TNotNull<const UMetaStory*> NewStateTree, const FRevisionInfo& OldRevision, const FRevisionInfo& NewRevision);
+	static UE_API TSharedRef<SDiffWidget> CreateDiffWindow(FText WindowTitle, TNotNull<const UMetaStory*> OldMetaStory, TNotNull<const UMetaStory*> NewMetaStory, const FRevisionInfo& OldRevision, const FRevisionInfo& NewRevision);
 
 	/** Helper function to create a window that holds a diff widget (default window title) */
-	static UE_API TSharedRef<SDiffWidget> CreateDiffWindow(TNotNull<const UMetaStory*> OldStateTree, TNotNull<const UMetaStory*> NewStateTree, const FRevisionInfo& OldRevision, const FRevisionInfo& NewRevision, const UClass* MetaStoryClass);
+	static UE_API TSharedRef<SDiffWidget> CreateDiffWindow(TNotNull<const UMetaStory*> OldMetaStory, TNotNull<const UMetaStory*> NewMetaStory, const FRevisionInfo& OldRevision, const FRevisionInfo& NewRevision, const UClass* MetaStoryClass);
 
 protected:
 	/** Called when user clicks button to go to next difference */
@@ -94,7 +94,7 @@ protected:
 	
 	UE_API void SetDetailsDiff(const UMetaStoryState* OldState = nullptr, const UMetaStoryState* NewState = nullptr);
 
-	static UE_API void AddStateTreeExtensionToDetailsView(const TSharedRef<IDetailsView>& DetailsView);
+	static UE_API void AddMetaStoryExtensionToDetailsView(const TSharedRef<IDetailsView>& DetailsView);
 
 	UE_API void AddBindingDiffToDiffEntries(TArray<FSingleObjectDiffEntry>& OutEntries);
 

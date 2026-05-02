@@ -1,4 +1,4 @@
-﻿// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "MetaStoryReferenceDetails.h"
 
@@ -18,9 +18,9 @@
 class FMetaStoryRefParametersDetails : public FPropertyBagInstanceDataDetails
 {
 public:
-	FMetaStoryRefParametersDetails(const TSharedPtr<IPropertyHandle> InStateTreeRefStructProperty, const TSharedPtr<IPropertyHandle> InParametersStructProperty, const TSharedPtr<IPropertyUtilities>& InPropUtils)
+	FMetaStoryRefParametersDetails(const TSharedPtr<IPropertyHandle> InMetaStoryRefStructProperty, const TSharedPtr<IPropertyHandle> InParametersStructProperty, const TSharedPtr<IPropertyUtilities>& InPropUtils)
 		: FPropertyBagInstanceDataDetails(InParametersStructProperty, InPropUtils, /*bInFixedLayout*/true)
-		, MetaStoryRefStructProperty(InStateTreeRefStructProperty)
+		, MetaStoryRefStructProperty(InMetaStoryRefStructProperty)
 	{
 		check(UE::MetaStory::PropertyHelpers::IsScriptStruct<FMetaStoryReference>(MetaStoryRefStructProperty));
 	}
@@ -28,8 +28,8 @@ public:
 protected:
 	struct FMetaStoryReferenceOverrideProvider : public IPropertyBagOverrideProvider
 	{
-		FMetaStoryReferenceOverrideProvider(FMetaStoryReference& InStateTreeRef)
-			: MetaStoryRef(InStateTreeRef)
+		FMetaStoryReferenceOverrideProvider(FMetaStoryReference& InMetaStoryRef)
+			: MetaStoryRef(InMetaStoryRef)
 		{
 		}
 		
@@ -72,7 +72,7 @@ protected:
 		{
 			if (FMetaStoryReference* MetaStoryRef = static_cast<FMetaStoryReference*>(RawData))
 			{
-				if (const UMetaStory* MetaStory = MetaStoryRef->GetStateTree())
+				if (const UMetaStory* MetaStory = MetaStoryRef->GetMetaStory())
 				{
 					const FInstancedPropertyBag& DefaultParameters = MetaStory->GetDefaultParameters();
 					FInstancedPropertyBag& Parameters = MetaStoryRef->GetMutableParameters();
@@ -165,8 +165,8 @@ void FMetaStoryReferenceDetails::SyncParameters(const UMetaStory* MetaStoryToSyn
 
 	// This function will get called in 3 situations:
 	// - auto update when the property customization is created
-	// - auto update when a state tree is compiled.
-	// - when the associate state tree asset is changed
+	// - auto update when a MetaStory is compiled.
+	// - when the associate MetaStory asset is changed
 	
 	TArray<UObject*> OuterObjects;
 	StructPropertyHandle->GetOuterObjects(OuterObjects);
@@ -180,7 +180,7 @@ void FMetaStoryReferenceDetails::SyncParameters(const UMetaStory* MetaStoryToSyn
 	{
 		if (FMetaStoryReference* MetaStoryReference = static_cast<FMetaStoryReference*>(RawData[i]))
 		{
-			const UMetaStory* MetaStoryAsset = MetaStoryReference->GetStateTree();
+			const UMetaStory* MetaStoryAsset = MetaStoryReference->GetMetaStory();
 
 			if ((MetaStoryToSync == nullptr || MetaStoryAsset == MetaStoryToSync) 
 				&& MetaStoryReference->RequiresParametersSync())

@@ -29,9 +29,9 @@ public:
 		double InWorldRecordingTime,
 		EMetaStoryTraceEventType InEventType);
 
-	void AppendAssetDebugId(const UMetaStory* InStateTree, const FMetaStoryIndex16 AssetDebugId);
-	bool GetAssetFromDebugId(const FMetaStoryIndex16 AssetDebugId, TWeakObjectPtr<const UMetaStory>& WeakStateTree) const;
-	bool GetAssetFromInstanceId(const FMetaStoryInstanceDebugId InstanceId, TWeakObjectPtr<const UMetaStory>& WeakStateTree) const;
+	void AppendAssetDebugId(const UMetaStory* InMetaStory, const FMetaStoryIndex16 AssetDebugId);
+	bool GetAssetFromDebugId(const FMetaStoryIndex16 AssetDebugId, TWeakObjectPtr<const UMetaStory>& WeakMetaStory) const;
+	bool GetAssetFromInstanceId(const FMetaStoryInstanceDebugId InstanceId, TWeakObjectPtr<const UMetaStory>& WeakMetaStory) const;
 
 protected:
 	//~ IMetaStoryDebuggerProvider interface
@@ -49,13 +49,13 @@ private:
 
 	struct FMetaStoryDebugIdPair
 	{
-		FMetaStoryDebugIdPair(const TWeakObjectPtr<const UMetaStory>& WeakStateTree, const FMetaStoryIndex16 Id)
-			: WeakStateTree(WeakStateTree)
+		FMetaStoryDebugIdPair(const TWeakObjectPtr<const UMetaStory>& WeakMetaStory, const FMetaStoryIndex16 Id)
+			: WeakMetaStory(WeakMetaStory)
 			, Id(Id)
 		{
 		}
 
-		TWeakObjectPtr<const UMetaStory> WeakStateTree;
+		TWeakObjectPtr<const UMetaStory> WeakMetaStory;
 		FMetaStoryIndex16 Id;
 	};
 

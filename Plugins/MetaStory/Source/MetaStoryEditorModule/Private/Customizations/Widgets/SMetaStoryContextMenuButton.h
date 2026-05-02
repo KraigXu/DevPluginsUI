@@ -32,7 +32,7 @@ public:
 
 	SLATE_END_ARGS()
 
-	void Construct(const FArguments& InArgs, const TSharedRef<FMetaStoryViewModel>& InStateTreeViewModel, const TWeakObjectPtr<UMetaStoryState> InOwnerState, const FGuid& InSourceID, bool InbIsTransition = false);
+	void Construct(const FArguments& InArgs, const TSharedRef<FMetaStoryViewModel>& InMetaStoryViewModel, const TWeakObjectPtr<UMetaStoryState> InOwnerState, const FGuid& InSourceID, bool InbIsTransition = false);
 
 	//~ SWidget interface
 	virtual FReply OnMouseButtonUp(const FGeometry& MyGeometry, const FPointerEvent& MouseEvent) override;

@@ -51,11 +51,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "MetaStory", meta = (HideSelfPin = "true", DisplayName = "MetaStory Request Transition"))
 	UE_API void RequestTransition(const FMetaStoryStateLink& TargetState, const EMetaStoryTransitionPriority Priority = EMetaStoryTransitionPriority::Normal);
 
-	/** Returns a reference to selected property in State Tree. */
+	/** Returns a reference to selected property in MetaStory. */
 	UFUNCTION(CustomThunk)
 	UE_API void GetPropertyReference(const FMetaStoryBlueprintPropertyRef& PropertyRef) const;
 
-	/** Returns true if reference to selected property in State Tree is accessible. */
+	/** Returns true if reference to selected property in MetaStory is accessible. */
 	UFUNCTION()
 	UE_API bool IsPropertyRefValid(const FMetaStoryBlueprintPropertyRef& PropertyRef) const;
 
@@ -109,10 +109,10 @@ private:
 	/** Cached instance data while the node is active for async nodes. */
 	mutable TWeakPtr<FMetaStoryInstanceStorage> WeakInstanceStorage;
 
-	UE_DEPRECATED(5.6, "CachedFrameStateTree is deprecated.")
-	/** Cached State Tree of owning execution frame. */
-	UPROPERTY()
-	mutable TObjectPtr<const UMetaStory> CachedFrameStateTree = nullptr;
+	UE_DEPRECATED(5.6, "CachedFrameMetaStory is deprecated.")
+	/** Cached MetaStory of owning execution frame. */
+	UPROPERTY(meta = (FormerlySerializedAs = "CachedFrameStateTree"))
+	mutable TObjectPtr<const UMetaStory> CachedFrameMetaStory = nullptr;
 
 	UE_DEPRECATED(5.6, "CachedFrameRootState is deprecated.")
 	/** Cached root state of owning execution frame. */

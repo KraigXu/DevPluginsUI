@@ -1024,7 +1024,7 @@ void AddEvents(
 				{
 					// Edge case for events from a missing first complete frame.
 					// (i.e. FrameProvider didn't get BeginFrame event but MetaStoryEvent were sent in that frame)
-					// Doing this will merge our two first frames of state tree events using the same recording world time
+					// Doing this will merge our two first frames of MetaStory events using the same recording world time
 					// but this should happen only for late start recording.
 					const TraceServices::FFrame* FirstFrame = InFrameProvider.GetFrame(TraceFrameType_Game, 0);
 					if (FirstFrame != nullptr && EventEndTime < FirstFrame->StartTime)

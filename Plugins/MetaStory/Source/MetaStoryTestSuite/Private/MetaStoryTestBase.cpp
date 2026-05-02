@@ -6,12 +6,12 @@
 #include "Engine/World.h"
 #include "GameplayTagsManager.h"
 
-#define LOCTEXT_NAMESPACE "AITestSuite_StateTreeTest"
+#define LOCTEXT_NAMESPACE "AITestSuite_MetaStoryTest"
 
 namespace UE::MetaStory::Tests
 {
 
-UMetaStory& FMetaStoryTestBase::NewStateTree() const
+UMetaStory& FMetaStoryTestBase::NewMetaStory() const
 {
 	UMetaStory* MetaStory = NewObject<UMetaStory>(&GetWorld());
 	check(MetaStory);

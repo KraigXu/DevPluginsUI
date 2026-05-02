@@ -14,7 +14,7 @@
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(K2Node_MetaStoryBlueprintPropertyRef)
 
-#define LOCTEXT_NAMESPACE "K2Node_StateTreeBlueprintPropertyRef"
+#define LOCTEXT_NAMESPACE "K2Node_MetaStoryBlueprintPropertyRef"
 
 namespace UE::MetaStory::BlueprintPropertyRef
 {
@@ -122,7 +122,7 @@ void UK2Node_MetaStoryBlueprintPropertyRef::UpdateOutputPin() const
 	OutValuePin.PinType = FEdGraphPinType(UEdGraphSchema_K2::PC_Wildcard, NAME_None, nullptr, PinParams.ContainerType, PinParams.bIsReference, PinParams.ValueTerminalType);
 }
 
-void FKCHandler_StateTreeBlueprintPropertyRefGet::RegisterNets(FKismetFunctionContext& Context, UEdGraphNode* Node)
+void FKCHandler_MetaStoryBlueprintPropertyRefGet::RegisterNets(FKismetFunctionContext& Context, UEdGraphNode* Node)
 {
 	const UK2Node_MetaStoryBlueprintPropertyRef* GetRefNode = CastChecked<UK2Node_MetaStoryBlueprintPropertyRef>(Node);
 
@@ -139,7 +139,7 @@ void FKCHandler_StateTreeBlueprintPropertyRefGet::RegisterNets(FKismetFunctionCo
 	TemporaryBoolTerminals.Add(Node, BoolTerm);
 }
 
-void FKCHandler_StateTreeBlueprintPropertyRefGet::Compile(FKismetFunctionContext& Context, UEdGraphNode* Node)
+void FKCHandler_MetaStoryBlueprintPropertyRefGet::Compile(FKismetFunctionContext& Context, UEdGraphNode* Node)
 {
 	const UK2Node_MetaStoryBlueprintPropertyRef* GetRefNode = CastChecked<UK2Node_MetaStoryBlueprintPropertyRef>(Node);
    

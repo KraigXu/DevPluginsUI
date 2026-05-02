@@ -11,7 +11,7 @@
 #define UE_API METASTORYMODULE_API
 
 USTRUCT()
-struct FMetaStoryRunParallelStateTreeTaskInstanceData
+struct FMetaStoryRunParallelMetaStoryTaskInstanceData
 {
 	GENERATED_BODY()
 
@@ -23,14 +23,14 @@ struct FMetaStoryRunParallelStateTreeTaskInstanceData
 	FMetaStoryInstanceData TreeInstanceData;
 
 	UPROPERTY(Transient)
-	TObjectPtr<const UMetaStory> RunningStateTree = nullptr;
+	TObjectPtr<const UMetaStory> RunningMetaStory = nullptr;
 
 	/** The handle of the scheduled tick. */
 	UE::MetaStory::FScheduledTickHandle ScheduledTickHandle;
 };
 
 USTRUCT()
-struct FMetaStoryRunParallelStateTreeExecutionExtension : public FMetaStoryExecutionExtension
+struct FMetaStoryRunParallelMetaStoryExecutionExtension : public FMetaStoryExecutionExtension
 {
 	GENERATED_BODY()
 
@@ -42,17 +42,17 @@ public:
 };
 
 /**
-* Task that will run another state tree in the current state while allowing the current tree to continue selection and process of child state.
+* Task that will run another MetaStory in the current state while allowing the current tree to continue selection and process of child state.
 * It will succeed, fail or run depending on the result of the parallel tree.
 * Less efficient then Linked Asset state, it has the advantage of allowing multiple trees to run in parallel.
 */
 USTRUCT(meta = (DisplayName = "Run Parallel Tree", Category = "Common"))
-struct FMetaStoryRunParallelStateTreeTask : public FMetaStoryTaskCommonBase
+struct FMetaStoryRunParallelMetaStoryTask : public FMetaStoryTaskCommonBase
 {
 	GENERATED_BODY()
-	using FInstanceDataType = FMetaStoryRunParallelStateTreeTaskInstanceData;
+	using FInstanceDataType = FMetaStoryRunParallelMetaStoryTaskInstanceData;
 	
-	UE_API FMetaStoryRunParallelStateTreeTask();
+	UE_API FMetaStoryRunParallelMetaStoryTask();
 
 #if WITH_EDITORONLY_DATA
 	// Sets event handling priority
@@ -85,16 +85,16 @@ protected:
 	}
 #endif // WITH_EDITOR
 
-	UE_API const FMetaStoryReference& GetStateTreeToRun(FMetaStoryExecutionContext& Context, FInstanceDataType& InstanceData) const;
+	UE_API const FMetaStoryReference& GetMetaStoryToRun(FMetaStoryExecutionContext& Context, FInstanceDataType& InstanceData) const;
 
-	/** If set the task will look at the linked state tree override to replace the state tree it's running. */
+	/** If set the task will look at the linked MetaStory override to replace the MetaStory it's running. */
 	UPROPERTY(EditAnywhere, Category = Parameter)
 	FGameplayTag MetaStoryOverrideTag;
 
 #if WITH_EDITORONLY_DATA
 	/**
-	 * At what priority the events should be handled in the parallel State Tree.
-	 * If set to 'Normal' the order of the States in the State Tree will define the handling order.
+	 * At what priority the events should be handled in the parallel MetaStory.
+	 * If set to 'Normal' the order of the States in the MetaStory will define the handling order.
 	 * If the priority is set to Low, the main tree is let to handle the transitions first.
 	 * If set to High or above, the parallel tree has change to handle events first.
 	 * If multiple tasks has same priority, the State order of the States defines the handling order.

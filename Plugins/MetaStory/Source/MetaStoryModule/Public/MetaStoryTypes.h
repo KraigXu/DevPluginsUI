@@ -33,7 +33,7 @@ namespace UE::MetaStory
 
 	namespace Colors
 	{
-		// Common and consistent colors to be used with State Tree nodes.
+		// Common and consistent colors to be used with MetaStory nodes.
 		extern const METASTORYMODULE_API FColor Grey;
 		extern const METASTORYMODULE_API FColor DarkGrey;
 		extern const METASTORYMODULE_API FColor Red;
@@ -67,10 +67,10 @@ enum class EMetaStoryTransitionType : uint8
 	/** No transition will take place. */
 	None,
 
-	/** Stop State Tree or sub-tree and mark execution succeeded. */
+	/** Stop MetaStory or sub-tree and mark execution succeeded. */
 	Succeeded,
 	
-	/** Stop State Tree or sub-tree and mark execution failed. */
+	/** Stop MetaStory or sub-tree and mark execution failed. */
 	Failed,
 	
 	/** Transition to the specified state. */
@@ -193,13 +193,13 @@ enum class EMetaStoryTransitionTrigger : uint8
 	/** Try trigger transition when a state failed. */
     OnStateFailed = 0x2,
 
-	/** Try trigger transition each State Tree tick. */
+	/** Try trigger transition each MetaStory tick. */
     OnTick = 0x4,
 	
-	/** Try trigger transition on specific State Tree event. */
+	/** Try trigger transition on specific MetaStory event. */
 	OnEvent = 0x8,
 
-	/** Try trigger transition on specific State Tree delegate. */
+	/** Try trigger transition on specific MetaStory delegate. */
 	OnDelegate = 0x10,
 
 	MAX

@@ -20,7 +20,7 @@ TMap<FObjectKey, SCompactTreeView::FStateExpansionState> SCompactTreeView::State
 
 void SCompactTreeView::Construct(const FArguments& InArgs, const TNotNull<const UMetaStory*> MetaStory)
 {
-	WeakStateTree = MetaStory;
+	WeakMetaStory = MetaStory;
 	TextStyle = InArgs._TextStyle ? InArgs._TextStyle : &FMetaStoryStyle::Get().GetWidgetStyle<FTextBlockStyle>("Normal.Normal");
 	OnSelectionChanged = InArgs._OnSelectionChanged;
 	OnContextMenuOpening = InArgs._OnContextMenuOpening;
@@ -253,7 +253,7 @@ void SCompactTreeView::OnStateItemExpansionChanged(TSharedPtr<FStateItem> Expand
 
 	if (ExpandedItem.IsValid() && ExpandedItem->StateID.IsValid())
 	{
-		FStateExpansionState& ExpansionState = StateExpansionStates.FindOrAdd(FObjectKey(WeakStateTree.Get()));
+		FStateExpansionState& ExpansionState = StateExpansionStates.FindOrAdd(FObjectKey(WeakMetaStory.Get()));
 		if (bInExpanded)
 		{
 			ExpansionState.CollapsedStates.Remove(ExpandedItem->StateID);
@@ -412,7 +412,7 @@ void SCompactTreeView::RestoreExpansionState()
 		return;
 	}
 
-	const FStateExpansionState& ExpansionState = StateExpansionStates.FindOrAdd(FObjectKey(WeakStateTree.Get()));
+	const FStateExpansionState& ExpansionState = StateExpansionStates.FindOrAdd(FObjectKey(WeakMetaStory.Get()));
 
 	TGuardValue RestoringExpansionGuard(bIsRestoringExpansion, true);
 

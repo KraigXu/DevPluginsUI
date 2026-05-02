@@ -109,7 +109,7 @@ TTasksCompletionStatusType FMetaStoryTasksCompletionStatus::GetStatusInternal(FM
 	{
 		check(false);
 		// In case of invalid data (and the check continues), we prefer to not set any task completion than writing in random memory.
-		// Because the mask is 0, no bit will be tested or set. The state tree will never complete.
+		// Because the mask is 0, no bit will be tested or set. The MetaStory will never complete.
 		BufferNum = 1;
 		return TTasksCompletionStatusType(
 			UE::MetaStory::Private::GetInlinedBufferPtr(Buffer),

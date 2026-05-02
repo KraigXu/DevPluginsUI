@@ -11,7 +11,7 @@
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(SMetaStoryCompactTreeEditorView)
 
-#define LOCTEXT_NAMESPACE "OutlinerStateTreeView"
+#define LOCTEXT_NAMESPACE "OutlinerMetaStoryView"
 
 namespace UE::MetaStory
 {
@@ -32,13 +32,13 @@ FSlateColor UE::MetaStory::CompactTreeView::FMetaStoryStateItemLinkData::GetBord
 void SCompactTreeEditorView::Construct(const FArguments& InArgs, const TSharedPtr<FMetaStoryViewModel>& InViewModel)
 {
 	MetaStoryViewModel = InViewModel;
-	WeakStateTreeEditorData = InArgs._MetaStoryEditorData;
+	WeakMetaStoryEditorData = InArgs._MetaStoryEditorData;
 	bSubtreesOnly = InArgs._SubtreesOnly;
 	bSelectableStatesOnly = InArgs._SelectableStatesOnly;
 	bShowLinkedStates = InArgs._ShowLinkedStates;
 
 	const UMetaStory* MetaStoryAsset = InViewModel
-		? InViewModel->GetStateTree()
+		? InViewModel->GetMetaStory()
 		: InArgs._MetaStoryEditorData
 			? InArgs._MetaStoryEditorData->GetTypedOuter<UMetaStory>()
 			: nullptr;
@@ -57,7 +57,7 @@ void SCompactTreeEditorView::Construct(const FArguments& InArgs, const TSharedPt
 
 void SCompactTreeEditorView::CacheStatesInternal()
 {
-	if (const UMetaStoryEditorData* MetaStoryEditorData = WeakStateTreeEditorData.Get())
+	if (const UMetaStoryEditorData* MetaStoryEditorData = WeakMetaStoryEditorData.Get())
 	{
 		for (const UMetaStoryState* SubTree : MetaStoryEditorData->SubTrees)
 		{
@@ -72,7 +72,7 @@ void SCompactTreeEditorView::CacheState(TSharedPtr<FStateItem> ParentNode, const
 	{
 		return;
 	}
-	const UMetaStoryEditorData* MetaStoryEditorData = WeakStateTreeEditorData.Get();
+	const UMetaStoryEditorData* MetaStoryEditorData = WeakMetaStoryEditorData.Get();
 	if (!MetaStoryEditorData)
 	{
 		return;
@@ -242,11 +242,11 @@ void SCompactTreeEditorView::OnUpdatingFilteredRootInternal()
 	ResetLinkedStates();
 }
 
-void SCompactTreeEditorView::Refresh(const UMetaStoryEditorData* NewStateTreeEditorData)
+void SCompactTreeEditorView::Refresh(const UMetaStoryEditorData* NewMetaStoryEditorData)
 {
-	if (NewStateTreeEditorData)
+	if (NewMetaStoryEditorData)
 	{
-		WeakStateTreeEditorData = NewStateTreeEditorData;
+		WeakMetaStoryEditorData = NewMetaStoryEditorData;
 	}
 
 	SCompactTreeView::Refresh();

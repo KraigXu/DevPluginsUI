@@ -18,7 +18,7 @@ class UMetaStoryExtension;
 class UUserDefinedStruct;
 
 template<bool>
-struct TStateTreeStrongExecutionContext;
+struct TMetaStoryStrongExecutionContext;
 
 /** Custom serialization version for MetaStory Asset */
 struct
@@ -144,7 +144,7 @@ public:
 		return DefaultExecutionRuntimeData;
 	}
 
-	/** @return List of external data required by the state tree */
+	/** @return List of external data required by the MetaStory */
 	TConstArrayView<FMetaStoryExternalDataDesc> GetExternalDataDescs() const
 	{
 		return ExternalDataDescs;
@@ -162,7 +162,7 @@ public:
 	/** @return true if the other MetaStory has compatible context data. */
 	UE_API bool HasCompatibleContextData(TNotNull<const UMetaStory*> Other) const;
 	
-	/** @return List of default parameters of the state tree. Default parameter values can be overridden at runtime by the execution context. */
+	/** @return List of default parameters of the MetaStory. Default parameter values can be overridden at runtime by the execution context. */
 	const FInstancedPropertyBag& GetDefaultParameters() const
 	{
 		return Parameters;
@@ -303,13 +303,13 @@ public:
 	{
 	}
 
-	/** Compile the state trees if the editor hash data as changed since the last compilation. */
+	/** Compile the MetaStorys if the editor hash data as changed since the last compilation. */
 	UE_API void CompileIfChanged();
 
 #endif
 
 #if WITH_EDITOR || WITH_METASTORY_DEBUG
-	/** @return the internal content of the state tree compiled asset. */
+	/** @return the internal content of the MetaStory compiled asset. */
 	[[nodiscard]] UE_API FString DebugInternalLayoutAsString() const;
 #endif
 
@@ -361,7 +361,7 @@ public:
 	static UE_API void AddReferencedObjects(UObject* InThis, FReferenceCollector& Collector);
 	
 private:
-	/** Compile the state trees. */
+	/** Compile the MetaStorys. */
 	UE_API void Compile();
 
 	/**
@@ -455,7 +455,7 @@ private:
 	FInstancedPropertyBag Parameters;
 
 	//~ Data created during linking.
-	/** List of external data required by the state tree, created during linking. */
+	/** List of external data required by the MetaStory, created during linking. */
 	UPROPERTY(Transient)
 	TArray<FMetaStoryExternalDataDesc> ExternalDataDescs;
 
@@ -570,7 +570,7 @@ private:
 	friend struct FMetaStoryMinimalExecutionContext;
 	friend struct FMetaStoryReadOnlyExecutionContext;
 	friend struct FMetaStoryWeakExecutionContext;
-	friend TStateTreeStrongExecutionContext<true>;
+	friend TMetaStoryStrongExecutionContext<true>;
 
 #if WITH_EDITOR
 	friend struct FMetaStoryCompiler;

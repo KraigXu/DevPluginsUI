@@ -16,8 +16,8 @@ namespace UE::MetaStory::ExecutionContext
 	struct FStateHandleContext
 	{
 		FStateHandleContext() = default;
-		FStateHandleContext(TNotNull<const UMetaStory*> InStateTree, FMetaStoryStateHandle InStateHandle)
-			: MetaStory(InStateTree)
+		FStateHandleContext(TNotNull<const UMetaStory*> InMetaStory, FMetaStoryStateHandle InStateHandle)
+			: MetaStory(InMetaStory)
 			, StateHandle(InStateHandle)
 		{
 		}

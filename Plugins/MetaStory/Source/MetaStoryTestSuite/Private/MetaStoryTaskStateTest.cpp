@@ -9,7 +9,7 @@
 #include "MetaStoryCompiler.h"
 #include "Conditions/MetaStoryCommonConditions.h"
 
-#define LOCTEXT_NAMESPACE "AITestSuite_StateTreeTask"
+#define LOCTEXT_NAMESPACE "AITestSuite_MetaStoryTask"
 
 UE_DISABLE_OPTIMIZATION_SHIP
 
@@ -25,7 +25,7 @@ struct FMetaStoryTest_TasksCompletion_AllAny : FMetaStoryTestBase
 	virtual bool InstantTest() override
 	{
 		// Main asset
-		UMetaStory& MetaStory = NewStateTree();
+		UMetaStory& MetaStory = NewMetaStory();
 		UMetaStoryState* RootState = nullptr;
 		{
 			UMetaStoryEditorData& EditorData = *Cast<UMetaStoryEditorData>(MetaStory.EditorData);
@@ -35,7 +35,7 @@ struct FMetaStoryTest_TasksCompletion_AllAny : FMetaStoryTestBase
 			Root.TasksCompletion = EMetaStoryTaskCompletionType::All;
 			for (int32 TaskIndex = 0; TaskIndex < FMetaStoryTasksCompletionStatus::MaxNumberOfTasksPerGroup; ++TaskIndex)
 			{
-				TStateTreeEditorNode<FTestTask_Stand>& Task = Root.AddTask<FTestTask_Stand>(FName(*FString::Printf(TEXT("Tree1StateRootTask_%d"), TaskIndex)));
+				TMetaStoryTypedEditorNode<FTestTask_Stand>& Task = Root.AddTask<FTestTask_Stand>(FName(*FString::Printf(TEXT("Tree1StateRootTask_%d"), TaskIndex)));
 				Task.GetNode().TicksToCompletion = TaskIndex + 1;
 				if (TaskIndex == 10)
 				{
@@ -47,7 +47,7 @@ struct FMetaStoryTest_TasksCompletion_AllAny : FMetaStoryTestBase
 			Tree1StateA.TasksCompletion = EMetaStoryTaskCompletionType::All;
 			for (int32 TaskIndex = 0; TaskIndex < FMetaStoryTasksCompletionStatus::MaxNumberOfTasksPerGroup; ++TaskIndex)
 			{
-				TStateTreeEditorNode<FTestTask_Stand>& Task = Tree1StateA.AddTask<FTestTask_Stand>(FName(*FString::Printf(TEXT("Tree1StateATask_%d"), TaskIndex)));
+				TMetaStoryTypedEditorNode<FTestTask_Stand>& Task = Tree1StateA.AddTask<FTestTask_Stand>(FName(*FString::Printf(TEXT("Tree1StateATask_%d"), TaskIndex)));
 				Task.GetNode().TicksToCompletion = TaskIndex + 1;
 
 				if (TaskIndex == 22)
@@ -69,7 +69,7 @@ struct FMetaStoryTest_TasksCompletion_AllAny : FMetaStoryTestBase
 		{
 			EMetaStoryRunStatus Status = EMetaStoryRunStatus::Unset;
 			FMetaStoryInstanceData InstanceData;
-			FTestStateTreeExecutionContext Exec(MetaStory, MetaStory, InstanceData);
+			FTestMetaStoryExecutionContext Exec(MetaStory, MetaStory, InstanceData);
 			const bool bInitSucceeded = Exec.IsValid();
 			AITEST_TRUE(TEXT("MetaStory should init"), bInitSucceeded);
 
@@ -133,7 +133,7 @@ struct FMetaStoryTest_TasksCompletion_AllAny : FMetaStoryTestBase
 		{
 			EMetaStoryRunStatus Status = EMetaStoryRunStatus::Unset;
 			FMetaStoryInstanceData InstanceData;
-			FTestStateTreeExecutionContext Exec(MetaStory, MetaStory, InstanceData);
+			FTestMetaStoryExecutionContext Exec(MetaStory, MetaStory, InstanceData);
 			const bool bInitSucceeded = Exec.IsValid();
 			AITEST_TRUE(TEXT("MetaStory should init"), bInitSucceeded);
 
@@ -170,7 +170,7 @@ struct FMetaStoryTest_TasksCompletion_AllAny : FMetaStoryTestBase
 		return true;
 	}
 };
-IMPLEMENT_STATE_TREE_INSTANT_TEST(FMetaStoryTest_TasksCompletion_AllAny, "System.MetaStory.TasksCompletion.AllAny");
+IMPLEMENT_METASTORY_INSTANT_TEST(FMetaStoryTest_TasksCompletion_AllAny, "System.MetaStory.TasksCompletion.AllAny");
 
 struct FMetaStoryTest_TasksCompletion_FailureTasks : FMetaStoryTestBase
 {
@@ -178,7 +178,7 @@ struct FMetaStoryTest_TasksCompletion_FailureTasks : FMetaStoryTestBase
 	{
 		constexpr int32 BadTask = 2;
 		// Main asset
-		UMetaStory& MetaStory = NewStateTree();
+		UMetaStory& MetaStory = NewMetaStory();
 		{
 			UMetaStoryEditorData& EditorData = *Cast<UMetaStoryEditorData>(MetaStory.EditorData);
 
@@ -186,7 +186,7 @@ struct FMetaStoryTest_TasksCompletion_FailureTasks : FMetaStoryTestBase
 			Root.TasksCompletion = EMetaStoryTaskCompletionType::All;
 			for (int32 TaskIndex = 0; TaskIndex < FMetaStoryTasksCompletionStatus::MaxNumberOfTasksPerGroup; ++TaskIndex)
 			{
-				TStateTreeEditorNode<FTestTask_Stand>& Task = Root.AddTask<FTestTask_Stand>(FName(*FString::Printf(TEXT("Tree1StateRootTask_%d"), TaskIndex)));
+				TMetaStoryTypedEditorNode<FTestTask_Stand>& Task = Root.AddTask<FTestTask_Stand>(FName(*FString::Printf(TEXT("Tree1StateRootTask_%d"), TaskIndex)));
 				Task.GetNode().TicksToCompletion = TaskIndex + 1;
 				if (TaskIndex == BadTask)
 				{
@@ -205,7 +205,7 @@ struct FMetaStoryTest_TasksCompletion_FailureTasks : FMetaStoryTestBase
 		{
 			EMetaStoryRunStatus Status = EMetaStoryRunStatus::Unset;
 			FMetaStoryInstanceData InstanceData;
-			FTestStateTreeExecutionContext Exec(MetaStory, MetaStory, InstanceData);
+			FTestMetaStoryExecutionContext Exec(MetaStory, MetaStory, InstanceData);
 			const bool bInitSucceeded = Exec.IsValid();
 			AITEST_TRUE(TEXT("MetaStory should init"), bInitSucceeded);
 
@@ -251,7 +251,7 @@ struct FMetaStoryTest_TasksCompletion_FailureTasks : FMetaStoryTestBase
 		return true;
 	}
 };
-IMPLEMENT_STATE_TREE_INSTANT_TEST(FMetaStoryTest_TasksCompletion_FailureTasks, "System.MetaStory.TasksCompletion.Failure");
+IMPLEMENT_METASTORY_INSTANT_TEST(FMetaStoryTest_TasksCompletion_FailureTasks, "System.MetaStory.TasksCompletion.Failure");
 
 // test set status with priority
 struct FMetaStoryTest_TasksCompletion_Status : FMetaStoryTestBase
@@ -432,7 +432,7 @@ struct FMetaStoryTest_TasksCompletion_Status : FMetaStoryTestBase
 		return true;
 	}
 };
-IMPLEMENT_STATE_TREE_INSTANT_TEST(FMetaStoryTest_TasksCompletion_Status, "System.MetaStory.TasksCompletion.Status");
+IMPLEMENT_METASTORY_INSTANT_TEST(FMetaStoryTest_TasksCompletion_Status, "System.MetaStory.TasksCompletion.Status");
 
 } // namespace UE::MetaStory::Tests
 

@@ -14,7 +14,7 @@ namespace UE::MetaStory::Async
 }
 
 template <bool bWithWriteAccess>
-TStateTreeStrongExecutionContext<bWithWriteAccess>::TStateTreeStrongExecutionContext(const FMetaStoryWeakExecutionContext& WeakContext)
+TMetaStoryStrongExecutionContext<bWithWriteAccess>::TMetaStoryStrongExecutionContext(const FMetaStoryWeakExecutionContext& WeakContext)
 	: Owner(WeakContext.Owner.Pin()),
 	MetaStory(WeakContext.MetaStory.Pin()),
 	Storage(WeakContext.Storage.Pin()),
@@ -38,7 +38,7 @@ TStateTreeStrongExecutionContext<bWithWriteAccess>::TStateTreeStrongExecutionCon
 }
 
 template <bool bWithWriteAccess>
-TStateTreeStrongExecutionContext<bWithWriteAccess>::~TStateTreeStrongExecutionContext()
+TMetaStoryStrongExecutionContext<bWithWriteAccess>::~TMetaStoryStrongExecutionContext()
 {
 	if (bAccessAcquired)
 	{
@@ -57,7 +57,7 @@ TStateTreeStrongExecutionContext<bWithWriteAccess>::~TStateTreeStrongExecutionCo
 
 template <bool bWithWriteAccess>
 template<bool bWriteAccess UE_REQUIRES_DEFINITION(bWriteAccess)>
-bool TStateTreeStrongExecutionContext<bWithWriteAccess>::SendEvent(const FGameplayTag Tag, const FConstStructView Payload, const FName Origin) const
+bool TMetaStoryStrongExecutionContext<bWithWriteAccess>::SendEvent(const FGameplayTag Tag, const FConstStructView Payload, const FName Origin) const
 {
 	static_assert(bWithWriteAccess);
 
@@ -73,7 +73,7 @@ bool TStateTreeStrongExecutionContext<bWithWriteAccess>::SendEvent(const FGamepl
 
 template <bool bWithWriteAccess>
 template<bool bWriteAccess UE_REQUIRES_DEFINITION(bWriteAccess)>
-bool TStateTreeStrongExecutionContext<bWithWriteAccess>::RequestTransition(FMetaStoryStateHandle TargetState,
+bool TMetaStoryStrongExecutionContext<bWithWriteAccess>::RequestTransition(FMetaStoryStateHandle TargetState,
 	EMetaStoryTransitionPriority Priority, EMetaStorySelectionFallback Fallback) const
 {
 	static_assert(bWithWriteAccess);
@@ -99,7 +99,7 @@ bool TStateTreeStrongExecutionContext<bWithWriteAccess>::RequestTransition(FMeta
 
 template <bool bWithWriteAccess>
 template<bool bWriteAccess UE_REQUIRES_DEFINITION(bWriteAccess)>
-bool TStateTreeStrongExecutionContext<bWithWriteAccess>::BroadcastDelegate(const FMetaStoryDelegateDispatcher& Dispatcher)
+bool TMetaStoryStrongExecutionContext<bWithWriteAccess>::BroadcastDelegate(const FMetaStoryDelegateDispatcher& Dispatcher)
 const
 {
 	static_assert(bWithWriteAccess);
@@ -128,7 +128,7 @@ const
 
 template <bool bWithWriteAccess>
 template<bool bWriteAccess UE_REQUIRES_DEFINITION(bWriteAccess)>
-bool TStateTreeStrongExecutionContext<bWithWriteAccess>::BindDelegate(const FMetaStoryDelegateListener& Listener, FSimpleDelegate Delegate) const
+bool TMetaStoryStrongExecutionContext<bWithWriteAccess>::BindDelegate(const FMetaStoryDelegateListener& Listener, FSimpleDelegate Delegate) const
 {
 	static_assert(bWithWriteAccess);
 
@@ -154,7 +154,7 @@ bool TStateTreeStrongExecutionContext<bWithWriteAccess>::BindDelegate(const FMet
 
 template <bool bWithWriteAccess>
 template<bool bWriteAccess UE_REQUIRES_DEFINITION(bWriteAccess)>
-bool TStateTreeStrongExecutionContext<bWithWriteAccess>::UnbindDelegate(const FMetaStoryDelegateListener& Listener) const
+bool TMetaStoryStrongExecutionContext<bWithWriteAccess>::UnbindDelegate(const FMetaStoryDelegateListener& Listener) const
 {
 	static_assert(bWithWriteAccess);
 
@@ -178,7 +178,7 @@ bool TStateTreeStrongExecutionContext<bWithWriteAccess>::UnbindDelegate(const FM
 
 template <bool bWithWriteAccess>
 template<bool bWriteAccess UE_REQUIRES_DEFINITION(bWriteAccess)>
-bool TStateTreeStrongExecutionContext<bWithWriteAccess>::FinishTask(EMetaStoryFinishTaskType FinishType) const
+bool TMetaStoryStrongExecutionContext<bWithWriteAccess>::FinishTask(EMetaStoryFinishTaskType FinishType) const
 {
 	static_assert(bWithWriteAccess);
 
@@ -238,7 +238,7 @@ bool TStateTreeStrongExecutionContext<bWithWriteAccess>::FinishTask(EMetaStoryFi
 
 template <bool bWithWriteAccess>
 template<bool bWriteAccess UE_REQUIRES_DEFINITION(bWriteAccess)>
-bool TStateTreeStrongExecutionContext<bWithWriteAccess>::UpdateScheduledTickRequest(UE::MetaStory::FScheduledTickHandle Handle, FMetaStoryScheduledTick ScheduledTick) const
+bool TMetaStoryStrongExecutionContext<bWithWriteAccess>::UpdateScheduledTickRequest(UE::MetaStory::FScheduledTickHandle Handle, FMetaStoryScheduledTick ScheduledTick) const
 {
 	static_assert(bWithWriteAccess);
 
@@ -257,7 +257,7 @@ bool TStateTreeStrongExecutionContext<bWithWriteAccess>::UpdateScheduledTickRequ
 }
 
 template <bool bWithWriteAccess>
-UE::MetaStory::Async::FActivePathInfo TStateTreeStrongExecutionContext<bWithWriteAccess>::GetActivePathInfo() const
+UE::MetaStory::Async::FActivePathInfo TMetaStoryStrongExecutionContext<bWithWriteAccess>::GetActivePathInfo() const
 {
 	if (!IsValidInstanceStorage())
 	{
@@ -321,7 +321,7 @@ UE::MetaStory::Async::FActivePathInfo TStateTreeStrongExecutionContext<bWithWrit
 }
 
 template <bool bWithWriteAccess>
-FMetaStoryDataView TStateTreeStrongExecutionContext<bWithWriteAccess>::GetInstanceDataPtrInternal() const
+FMetaStoryDataView TMetaStoryStrongExecutionContext<bWithWriteAccess>::GetInstanceDataPtrInternal() const
 {
 	using namespace UE::MetaStory;
 
@@ -344,7 +344,7 @@ FMetaStoryDataView TStateTreeStrongExecutionContext<bWithWriteAccess>::GetInstan
 
 template <bool bWithWriteAccess>
 template<bool bWriteAccess UE_REQUIRES_DEFINITION(bWriteAccess)>
-void TStateTreeStrongExecutionContext<bWithWriteAccess>::ScheduleNextTick(TNotNull<UObject*> Owner, TNotNull<const UMetaStory*> RootMetaStory, FMetaStoryInstanceStorage& Storage, UE::MetaStory::EMetaStoryTickReason Reason)
+void TMetaStoryStrongExecutionContext<bWithWriteAccess>::ScheduleNextTick(TNotNull<UObject*> Owner, TNotNull<const UMetaStory*> RootMetaStory, FMetaStoryInstanceStorage& Storage, UE::MetaStory::EMetaStoryTickReason Reason)
 {
 	static_assert(bWithWriteAccess);
 
@@ -355,22 +355,22 @@ void TStateTreeStrongExecutionContext<bWithWriteAccess>::ScheduleNextTick(TNotNu
 	}
 }
 
-template struct TStateTreeStrongExecutionContext<false>;
-template struct TStateTreeStrongExecutionContext<true>;
+template struct TMetaStoryStrongExecutionContext<false>;
+template struct TMetaStoryStrongExecutionContext<true>;
 
 //@todo: remove all these instantiations once past 5.6 because of c++20 support
-template bool METASTORYMODULE_API TStateTreeStrongExecutionContext<true>::SendEvent(const FGameplayTag Tag, const FConstStructView Payload, const FName Origin) const;
-template bool METASTORYMODULE_API TStateTreeStrongExecutionContext<true>::RequestTransition(FMetaStoryStateHandle TargetState, EMetaStoryTransitionPriority Priority, EMetaStorySelectionFallback Fallback) const;
-template bool METASTORYMODULE_API TStateTreeStrongExecutionContext<true>::BroadcastDelegate(const FMetaStoryDelegateDispatcher& Dispatcher) const;
-template bool METASTORYMODULE_API TStateTreeStrongExecutionContext<true>::BindDelegate(const FMetaStoryDelegateListener& Listener, FSimpleDelegate Delegate) const;
-template bool METASTORYMODULE_API TStateTreeStrongExecutionContext<true>::UnbindDelegate(const FMetaStoryDelegateListener& Listener) const;
-template bool METASTORYMODULE_API TStateTreeStrongExecutionContext<true>::FinishTask(EMetaStoryFinishTaskType FinishType) const;
-template bool METASTORYMODULE_API TStateTreeStrongExecutionContext<true>::UpdateScheduledTickRequest(UE::MetaStory::FScheduledTickHandle Handle, FMetaStoryScheduledTick ScheduledTick) const;
-template void METASTORYMODULE_API TStateTreeStrongExecutionContext<true>::ScheduleNextTick(TNotNull<UObject*> Owner, TNotNull<const UMetaStory*> RootMetaStory, FMetaStoryInstanceStorage& Storage, UE::MetaStory::EMetaStoryTickReason Reason);
+template bool METASTORYMODULE_API TMetaStoryStrongExecutionContext<true>::SendEvent(const FGameplayTag Tag, const FConstStructView Payload, const FName Origin) const;
+template bool METASTORYMODULE_API TMetaStoryStrongExecutionContext<true>::RequestTransition(FMetaStoryStateHandle TargetState, EMetaStoryTransitionPriority Priority, EMetaStorySelectionFallback Fallback) const;
+template bool METASTORYMODULE_API TMetaStoryStrongExecutionContext<true>::BroadcastDelegate(const FMetaStoryDelegateDispatcher& Dispatcher) const;
+template bool METASTORYMODULE_API TMetaStoryStrongExecutionContext<true>::BindDelegate(const FMetaStoryDelegateListener& Listener, FSimpleDelegate Delegate) const;
+template bool METASTORYMODULE_API TMetaStoryStrongExecutionContext<true>::UnbindDelegate(const FMetaStoryDelegateListener& Listener) const;
+template bool METASTORYMODULE_API TMetaStoryStrongExecutionContext<true>::FinishTask(EMetaStoryFinishTaskType FinishType) const;
+template bool METASTORYMODULE_API TMetaStoryStrongExecutionContext<true>::UpdateScheduledTickRequest(UE::MetaStory::FScheduledTickHandle Handle, FMetaStoryScheduledTick ScheduledTick) const;
+template void METASTORYMODULE_API TMetaStoryStrongExecutionContext<true>::ScheduleNextTick(TNotNull<UObject*> Owner, TNotNull<const UMetaStory*> RootMetaStory, FMetaStoryInstanceStorage& Storage, UE::MetaStory::EMetaStoryTickReason Reason);
 
 FMetaStoryWeakExecutionContext::FMetaStoryWeakExecutionContext(const FMetaStoryExecutionContext& Context)
 	: Owner(Context.GetOwner())
-	, MetaStory(Context.GetStateTree())
+	, MetaStory(Context.GetMetaStory())
 	, Storage(Context.GetMutableInstanceData()->GetWeakMutableStorage())
 {
 	if (const FMetaStoryExecutionFrame* Frame = Context.GetCurrentlyProcessedFrame())

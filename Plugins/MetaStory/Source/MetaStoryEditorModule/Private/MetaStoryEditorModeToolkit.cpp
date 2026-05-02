@@ -116,11 +116,11 @@ void FMetaStoryEditorModeToolkit::HandleTabSpawned(UE::MetaStoryEditor::FSpawned
 			const UMetaStoryEditorData* EditorData = nullptr;
 			if (UMetaStoryEditorMode* EditorMode = WeakEditorMode.Get())
 			{
-				if (UMetaStory* MetaStory = EditorMode->GetStateTree())
+				if (UMetaStory* MetaStory = EditorMode->GetMetaStory())
 				{
 					if (UMetaStoryEditingSubsystem* Subsystem = GEditor->GetEditorSubsystem<UMetaStoryEditingSubsystem>())
 					{
-						EditorData = Subsystem->FindOrAddViewModel(MetaStory)->GetStateTreeEditorData();
+						EditorData = Subsystem->FindOrAddViewModel(MetaStory)->GetMetaStoryEditorData();
 					}
 				}
 			}
@@ -135,7 +135,7 @@ void FMetaStoryEditorModeToolkit::HandleTabSpawned(UE::MetaStoryEditor::FSpawned
 	else if (SpawnedTab.TabID == UE::MetaStoryEditor::FWorkspaceTabHost::OutlinerTabId)
 	{
 		WeakOutlinerTab = SpawnedTab.DockTab;
-		UpdateStateTreeOutliner();
+		UpdateMetaStoryOutliner();
 	}
 	else if (SpawnedTab.TabID == UE::MetaStoryEditor::FWorkspaceTabHost::SearchTabId)
 	{
@@ -200,7 +200,7 @@ FSlateIcon FMetaStoryEditorModeToolkit::GetCompileStatusImage() const
 
 	if (UMetaStoryEditorMode* EditorMode = WeakEditorMode.Get())
 	{
-		UMetaStory* MetaStory = EditorMode->GetStateTree();
+		UMetaStory* MetaStory = EditorMode->GetMetaStory();
 		if (MetaStory)
 		{
 			const bool bCompiledDataResetDuringLoad = MetaStory->LastCompiledEditorDataHash == EditorMode->EditorDataHash && !MetaStory->IsReadyToRun();
@@ -264,7 +264,7 @@ void FMetaStoryEditorModeToolkit::ExtendSecondaryModeToolbar(UToolMenu* ToolBar)
 		{
 			if (TSharedPtr<FAssetEditorToolkit> SharedToolkit = InContext->Toolkit.Pin())
 			{
-				if(UMetaStoryEditorMode* Mode = Cast<UMetaStoryEditorMode>(SharedToolkit->GetEditorModeManager().GetActiveScriptableMode(UMetaStoryEditorMode::EM_StateTree)))
+				if(UMetaStoryEditorMode* Mode = Cast<UMetaStoryEditorMode>(SharedToolkit->GetEditorModeManager().GetActiveScriptableMode(UMetaStoryEditorMode::EM_MetaStory)))
 				{
 					if (TSharedPtr<FModeToolkit> Toolkit = Mode->GetToolkit().Pin())
 					{
@@ -324,7 +324,7 @@ void FMetaStoryEditorModeToolkit::ExtendSecondaryModeToolbar(UToolMenu* ToolBar)
 					{
 				 		if(TSharedPtr<FMetaStoryEditorModeToolkit> SharedToolkit = GetToolkitFromAssetEditorContext(ToolkitContextObject))
 					 	{
-							 if(UMetaStory* MetaStory = SharedToolkit->EditorHost->GetStateTree())
+							 if(UMetaStory* MetaStory = SharedToolkit->EditorHost->GetMetaStory())
 							 {
 								 if (const UMetaStoryEditorData* EditorData = Cast<UMetaStoryEditorData>(MetaStory->EditorData))
 								 {
@@ -359,7 +359,7 @@ void FMetaStoryEditorModeToolkit::ExtendSecondaryModeToolbar(UToolMenu* ToolBar)
 					{
 						if(TSharedPtr<FMetaStoryEditorModeToolkit> SharedToolkit = GetToolkitFromAssetEditorContext(ToolkitContextObject))
 						{
-							if(UMetaStory* MetaStory = SharedToolkit->EditorHost->GetStateTree())
+							if(UMetaStory* MetaStory = SharedToolkit->EditorHost->GetMetaStory())
 							{
 								if (const UMetaStoryEditorData* EditorData = Cast<UMetaStoryEditorData>(MetaStory->EditorData))
 								{
@@ -394,7 +394,7 @@ void FMetaStoryEditorModeToolkit::ExtendSecondaryModeToolbar(UToolMenu* ToolBar)
 					{
 					 	if(TSharedPtr<FMetaStoryEditorModeToolkit> SharedToolkit = GetToolkitFromAssetEditorContext(ToolkitContextObject))
 					 	{
-							 if(UMetaStory* MetaStory = SharedToolkit->EditorHost->GetStateTree())
+							 if(UMetaStory* MetaStory = SharedToolkit->EditorHost->GetMetaStory())
 							 {
 								 if (const UMetaStoryEditorData* EditorData = Cast<UMetaStoryEditorData>(MetaStory->EditorData))
 								 {
@@ -434,10 +434,10 @@ void FMetaStoryEditorModeToolkit::ExtendSecondaryModeToolbar(UToolMenu* ToolBar)
 	}
 }
 
-void FMetaStoryEditorModeToolkit::OnStateTreeChanged()
+void FMetaStoryEditorModeToolkit::OnMetaStoryChanged()
 {
-	// Update underlying state tree state
-	UpdateStateTreeOutliner();
+	// Update underlying MetaStory state
+	UpdateMetaStoryOutliner();
 
 #if WITH_METASTORY_TRACE_DEBUGGER
 	UpdateDebuggerView();
@@ -525,7 +525,7 @@ void FMetaStoryEditorModeToolkit::OnNodeBPBaseClassPicked(UClass* NodeClass) con
 	{
 		return;
 	}
-	UMetaStory* MetaStory = EditorMode->GetStateTree();
+	UMetaStory* MetaStory = EditorMode->GetMetaStory();
 	if (MetaStory == nullptr)
 	{
 		return;
@@ -576,7 +576,7 @@ FText FMetaStoryEditorModeToolkit::GetStatisticsText() const
 		return FText::GetEmpty();
 	}
 
-	UMetaStory* MetaStory = EditorMode->GetStateTree();
+	UMetaStory* MetaStory = EditorMode->GetMetaStory();
 	if (MetaStory == nullptr)
 	{
 		return FText::GetEmpty();
@@ -604,11 +604,11 @@ const FPropertyBindingBindingCollection* FMetaStoryEditorModeToolkit::GetBinding
 {
 	if (TStrongObjectPtr<UMetaStoryEditorMode> EditorMode = WeakEditorMode.Pin())
 	{
-		if (UMetaStory* MetaStory = EditorMode->GetStateTree())
+		if (UMetaStory* MetaStory = EditorMode->GetMetaStory())
 		{
 			if (UMetaStoryEditingSubsystem* Subsystem = GEditor->GetEditorSubsystem<UMetaStoryEditingSubsystem>())
 			{
-				if (const UMetaStoryEditorData* EditorData = Subsystem->FindOrAddViewModel(MetaStory)->GetStateTreeEditorData())
+				if (const UMetaStoryEditorData* EditorData = Subsystem->FindOrAddViewModel(MetaStory)->GetMetaStoryEditorData())
 				{
 					return EditorData->GetPropertyEditorBindings();
 				}
@@ -618,16 +618,16 @@ const FPropertyBindingBindingCollection* FMetaStoryEditorModeToolkit::GetBinding
 	return nullptr;
 }
 
-void FMetaStoryEditorModeToolkit::UpdateStateTreeOutliner()
+void FMetaStoryEditorModeToolkit::UpdateMetaStoryOutliner()
 {
 	MetaStoryOutliner = SNullWidget::NullWidget;
 	if (UMetaStoryEditorMode* EditorMode = WeakEditorMode.Get())
 	{
-		if (EditorMode && EditorMode->GetStateTree())
+		if (EditorMode && EditorMode->GetMetaStory())
 		{
 			if (UMetaStoryEditingSubsystem* Subsystem = GEditor->GetEditorSubsystem<UMetaStoryEditingSubsystem>())
 			{
-				MetaStoryOutliner = SNew(SMetaStoryOutliner, Subsystem->FindOrAddViewModel(EditorMode->GetStateTree()), GetToolkitCommands());
+				MetaStoryOutliner = SNew(SMetaStoryOutliner, Subsystem->FindOrAddViewModel(EditorMode->GetMetaStory()), GetToolkitCommands());
 			}
 		}
 	}
@@ -654,7 +654,7 @@ void FMetaStoryEditorModeToolkit::UpdateDebuggerView()
 
 	if (UMetaStoryEditorMode* EditorMode = WeakEditorMode.Get())
 	{
-		if (UMetaStory* MetaStory = EditorMode->GetStateTree())
+		if (UMetaStory* MetaStory = EditorMode->GetMetaStory())
 		{
 			if (UMetaStoryEditingSubsystem* Subsystem = GEditor->GetEditorSubsystem<UMetaStoryEditingSubsystem>())
 			{

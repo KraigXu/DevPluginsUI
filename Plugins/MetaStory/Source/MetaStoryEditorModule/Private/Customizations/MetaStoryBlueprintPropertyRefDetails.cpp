@@ -14,7 +14,7 @@
 
 namespace UE::MetaStory::BlueprintPropertyRef
 {
-	static bool IsInStateTreeNode(TSharedRef<IPropertyHandle> PropertyHandle)
+	static bool IsInMetaStoryNode(TSharedRef<IPropertyHandle> PropertyHandle)
 	{
 		TSharedPtr<IPropertyHandle> TestPropertyHandle = PropertyHandle->GetParentHandle();
 		while (TestPropertyHandle)
@@ -41,8 +41,8 @@ TSharedRef<IPropertyTypeCustomization> FMetaStoryBlueprintPropertyRefDetails::Ma
 
 void FMetaStoryBlueprintPropertyRefDetails::CustomizeHeader(TSharedRef<IPropertyHandle> InPropertyHandle, class FDetailWidgetRow& HeaderRow, IPropertyTypeCustomizationUtils& InCustomizationUtils)
 {
-	// Don't allow to modify property ref internal type if it's a part of State Tree node.
-	if (UE::MetaStory::BlueprintPropertyRef::IsInStateTreeNode(InPropertyHandle))
+	// Don't allow to modify property ref internal type if it's a part of MetaStory node.
+	if (UE::MetaStory::BlueprintPropertyRef::IsInMetaStoryNode(InPropertyHandle))
 	{
 		HeaderRow.NameContent()
 		[
@@ -122,7 +122,7 @@ void FMetaStoryBlueprintPropertyRefDetails::CustomizeHeader(TSharedRef<IProperty
 			.Text(LOCTEXT("ReferenceTo", "Reference to"))
 			.Font(IPropertyTypeCustomizationUtils::GetRegularFont())
 			.ColorAndOpacity(FSlateColor::UseSubduedForeground())
-			.ToolTipText(LOCTEXT("ReferenceTo_Tooltip", "Specifies the type of the referenced property. The referenced property is bound using property binding in the State Tree."))
+			.ToolTipText(LOCTEXT("ReferenceTo_Tooltip", "Specifies the type of the referenced property. The referenced property is bound using property binding in the MetaStory."))
 		]
 		
 		+ SHorizontalBox::Slot()
@@ -140,7 +140,7 @@ void FMetaStoryBlueprintPropertyRefDetails::CustomizeHeader(TSharedRef<IProperty
 
 void FMetaStoryBlueprintPropertyRefDetails::CustomizeChildren(TSharedRef<IPropertyHandle> InPropertyHandle, IDetailChildrenBuilder& ChildBuilder, IPropertyTypeCustomizationUtils& InCustomizationUtils)
 {
-	if(!UE::MetaStory::BlueprintPropertyRef::IsInStateTreeNode(InPropertyHandle))
+	if(!UE::MetaStory::BlueprintPropertyRef::IsInMetaStoryNode(InPropertyHandle))
 	{
 		TSharedPtr<IPropertyHandle> IsOptionalPropertyHandle = InPropertyHandle->GetChildHandle(GET_MEMBER_NAME_STRING_CHECKED(FMetaStoryBlueprintPropertyRef, bIsOptional));
 		ChildBuilder.AddProperty(IsOptionalPropertyHandle.ToSharedRef());

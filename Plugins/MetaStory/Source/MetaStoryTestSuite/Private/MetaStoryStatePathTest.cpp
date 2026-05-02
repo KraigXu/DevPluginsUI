@@ -9,7 +9,7 @@
 #include "MetaStoryCompiler.h"
 #include "Conditions/MetaStoryCommonConditions.h"
 
-#define LOCTEXT_NAMESPACE "AITestSuite_StateTreeTest"
+#define LOCTEXT_NAMESPACE "AITestSuite_MetaStoryTest"
 
 UE_DISABLE_OPTIMIZATION_SHIP
 
@@ -52,9 +52,9 @@ struct FMetaStoryTest_StatePath_LinkStates : FMetaStoryTestBase
 		//		RootStateLinkedTree (Sub1) -> Success
 		//	Sub1
 		//		Sub1State1 -> cond fail -> success
-		UMetaStory& MetaStory1 = NewStateTree();
-		UMetaStory& MetaStory2 = NewStateTree();
-		UMetaStory& MetaStory3 = NewStateTree();
+		UMetaStory& MetaStory1 = NewMetaStory();
+		UMetaStory& MetaStory2 = NewMetaStory();
+		UMetaStory& MetaStory3 = NewMetaStory();
 		// Tree1
 		{
 			UMetaStoryEditorData& EditorData = *Cast<UMetaStoryEditorData>(MetaStory1.EditorData);
@@ -215,7 +215,7 @@ struct FMetaStoryTest_StatePath_LinkStates : FMetaStoryTestBase
 				Transition.bDelayTransition = true;
 				Transition.DelayDuration = 0.999f;
 
-				TStateTreeEditorNode<FMetaStoryRandomCondition>& Cond = State.AddEnterCondition<FMetaStoryRandomCondition>();
+				TMetaStoryTypedEditorNode<FMetaStoryRandomCondition>& Cond = State.AddEnterCondition<FMetaStoryRandomCondition>();
 				Cond.GetNode().EvaluationMode = EMetaStoryConditionEvaluationMode::ForcedFalse;
 			}
 		}
@@ -242,7 +242,7 @@ struct FMetaStoryTest_StatePath_LinkStates : FMetaStoryTestBase
 
 		// Create context
 		FMetaStoryInstanceData InstanceData;
-		FTestStateTreeExecutionContext Exec(MetaStory1, MetaStory1, InstanceData);
+		FTestMetaStoryExecutionContext Exec(MetaStory1, MetaStory1, InstanceData);
 		{
 			const bool bInitSucceeded = Exec.IsValid();
 			AITEST_TRUE(TEXT("MetaStory should init"), bInitSucceeded);
@@ -297,27 +297,27 @@ struct FMetaStoryTest_StatePath_LinkStates : FMetaStoryTestBase
 			{
 				const FActiveFrameID FirstFrameID = InstanceData.GetExecutionState()->ActiveFrames[0].FrameID;
 				AITEST_TRUE(TEXT("Frame for Tree1Root is active"), FirstFrameID == FActiveFrameID(++ActiveCounter));
-				AITEST_TRUE(TEXT("State Tree1Root is active"), ExecPath.Contains(FActiveStateID(++ActiveCounter)));
-				AITEST_TRUE(TEXT("State Tree1Root is active"), ExecPath.Contains(FActiveState(FirstFrameID, FActiveStateID(ActiveCounter), FMetaStoryStateHandle(0))));
-				AITEST_TRUE(TEXT("State Tree1RootState1 is active"), ExecPath.Contains(FActiveStateID(++ActiveCounter)));
-				AITEST_TRUE(TEXT("State Tree1RootState1 is active"), ExecPath.Contains(FActiveState(FirstFrameID, FActiveStateID(ActiveCounter), FMetaStoryStateHandle(1))));
-				AITEST_TRUE(TEXT("State Tree1State1StateSub1A is active"), ExecPath.Contains(FActiveStateID(++ActiveCounter)));
-				AITEST_TRUE(TEXT("State Tree1State1StateSub1A is active"), ExecPath.Contains(FActiveState(FirstFrameID, FActiveStateID(4), FMetaStoryStateHandle(2))));
+				AITEST_TRUE(TEXT("MetaStory1Root is active"), ExecPath.Contains(FActiveStateID(++ActiveCounter)));
+				AITEST_TRUE(TEXT("MetaStory1Root is active"), ExecPath.Contains(FActiveState(FirstFrameID, FActiveStateID(ActiveCounter), FMetaStoryStateHandle(0))));
+				AITEST_TRUE(TEXT("MetaStory1RootState1 is active"), ExecPath.Contains(FActiveStateID(++ActiveCounter)));
+				AITEST_TRUE(TEXT("MetaStory1RootState1 is active"), ExecPath.Contains(FActiveState(FirstFrameID, FActiveStateID(ActiveCounter), FMetaStoryStateHandle(1))));
+				AITEST_TRUE(TEXT("MetaStory1State1StateSub1A is active"), ExecPath.Contains(FActiveStateID(++ActiveCounter)));
+				AITEST_TRUE(TEXT("MetaStory1State1StateSub1A is active"), ExecPath.Contains(FActiveState(FirstFrameID, FActiveStateID(4), FMetaStoryStateHandle(2))));
 			}
 			{
 				AITEST_TRUE(TEXT("Frame for Tree1Sub1 is active"), InstanceData.GetExecutionState()->ActiveFrames[1].FrameID == FActiveFrameID(++ActiveCounter));
-				AITEST_TRUE(TEXT("State Tree1Sub1 is active"), ExecPath.Contains(FActiveStateID(++ActiveCounter)));
-				AITEST_TRUE(TEXT("State Tree1Sub1StateLinkTree2A is active"), ExecPath.Contains(FActiveStateID(++ActiveCounter)));
+				AITEST_TRUE(TEXT("MetaStory1Sub1 is active"), ExecPath.Contains(FActiveStateID(++ActiveCounter)));
+				AITEST_TRUE(TEXT("MetaStory1Sub1StateLinkTree2A is active"), ExecPath.Contains(FActiveStateID(++ActiveCounter)));
 			}
 			{
 				AITEST_TRUE(TEXT("Frame for Tree2StateRoot is active"), InstanceData.GetExecutionState()->ActiveFrames[2].FrameID == FActiveFrameID(++ActiveCounter));
-				AITEST_TRUE(TEXT("State Tree2StateRoot is active"), ExecPath.Contains(FActiveStateID(++ActiveCounter)));
-				AITEST_TRUE(TEXT("State Tree2RootStateSub1A is active"), ExecPath.Contains(FActiveStateID(++ActiveCounter)));
+				AITEST_TRUE(TEXT("MetaStory2StateRoot is active"), ExecPath.Contains(FActiveStateID(++ActiveCounter)));
+				AITEST_TRUE(TEXT("MetaStory2RootStateSub1A is active"), ExecPath.Contains(FActiveStateID(++ActiveCounter)));
 			}
 			{
 				AITEST_TRUE(TEXT("Frame for Tree2Sub1 is active"), InstanceData.GetExecutionState()->ActiveFrames[3].FrameID == FActiveFrameID(++ActiveCounter));
-				AITEST_TRUE(TEXT("State Tree2Sub1 is active"), ExecPath.Contains(FActiveStateID(++ActiveCounter)));
-				AITEST_TRUE(TEXT("State Tree2Sub1State1 is active"), ExecPath.Contains(FActiveStateID(++ActiveCounter)));
+				AITEST_TRUE(TEXT("MetaStory2Sub1 is active"), ExecPath.Contains(FActiveStateID(++ActiveCounter)));
+				AITEST_TRUE(TEXT("MetaStory2Sub1State1 is active"), ExecPath.Contains(FActiveStateID(++ActiveCounter)));
 			}
 			{
 				AITEST_FALSE(TEXT("No accidental increment"), ExecPath.Contains(FActiveStateID(ActiveCounter+1)));
@@ -335,7 +335,7 @@ struct FMetaStoryTest_StatePath_LinkStates : FMetaStoryTestBase
 			FActiveStatePath ExecPath = InstanceData.GetExecutionState()->GetActiveStatePath();
 			AITEST_TRUE(TEXT("Has the correct number of path elements"), ExecPath.Num() == 9);
 			AITEST_TRUE(TEXT("Has the correct number of active states"), InstanceData.GetExecutionState()->ActiveFrames.Num() == 4);
-			AITEST_TRUE(TEXT("State Tree2Sub1State2 is active"), ExecPath.Contains(FActiveStateID(++ActiveCounter)));
+			AITEST_TRUE(TEXT("MetaStory2Sub1State2 is active"), ExecPath.Contains(FActiveStateID(++ActiveCounter)));
 			AITEST_FALSE(TEXT("No accidental increment"), ExecPath.Contains(FActiveStateID(ActiveCounter + 1)));
 			AITEST_TRUE(TEXT("All frames are the same"), TestFrameId(4));
 			Exec.LogClear();
@@ -442,7 +442,7 @@ struct FMetaStoryTest_StatePath_LinkStates : FMetaStoryTestBase
 		return true;
 	}
 };
-IMPLEMENT_STATE_TREE_INSTANT_TEST(FMetaStoryTest_StatePath_LinkStates, "System.MetaStory.StatePath.LinkStates");
+IMPLEMENT_METASTORY_INSTANT_TEST(FMetaStoryTest_StatePath_LinkStates, "System.MetaStory.StatePath.LinkStates");
 
 } // namespace UE::MetaStory::Tests
 

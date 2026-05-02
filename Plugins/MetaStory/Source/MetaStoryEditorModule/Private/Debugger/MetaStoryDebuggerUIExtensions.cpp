@@ -255,7 +255,7 @@ void OnTransitionBreakpointToggled(const TSharedPtr<IPropertyHandle>& StructProp
 	}
 
 	// Determine desired toggled state. Undermined will switch all to checked (i.e. Enable breakpoint)
-	const ECheckBoxState CommonState = GetTransitionBreakpointCheckState(StructPropertyHandle, MetaStoryViewModel->GetStateTreeEditorData());
+	const ECheckBoxState CommonState = GetTransitionBreakpointCheckState(StructPropertyHandle, MetaStoryViewModel->GetMetaStoryEditorData());
 	const ECheckBoxState ToggledState = (CommonState == ECheckBoxState::Checked) ? ECheckBoxState::Unchecked : ECheckBoxState::Checked;
 	const IPropertyHandle& PropertyHandle = *(StructPropertyHandle.Get());
 
@@ -299,7 +299,7 @@ TArray<TWeakObjectPtr<UObject>> GetWeakOuterObjects(const TSharedPtr<IPropertyHa
 
 TSharedRef<SWidget> CreateStateWidget(TSharedPtr<IPropertyHandle> StateEnabledProperty, const TSharedPtr<FMetaStoryViewModel>& MetaStoryViewModel)
 {
-	TWeakObjectPtr<const UMetaStoryEditorData> WeakTreeData = MetaStoryViewModel != nullptr ? MetaStoryViewModel->GetStateTreeEditorData() : nullptr;
+	TWeakObjectPtr<const UMetaStoryEditorData> WeakTreeData = MetaStoryViewModel != nullptr ? MetaStoryViewModel->GetMetaStoryEditorData() : nullptr;
 	TArray<TWeakObjectPtr<UObject>> StatesBeingCustomized = GetWeakOuterObjects(StateEnabledProperty);
 
 	const TSharedRef<SHorizontalBox> HeaderContentWidget = SNew(SHorizontalBox)
@@ -380,7 +380,7 @@ TSharedRef<SWidget> CreateStateWidget(TSharedPtr<IPropertyHandle> StateEnabledPr
 
 void AppendStateMenuItems(FMenuBuilder& InMenuBuilder, TSharedPtr<IPropertyHandle> StateEnabledProperty, const TSharedPtr<FMetaStoryViewModel>& MetaStoryViewModel)
 {
-	TWeakObjectPtr WeakTreeData = MetaStoryViewModel != nullptr ? MetaStoryViewModel->GetStateTreeEditorData() : nullptr;
+	TWeakObjectPtr WeakTreeData = MetaStoryViewModel != nullptr ? MetaStoryViewModel->GetMetaStoryEditorData() : nullptr;
 	TArray<TWeakObjectPtr<UObject>> StatesBeingCustomized = GetWeakOuterObjects(StateEnabledProperty);
 
 	InMenuBuilder.BeginSection(FName("Options"), LOCTEXT("StateOptions", "State Debug Options"));
@@ -809,7 +809,7 @@ TSharedRef<SWidget> CreateTransitionWidget(const TSharedPtr<IPropertyHandle>& St
 {
 	using namespace EditorNodeUtils;
 
-	TWeakObjectPtr WeakTreeData = MetaStoryViewModel != nullptr ? MetaStoryViewModel->GetStateTreeEditorData() : nullptr;
+	TWeakObjectPtr WeakTreeData = MetaStoryViewModel != nullptr ? MetaStoryViewModel->GetMetaStoryEditorData() : nullptr;
 
 	return SNew(SHorizontalBox)
 		+ SHorizontalBox::Slot()
@@ -881,7 +881,7 @@ void AppendTransitionMenuItems(FMenuBuilder& InMenuBuilder, const TSharedPtr<IPr
 {
 	using namespace EditorNodeUtils;
 
-	TWeakObjectPtr WeakTreeData = MetaStoryViewModel != nullptr ? MetaStoryViewModel->GetStateTreeEditorData() : nullptr;
+	TWeakObjectPtr WeakTreeData = MetaStoryViewModel != nullptr ? MetaStoryViewModel->GetMetaStoryEditorData() : nullptr;
 
 	InMenuBuilder.BeginSection(FName("Options"), LOCTEXT("TransitionOptions", "Transition Debug Options"));
 	InMenuBuilder.AddMenuEntry

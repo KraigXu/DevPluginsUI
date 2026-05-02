@@ -63,7 +63,7 @@ extern UE_API FOnVisualThemeChanged OnVisualThemeChanged;
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnBreakpointsChanged, const UMetaStory& /*MetaStory*/);
 extern UE_API FOnBreakpointsChanged OnBreakpointsChanged;
 
-/** Called when the state tree compiles. */
+/** Called when the MetaStory compiles. */
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnPostCompile, const UMetaStory& /*MetaStory*/);
 extern UE_API FOnPostCompile OnPostCompile;
 
@@ -71,7 +71,7 @@ extern UE_API FOnPostCompile OnPostCompile;
 DECLARE_DELEGATE_RetVal_OneParam(bool, FOnRequestCompile, UMetaStory& /*MetaStoryToCompile*/);
 extern UE_API FOnRequestCompile OnRequestCompile;
 
-/** Request the editor hash of the given state tree. */
+/** Request the editor hash of the given MetaStory. */
 DECLARE_DELEGATE_RetVal_OneParam(uint32, FOnRequestEditorHash, const UMetaStory& /*MetaStoryToHash*/);
 extern UE_API FOnRequestEditorHash OnRequestEditorHash;
 

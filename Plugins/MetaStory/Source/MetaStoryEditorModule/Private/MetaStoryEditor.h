@@ -14,7 +14,7 @@ class IMessageLogListing;
 class IDetailsView;
 class UMetaStory;
 class FMetaStoryViewModel;
-class FStandaloneStateTreeEditorHost;
+class FStandaloneMetaStoryEditorHost;
 
 namespace UE::MetaStory::Editor
 {
@@ -25,7 +25,7 @@ class FMetaStoryEditor : public IMetaStoryEditor, public FSelfRegisteringEditorU
 {
 	
 private:
-	friend class FStandaloneStateTreeEditorHost;	
+	friend class FStandaloneMetaStoryEditorHost;	
 public:
 	static const FName LayoutLeftStackId;
 	static const FName LayoutBottomMiddleStackId;
@@ -65,7 +65,7 @@ protected:
 
 private:
 	/** Spawns the tab with the update graph inside */
-	TSharedRef<SDockTab> SpawnTab_StateTreeView(const FSpawnTabArgs& Args);
+	TSharedRef<SDockTab> SpawnTab_MetaStoryView(const FSpawnTabArgs& Args);
 	TSharedRef<SDockTab> SpawnTab_SelectionDetails(const FSpawnTabArgs& Args);
 	TSharedRef<SDockTab> SpawnTab_AssetDetails(const FSpawnTabArgs& Args);
 	TSharedRef<SDockTab> SpawnTab_CompilerResults(const FSpawnTabArgs& Args) const;
@@ -73,7 +73,7 @@ private:
 	void RegisterMenu();
 	void RegisterToolbar();
 	
-	/** State Tree being edited */
+	/** MetaStory being edited */
 	TObjectPtr<UMetaStory> MetaStory = nullptr;
 
 	/** The command list used by the tree view. Stored here, so that other windows (e.g. debugger) can add commands to it, even if the tree view is not spawned yet. */
@@ -102,7 +102,7 @@ private:
 	/** Kept until OnClose so UToolMenus::UnregisterOwner runs even if OnToolkitHostingFinished cleared HostedToolkit first. */
 	TSharedPtr<IToolkit> ToolkitForToolMenuOwner;
 	TSharedPtr<FWorkspaceItem> WorkspaceMenuCategory;
-	TSharedPtr<FStandaloneStateTreeEditorHost> EditorHost;
+	TSharedPtr<FStandaloneMetaStoryEditorHost> EditorHost;
 
 	static const FName MetaStoryViewTabId;
 	static const FName SelectionDetailsTabId;

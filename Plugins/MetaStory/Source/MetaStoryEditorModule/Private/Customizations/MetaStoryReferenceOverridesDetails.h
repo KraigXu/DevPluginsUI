@@ -8,7 +8,7 @@ class IPropertyHandle;
 class IPropertyUtilities;
 
 /**
- * Type customization for FNestedStateTreeReference.
+ * Type customization for nested MetaStory reference overrides.
  */
 class FMetaStoryReferenceOverridesDetails : public IPropertyTypeCustomization
 {

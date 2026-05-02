@@ -60,7 +60,7 @@ struct FMetaStoryEditorColor
 
 	/**
 	 * Export Text Item override where properties marked with meta-data "StructExportTransient" are excluded from the exported string
-	 * This is so that copy/pasting State Tree Color entries don't have the effect of also copying over these properties into a new entry.
+	 * This is so that copy/pasting MetaStory Color entries don't have the effect of also copying over these properties into a new entry.
 	 * Since it works with meta-data, it's editor-only.
 	 * Side note: The existing "TextExportTransient" / "DuplicateTransient" specifiers apply for uclass properties only
 	 */ 
@@ -76,7 +76,7 @@ struct FMetaStoryEditorColor
 		return GetTypeHash(InColor.ColorRef);
 	}
 
-	/** ID unique per State Tree Color Entry. Marked as struct export transient so that copy-pasting this entry does not result in the same repeating ID */
+	/** ID unique per MetaStory Color Entry. Marked as struct export transient so that copy-pasting this entry does not result in the same repeating ID */
 	UPROPERTY(meta=(StructExportTransient))
 	FMetaStoryEditorColorRef ColorRef;
 

@@ -10,9 +10,9 @@
 
 #define LOCTEXT_NAMESPACE "MetaStoryEditor"
 
-void SMetaStoryContextMenuButton::Construct(const FArguments& InArgs, const TSharedRef<FMetaStoryViewModel>& InStateTreeViewModel, TWeakObjectPtr<UMetaStoryState> InOwnerState, const FGuid& InNodeID, bool InbIsTransition)
+void SMetaStoryContextMenuButton::Construct(const FArguments& InArgs, const TSharedRef<FMetaStoryViewModel>& InMetaStoryViewModel, TWeakObjectPtr<UMetaStoryState> InOwnerState, const FGuid& InNodeID, bool InbIsTransition)
 {
-	MetaStoryViewModel = InStateTreeViewModel.ToSharedPtr();
+	MetaStoryViewModel = InMetaStoryViewModel.ToSharedPtr();
 	OwnerStateWeak = InOwnerState;
 	NodeID = InNodeID;
 

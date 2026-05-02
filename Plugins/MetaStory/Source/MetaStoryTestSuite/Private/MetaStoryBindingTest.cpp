@@ -11,7 +11,7 @@
 #include "MetaStoryInstanceData.h"
 #include "Conditions/MetaStoryCommonConditions.h"
 
-#define LOCTEXT_NAMESPACE "AITestSuite_StateTreeTest"
+#define LOCTEXT_NAMESPACE "AITestSuite_MetaStoryTest"
 
 UE_DISABLE_OPTIMIZATION_SHIP
 
@@ -141,30 +141,30 @@ struct FMetaStoryTest_BindingsCompiler : FMetaStoryTestBase
 		AITEST_EQUAL(TEXT("Expect Target.CArray[1].A copied from SourceB.Item.A"), Target.CArray[1].A, SourceB.Item.A);
 		AITEST_EQUAL(TEXT("Expect Target.CArray[1].B copied from SourceA.Item.B"), Target.CArray[1].B, SourceA.Item.B);
 		
-		const int32 NumAllocated_FStateTreeTest_PropertyStructB_BeforeReset = FMetaStoryTest_PropertyStructB::NumConstructed;
+		const int32 NumAllocated_FMetaStoryTest_PropertyStructB_BeforeReset = FMetaStoryTest_PropertyStructB::NumConstructed;
 		bool bResetResult = Bindings.FPropertyBindingBindingCollection::ResetObjects(FPropertyBindingIndex16(CopyBatchIndex), TargetView);
 		AITEST_TRUE(TEXT("ResetObjects should succeed"), bResetResult);
 		AITEST_EQUAL(TEXT("Expect Target dynamic array to be empty"), Target.Array.Num(), 0);
 		AITEST_EQUAL(TEXT("Expect Target fixed size Array to not have changed size."), Target.FixedArray.Num(), FixedArraySize);
-		AITEST_NOT_EQUAL(TEXT("Expect the count of constructed FMetaStoryTest_PropertyStructB to be smaller after calling ResetObjects"), FMetaStoryTest_PropertyStructB::NumConstructed, NumAllocated_FStateTreeTest_PropertyStructB_BeforeReset);
+		AITEST_NOT_EQUAL(TEXT("Expect the count of constructed FMetaStoryTest_PropertyStructB to be smaller after calling ResetObjects"), FMetaStoryTest_PropertyStructB::NumConstructed, NumAllocated_FMetaStoryTest_PropertyStructB_BeforeReset);
 
 		return true;
 	}
 };
-IMPLEMENT_STATE_TREE_INSTANT_TEST(FMetaStoryTest_BindingsCompiler, "System.MetaStory.Binding.BindingsCompiler");
+IMPLEMENT_METASTORY_INSTANT_TEST(FMetaStoryTest_BindingsCompiler, "System.MetaStory.Binding.BindingsCompiler");
 
 struct FMetaStoryTest_PropertyFunctions : FMetaStoryTestBase
 {
 	virtual bool InstantTest() override
 	{
-		UMetaStory& MetaStory = NewStateTree();
+		UMetaStory& MetaStory = NewMetaStory();
 		UMetaStoryEditorData& EditorData = *Cast<UMetaStoryEditorData>(MetaStory.EditorData);
 		UMetaStoryState& Root = EditorData.AddSubTree(FName(TEXT("Root")));
 		FPropertyBindingPathSegment PathSegmentToFuncResult = FPropertyBindingPathSegment(TEXT("Result"));
 
 		// Condition with property function binding.
 		{
-			TStateTreeEditorNode<FMetaStoryCompareIntCondition>& EnterCond = Root.AddEnterCondition<FMetaStoryCompareIntCondition>(EGenericAICheck::Equal);
+			TMetaStoryTypedEditorNode<FMetaStoryCompareIntCondition>& EnterCond = Root.AddEnterCondition<FMetaStoryCompareIntCondition>(EGenericAICheck::Equal);
 			EnterCond.GetInstanceData().Right = 1;
 			EditorData.AddPropertyBinding(CastChecked<UScriptStruct>(FTestPropertyFunction::StaticStruct()), {PathSegmentToFuncResult}, FPropertyBindingPath(EnterCond.ID, TEXT("Left")));
 		}
@@ -206,7 +206,7 @@ struct FMetaStoryTest_PropertyFunctions : FMetaStoryTestBase
 		AITEST_TRUE(TEXT("MetaStory should get compiled"), bResult);
 
 		FMetaStoryInstanceData InstanceData;
-		FTestStateTreeExecutionContext Exec(MetaStory, MetaStory, InstanceData);
+		FTestMetaStoryExecutionContext Exec(MetaStory, MetaStory, InstanceData);
 		const bool bInitSucceeded = Exec.IsValid();
 		AITEST_TRUE(TEXT("MetaStory should init"), bInitSucceeded);
 
@@ -228,7 +228,7 @@ struct FMetaStoryTest_PropertyFunctions : FMetaStoryTestBase
 		return true;
 	}
 };
-IMPLEMENT_STATE_TREE_INSTANT_TEST(FMetaStoryTest_PropertyFunctions, "System.MetaStory.Binding.PropertyFunctions");
+IMPLEMENT_METASTORY_INSTANT_TEST(FMetaStoryTest_PropertyFunctions, "System.MetaStory.Binding.PropertyFunctions");
 
 struct FMetaStoryTest_CopyObjects : FMetaStoryTestBase
 {
@@ -358,7 +358,7 @@ struct FMetaStoryTest_CopyObjects : FMetaStoryTestBase
 		return true;
 	}
 };
-IMPLEMENT_STATE_TREE_INSTANT_TEST(FMetaStoryTest_CopyObjects, "System.MetaStory.Binding.CopyObjects");
+IMPLEMENT_METASTORY_INSTANT_TEST(FMetaStoryTest_CopyObjects, "System.MetaStory.Binding.CopyObjects");
 
 //@todo: Add test coverage for propertyrefs across frames
 
@@ -437,7 +437,7 @@ struct FMetaStoryTest_References : FMetaStoryTestBase
 		return true;
 	}
 };
-IMPLEMENT_STATE_TREE_INSTANT_TEST(FMetaStoryTest_References, "System.MetaStory.Binding.References");
+IMPLEMENT_METASTORY_INSTANT_TEST(FMetaStoryTest_References, "System.MetaStory.Binding.References");
 
 struct FMetaStoryTest_ReferencesConstness : FMetaStoryTestBase
 {
@@ -515,7 +515,7 @@ struct FMetaStoryTest_ReferencesConstness : FMetaStoryTestBase
 		return true;
 	}
 };
-IMPLEMENT_STATE_TREE_INSTANT_TEST(FMetaStoryTest_ReferencesConstness, "System.MetaStory.Binding.ReferencesConstness");
+IMPLEMENT_METASTORY_INSTANT_TEST(FMetaStoryTest_ReferencesConstness, "System.MetaStory.Binding.ReferencesConstness");
 
 struct FMetaStoryTest_ReferencesOnNode : FMetaStoryTestBase
 {
@@ -525,16 +525,16 @@ struct FMetaStoryTest_ReferencesOnNode : FMetaStoryTestBase
 		//     State1 PropertyRefOnNode -> IntA, PropertyRefOnInstance -> IntB
 		//         State2 PropertyRefOnNode -> PropertyRefOnNode(State1), PropertyRefOnInstance -> PropertyRefOnInstance(State1)
 
-		UMetaStory& MetaStory = NewStateTree();
+		UMetaStory& MetaStory = NewMetaStory();
 		UMetaStoryEditorData& EditorData = *Cast<UMetaStoryEditorData>(MetaStory.EditorData);
 
 		UMetaStoryState& Root = EditorData.AddSubTree(FName(TEXT("Root")));
 		UMetaStoryState& State1 = Root.AddChildState(FName(TEXT("State1")));
 		UMetaStoryState& State2 = State1.AddChildState(FName(TEXT("State2")));
 
-		TStateTreeEditorNode<FTestTask_IntegersOutput>& RootTaskNode = Root.AddTask<FTestTask_IntegersOutput>(FName(TEXT("RootTask")));
-		TStateTreeEditorNode<FTestTask_PropertyRefOnNodeAndInstance>& State1TaskNode = State1.AddTask<FTestTask_PropertyRefOnNodeAndInstance>(FName(TEXT("State1Task")));
-		TStateTreeEditorNode<FTestTask_PropertyRefOnNodeAndInstance>& State2TaskNode = State2.AddTask<FTestTask_PropertyRefOnNodeAndInstance>(FName(TEXT("State2Task")));
+		TMetaStoryTypedEditorNode<FTestTask_IntegersOutput>& RootTaskNode = Root.AddTask<FTestTask_IntegersOutput>(FName(TEXT("RootTask")));
+		TMetaStoryTypedEditorNode<FTestTask_PropertyRefOnNodeAndInstance>& State1TaskNode = State1.AddTask<FTestTask_PropertyRefOnNodeAndInstance>(FName(TEXT("State1Task")));
+		TMetaStoryTypedEditorNode<FTestTask_PropertyRefOnNodeAndInstance>& State2TaskNode = State2.AddTask<FTestTask_PropertyRefOnNodeAndInstance>(FName(TEXT("State2Task")));
 
 		EditorData.AddPropertyBinding(
 			FPropertyBindingPath(RootTaskNode.ID, GET_MEMBER_NAME_CHECKED(FTestTask_IntegersOutput_InstanceData, IntA)),
@@ -591,7 +591,7 @@ struct FMetaStoryTest_ReferencesOnNode : FMetaStoryTestBase
 
 		{
 			FMetaStoryInstanceData InstanceData;
-			FTestStateTreeExecutionContext Exec(MetaStory, MetaStory, InstanceData);
+			FTestMetaStoryExecutionContext Exec(MetaStory, MetaStory, InstanceData);
 			const bool bInitSucceeded = Exec.IsValid();
 			AITEST_TRUE("MetaStory should init", bInitSucceeded);
 
@@ -610,7 +610,7 @@ struct FMetaStoryTest_ReferencesOnNode : FMetaStoryTestBase
 		return true;
 	}
 };
-IMPLEMENT_STATE_TREE_INSTANT_TEST(FMetaStoryTest_ReferencesOnNode, "System.MetaStory.Binding.ReferencesOnNode");
+IMPLEMENT_METASTORY_INSTANT_TEST(FMetaStoryTest_ReferencesOnNode, "System.MetaStory.Binding.ReferencesOnNode");
 
 struct FMetaStoryTest_MutableArray : FMetaStoryTestBase
 {
@@ -624,7 +624,7 @@ struct FMetaStoryTest_MutableArray : FMetaStoryTestBase
 		FMetaStoryPropertyBindings Bindings;
 		FMetaStoryPropertyBindingCompiler BindingCompiler;
 
-		UMetaStory& MetaStory = NewStateTree();
+		UMetaStory& MetaStory = NewMetaStory();
 		{
 			UMetaStoryEditorData& EditorData = *Cast<UMetaStoryEditorData>(MetaStory.EditorData);
 			{
@@ -641,7 +641,7 @@ struct FMetaStoryTest_MutableArray : FMetaStoryTestBase
 				ValueArrayRef.SetValueInt32(3, -44);
 
 				// Global
-				TStateTreeEditorNode<FTestTask_PrintValue>& TaskA = EditorData.AddGlobalTask<FTestTask_PrintValue>("Tree1GlobalTaskA");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue>& TaskA = EditorData.AddGlobalTask<FTestTask_PrintValue>("Tree1GlobalTaskA");
 				TaskA.GetInstanceData().Value = -2;
 				TaskA.GetInstanceData().ArrayValue = {-1, -2};
 				EditorData.AddPropertyBinding(FPropertyBindingPath(EditorData.GetRootParametersGuid(), TEXT("Value")), FPropertyBindingPath(TaskA.ID, TEXT("Value")));
@@ -659,7 +659,7 @@ struct FMetaStoryTest_MutableArray : FMetaStoryTestBase
 				FPropertyBindingPath RootParametersArrayValue3(EditorData.GetRootParametersGuid());
 				RootParametersArrayValue3.AddPathSegment("ArrayValue", 3);
 
-				TStateTreeEditorNode<FTestTask_PrintAndResetValue>& TaskA = State.AddTask<FTestTask_PrintAndResetValue>("Tree1StateATaskA");
+				TMetaStoryTypedEditorNode<FTestTask_PrintAndResetValue>& TaskA = State.AddTask<FTestTask_PrintAndResetValue>("Tree1StateATaskA");
 				TaskA.GetInstanceData().Value = -2;
 				TaskA.GetInstanceData().ArrayValue = { -1, -2, -3, -4 };
 				TaskA.GetNode().ResetValue = 22;
@@ -671,7 +671,7 @@ struct FMetaStoryTest_MutableArray : FMetaStoryTestBase
 				EditorData.AddPropertyBinding(FPropertyBindingPath(EditorData.GetRootParametersGuid(), "Value"), FPropertyBindingPath(TaskA.ID, TEXT("Value")));
 				EditorData.AddPropertyBinding(RootParametersArrayValue3, TaskAArrayValue3);
 				
-				TStateTreeEditorNode<FTestTask_PrintAndResetValue>& TaskB = State.AddTask<FTestTask_PrintAndResetValue>("Tree1StateATaskB");
+				TMetaStoryTypedEditorNode<FTestTask_PrintAndResetValue>& TaskB = State.AddTask<FTestTask_PrintAndResetValue>("Tree1StateATaskB");
 				TaskB.GetInstanceData().Value = -2;
 				TaskB.GetInstanceData().ArrayValue = { -1, -2, -3, -4 };
 				TaskB.GetNode().ResetValue = 33;
@@ -691,7 +691,7 @@ struct FMetaStoryTest_MutableArray : FMetaStoryTestBase
 		}
 		{
 			FMetaStoryInstanceData InstanceData;
-			FTestStateTreeExecutionContext Exec(MetaStory, MetaStory, InstanceData);
+			FTestMetaStoryExecutionContext Exec(MetaStory, MetaStory, InstanceData);
 
 			const bool bInitSucceeded = Exec.IsValid();
 			AITEST_TRUE(TEXT("MetaStory should init"), bInitSucceeded);
@@ -722,7 +722,7 @@ struct FMetaStoryTest_MutableArray : FMetaStoryTestBase
 		return true;
 	}
 };
-IMPLEMENT_STATE_TREE_INSTANT_TEST(FMetaStoryTest_MutableArray, "System.MetaStory.Binding.MutableArray");
+IMPLEMENT_METASTORY_INSTANT_TEST(FMetaStoryTest_MutableArray, "System.MetaStory.Binding.MutableArray");
 
 struct FMetaStoryTest_TransitionTaskWithBinding : FMetaStoryTestBase
 {
@@ -736,7 +736,7 @@ struct FMetaStoryTest_TransitionTaskWithBinding : FMetaStoryTestBase
 		FMetaStoryPropertyBindings Bindings;
 		FMetaStoryPropertyBindingCompiler BindingCompiler;
 
-		UMetaStory& MetaStory = NewStateTree();
+		UMetaStory& MetaStory = NewMetaStory();
 		{
 			UMetaStoryEditorData& EditorData = *Cast<UMetaStoryEditorData>(MetaStory.EditorData);
 			{
@@ -746,29 +746,29 @@ struct FMetaStoryTest_TransitionTaskWithBinding : FMetaStoryTestBase
 				RootPropertyBag.SetValueInt32("Value", -111);
 
 				// Global
-				TStateTreeEditorNode<FTestTask_PrintValue>& TaskA = EditorData.AddGlobalTask<FTestTask_PrintValue>("Tree1GlobalTaskA");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue>& TaskA = EditorData.AddGlobalTask<FTestTask_PrintValue>("Tree1GlobalTaskA");
 				TaskA.GetInstanceData().Value = -2;
 				EditorData.AddPropertyBinding(FPropertyBindingPath(EditorData.GetRootParametersGuid(), TEXT("Value")), FPropertyBindingPath(TaskA.ID, TEXT("Value")));
 
-				TStateTreeEditorNode<FTestTask_PrintValue_TransitionTick>& TaskB = EditorData.AddGlobalTask<FTestTask_PrintValue_TransitionTick>("Tree1GlobalTaskB");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue_TransitionTick>& TaskB = EditorData.AddGlobalTask<FTestTask_PrintValue_TransitionTick>("Tree1GlobalTaskB");
 				TaskB.GetInstanceData().Value = -2;
 				EditorData.AddPropertyBinding(FPropertyBindingPath(EditorData.GetRootParametersGuid(), TEXT("Value")), FPropertyBindingPath(TaskB.ID, TEXT("Value")));
 
-				TStateTreeEditorNode<FTestTask_PrintValue_TransitionNoTick>& TaskC = EditorData.AddGlobalTask<FTestTask_PrintValue_TransitionNoTick>("Tree1GlobalTaskC");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue_TransitionNoTick>& TaskC = EditorData.AddGlobalTask<FTestTask_PrintValue_TransitionNoTick>("Tree1GlobalTaskC");
 				TaskC.GetInstanceData().Value = -2;
 				EditorData.AddPropertyBinding(FPropertyBindingPath(EditorData.GetRootParametersGuid(), TEXT("Value")), FPropertyBindingPath(TaskC.ID, TEXT("Value")));
 			}
 			UMetaStoryState& Root = EditorData.AddSubTree("Tree1StateRoot");
 			{
-				TStateTreeEditorNode<FTestTask_PrintValue>& TaskA = Root.AddTask<FTestTask_PrintValue>("Tree1StateRootTaskA");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue>& TaskA = Root.AddTask<FTestTask_PrintValue>("Tree1StateRootTaskA");
 				TaskA.GetInstanceData().Value = -2;
 				EditorData.AddPropertyBinding(FPropertyBindingPath(EditorData.GetRootParametersGuid(), TEXT("Value")), FPropertyBindingPath(TaskA.ID, TEXT("Value")));
 				
-				TStateTreeEditorNode<FTestTask_PrintValue_TransitionTick>& TaskB = Root.AddTask<FTestTask_PrintValue_TransitionTick>("Tree1StateRootTaskB");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue_TransitionTick>& TaskB = Root.AddTask<FTestTask_PrintValue_TransitionTick>("Tree1StateRootTaskB");
 				TaskB.GetInstanceData().Value = -2;
 				EditorData.AddPropertyBinding(FPropertyBindingPath(EditorData.GetRootParametersGuid(), TEXT("Value")), FPropertyBindingPath(TaskB.ID, TEXT("Value")));
 				
-				TStateTreeEditorNode<FTestTask_PrintValue_TransitionNoTick>& TaskC = Root.AddTask<FTestTask_PrintValue_TransitionNoTick>("Tree1StateRootTaskC");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue_TransitionNoTick>& TaskC = Root.AddTask<FTestTask_PrintValue_TransitionNoTick>("Tree1StateRootTaskC");
 				TaskC.GetInstanceData().Value = -2;
 				EditorData.AddPropertyBinding(FPropertyBindingPath(EditorData.GetRootParametersGuid(), TEXT("Value")), FPropertyBindingPath(TaskC.ID, TEXT("Value")));
 			}
@@ -779,15 +779,15 @@ struct FMetaStoryTest_TransitionTaskWithBinding : FMetaStoryTestBase
 				Transition.bDelayTransition = true;
 				Transition.DelayDuration = 5.0;
 
-				TStateTreeEditorNode<FTestTask_PrintValue>& TaskA = State.AddTask<FTestTask_PrintValue>("Tree1StateATaskA");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue>& TaskA = State.AddTask<FTestTask_PrintValue>("Tree1StateATaskA");
 				TaskA.GetInstanceData().Value = -2;
 				EditorData.AddPropertyBinding(FPropertyBindingPath(EditorData.GetRootParametersGuid(), TEXT("Value")), FPropertyBindingPath(TaskA.ID, TEXT("Value")));
 
-				TStateTreeEditorNode<FTestTask_PrintValue_TransitionTick>& TaskB = State.AddTask<FTestTask_PrintValue_TransitionTick>("Tree1StateATaskB");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue_TransitionTick>& TaskB = State.AddTask<FTestTask_PrintValue_TransitionTick>("Tree1StateATaskB");
 				TaskB.GetInstanceData().Value = -2;
 				EditorData.AddPropertyBinding(FPropertyBindingPath(EditorData.GetRootParametersGuid(), TEXT("Value")), FPropertyBindingPath(TaskB.ID, TEXT("Value")));
 
-				TStateTreeEditorNode<FTestTask_PrintValue_TransitionNoTick>& TaskC = State.AddTask<FTestTask_PrintValue_TransitionNoTick>("Tree1StateATaskC");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue_TransitionNoTick>& TaskC = State.AddTask<FTestTask_PrintValue_TransitionNoTick>("Tree1StateATaskC");
 				TaskC.GetInstanceData().Value = -2;
 				EditorData.AddPropertyBinding(FPropertyBindingPath(EditorData.GetRootParametersGuid(), TEXT("Value")), FPropertyBindingPath(TaskC.ID, TEXT("Value")));
 			}
@@ -799,7 +799,7 @@ struct FMetaStoryTest_TransitionTaskWithBinding : FMetaStoryTestBase
 		}
 		{
 			FMetaStoryInstanceData InstanceData;
-			FTestStateTreeExecutionContext Exec(MetaStory, MetaStory, InstanceData);
+			FTestMetaStoryExecutionContext Exec(MetaStory, MetaStory, InstanceData);
 
 			const bool bInitSucceeded = Exec.IsValid();
 			AITEST_TRUE(TEXT("MetaStory should init"), bInitSucceeded);
@@ -852,7 +852,7 @@ struct FMetaStoryTest_TransitionTaskWithBinding : FMetaStoryTestBase
 		return true;
 	}
 };
-IMPLEMENT_STATE_TREE_INSTANT_TEST(FMetaStoryTest_TransitionTaskWithBinding, "System.MetaStory.Binding.TransitionTaskWithBinding");
+IMPLEMENT_METASTORY_INSTANT_TEST(FMetaStoryTest_TransitionTaskWithBinding, "System.MetaStory.Binding.TransitionTaskWithBinding");
 
 struct FMetaStoryTest_BindingStructRef : FMetaStoryTestBase
 {
@@ -873,7 +873,7 @@ struct FMetaStoryTest_BindingStructRef : FMetaStoryTestBase
 		FMetaStoryPropertyBindings Bindings;
 		FMetaStoryPropertyBindingCompiler BindingCompiler;
 
-		UMetaStory& MetaStory = NewStateTree();
+		UMetaStory& MetaStory = NewMetaStory();
 		{
 			UMetaStoryEditorData& EditorData = *Cast<UMetaStoryEditorData>(MetaStory.EditorData);
 
@@ -898,7 +898,7 @@ struct FMetaStoryTest_BindingStructRef : FMetaStoryTestBase
 				EditorData.AddPropertyBinding(FPropertyBindingPath(Root.Parameters.ID, TEXT("RootParam")), FPropertyBindingPath(State1.Parameters.ID, TEXT("StateParam")));
 			}
 			{
-				TStateTreeEditorNode<FTestTask_PrintValue_StructRef_NoBindingUpdate>& TaskA = State1.AddTask<FTestTask_PrintValue_StructRef_NoBindingUpdate>("Tree1State1TaskA");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue_StructRef_NoBindingUpdate>& TaskA = State1.AddTask<FTestTask_PrintValue_StructRef_NoBindingUpdate>("Tree1State1TaskA");
 				TaskA.GetNode().CustomTickFunc = [&TaskA_State_PropertyStructPtr, &TaskA_Task_PropertyStructPtr](FMetaStoryExecutionContext& Context, const FTestTask_PrintValue* Task)
 					{
 						TaskA_State_PropertyStructPtr = nullptr;
@@ -921,7 +921,7 @@ struct FMetaStoryTest_BindingStructRef : FMetaStoryTestBase
 				TaskA.GetInstanceData().PropertyStruct.B = 22;
 				TaskA.GetInstanceData().PropertyStruct.StructB.B = 33;
 
-				TStateTreeEditorNode<FTestTask_PrintValue_StructRef_NoBindingUpdate>& TaskB = State1.AddTask<FTestTask_PrintValue_StructRef_NoBindingUpdate>("Tree1State1TaskB");
+				TMetaStoryTypedEditorNode<FTestTask_PrintValue_StructRef_NoBindingUpdate>& TaskB = State1.AddTask<FTestTask_PrintValue_StructRef_NoBindingUpdate>("Tree1State1TaskB");
 				TaskB.GetNode().CustomTickFunc = [&TaskB_State_PropertyStructPtr, &TaskB_Task_PropertyStructPtr](FMetaStoryExecutionContext& Context, const FTestTask_PrintValue* Task)
 					{
 						TaskB_State_PropertyStructPtr = nullptr;
@@ -969,18 +969,18 @@ struct FMetaStoryTest_BindingStructRef : FMetaStoryTestBase
 		{
 			FMetaStoryInstanceData InstanceData;
 			{
-				FTestStateTreeExecutionContext Exec(MetaStory, MetaStory, InstanceData);
+				FTestMetaStoryExecutionContext Exec(MetaStory, MetaStory, InstanceData);
 				const bool bInitSucceeded = Exec.IsValid();
 				AITEST_TRUE(TEXT("MetaStory should init"), bInitSucceeded);
 			}
 			{
-				FTestStateTreeExecutionContext Exec(MetaStory, MetaStory, InstanceData);
+				FTestMetaStoryExecutionContext Exec(MetaStory, MetaStory, InstanceData);
 				EMetaStoryRunStatus Status = Exec.Start();
 				AITEST_EQUAL(TEXT("Start should complete with Running"), Status, EMetaStoryRunStatus::Running);
 				AITEST_TRUE(TEXT("In correct states"), Exec.ExpectInActiveStates("Tree1StateRoot", "Tree1State1", "Tree1State2"));
 			}
 			{
-				FTestStateTreeExecutionContext Exec(MetaStory, MetaStory, InstanceData);
+				FTestMetaStoryExecutionContext Exec(MetaStory, MetaStory, InstanceData);
 				EMetaStoryRunStatus Status = Exec.Tick(0.1f);
 				AITEST_EQUAL(TEXT("Start should complete with Running"), Status, EMetaStoryRunStatus::Running);
 				AITEST_TRUE(TEXT("In correct states"), Exec.ExpectInActiveStates("Tree1StateRoot", "Tree1State1", "Tree1State3", "Tree1State4"));
@@ -988,7 +988,7 @@ struct FMetaStoryTest_BindingStructRef : FMetaStoryTestBase
 				AITEST_TRUE(TEXT("Both task should point to the same StructRef"), TaskA_Task_PropertyStructPtr != nullptr && TaskA_Task_PropertyStructPtr == TaskB_Task_PropertyStructPtr);
 			}
 			{
-				FTestStateTreeExecutionContext Exec(MetaStory, MetaStory, InstanceData);
+				FTestMetaStoryExecutionContext Exec(MetaStory, MetaStory, InstanceData);
 				EMetaStoryRunStatus Status = Exec.Tick(0.1f);
 				AITEST_EQUAL(TEXT("Start should complete with Running"), Status, EMetaStoryRunStatus::Running);
 				AITEST_TRUE(TEXT("In correct states"), Exec.ExpectInActiveStates("Tree1StateRoot", "Tree1State1", "Tree1State3", "Tree1State4"));
@@ -997,7 +997,7 @@ struct FMetaStoryTest_BindingStructRef : FMetaStoryTestBase
 				AITEST_FALSE(TEXT("Both task should point to the same StructRef"), TaskA_Task_PropertyStructPtr != nullptr && TaskA_Task_PropertyStructPtr == TaskB_Task_PropertyStructPtr);
 			}
 			{
-				FTestStateTreeExecutionContext Exec(MetaStory, MetaStory, InstanceData);
+				FTestMetaStoryExecutionContext Exec(MetaStory, MetaStory, InstanceData);
 				Exec.Stop();
 			}
 		}
@@ -1005,7 +1005,7 @@ struct FMetaStoryTest_BindingStructRef : FMetaStoryTestBase
 		return true;
 	}
 };
-IMPLEMENT_STATE_TREE_INSTANT_TEST(FMetaStoryTest_BindingStructRef, "System.MetaStory.Binding.StructRef");
+IMPLEMENT_METASTORY_INSTANT_TEST(FMetaStoryTest_BindingStructRef, "System.MetaStory.Binding.StructRef");
 
 struct FMetaStoryTest_OutputBinding : FMetaStoryTestBase
 {
@@ -1019,7 +1019,7 @@ struct FMetaStoryTest_OutputBinding : FMetaStoryTestBase
 		FMetaStoryPropertyBindingCompiler BindingCompiler;
 
 		int32 Value = 0;
-		UMetaStory& MetaStory = NewStateTree();
+		UMetaStory& MetaStory = NewMetaStory();
 		{
 			UMetaStoryEditorData& EditorData = *Cast<UMetaStoryEditorData>(MetaStory.EditorData);
 			{
@@ -1030,7 +1030,7 @@ struct FMetaStoryTest_OutputBinding : FMetaStoryTestBase
 				GlobalPropertyBag.AddProperty("IntWrapperParam", EPropertyBagPropertyType::Struct, FIntWrapper::StaticStruct());
 				GlobalPropertyBag.AddContainerProperty("IntWrapperArrayParam", EPropertyBagContainerType::Array, EPropertyBagPropertyType::Struct, FIntWrapper::StaticStruct());
 
-				TStateTreeEditorNode<FTestTask_OutputBindingsTask>& TaskA = EditorData.AddGlobalTask<FTestTask_OutputBindingsTask>("Tree1GlobalTaskA");
+				TMetaStoryTypedEditorNode<FTestTask_OutputBindingsTask>& TaskA = EditorData.AddGlobalTask<FTestTask_OutputBindingsTask>("Tree1GlobalTaskA");
 				TaskA.GetInstanceData().OutputBool = static_cast<bool>(++Value); // 1
 				TaskA.GetInstanceData().OutputInt = { ++Value }; // 2
 				TaskA.GetInstanceData().OutputIntWrapper = { ++Value }; // 3
@@ -1074,7 +1074,7 @@ struct FMetaStoryTest_OutputBinding : FMetaStoryTestBase
 				auto& RootPropertyBag = const_cast<FInstancedPropertyBag&>(*RootState.GetDefaultParameters());
 				RootState.Parameters.Parameters.AddProperty("IntParam", EPropertyBagPropertyType::Int32);
 
-				TStateTreeEditorNode<FTestTask_OutputBindingsTask>& TaskB = RootState.AddTask<FTestTask_OutputBindingsTask>("Tree1RootTaskB");
+				TMetaStoryTypedEditorNode<FTestTask_OutputBindingsTask>& TaskB = RootState.AddTask<FTestTask_OutputBindingsTask>("Tree1RootTaskB");
 				TaskB.GetInstanceData().OutputBool = static_cast<bool>(++Value); // 7
 				TaskB.GetInstanceData().OutputInt = { ++Value }; // 8
 				TaskB.GetInstanceData().OutputIntWrapper = { ++Value }; // 9
@@ -1146,7 +1146,7 @@ struct FMetaStoryTest_OutputBinding : FMetaStoryTestBase
 		}
 		{
 			FMetaStoryInstanceData InstanceData;
-			FTestStateTreeExecutionContext Exec(MetaStory, MetaStory, InstanceData);
+			FTestMetaStoryExecutionContext Exec(MetaStory, MetaStory, InstanceData);
 
 			const bool bInitSucceeded = Exec.IsValid();
 			AITEST_TRUE(TEXT("MetaStory should init"), bInitSucceeded);
@@ -1186,7 +1186,7 @@ struct FMetaStoryTest_OutputBinding : FMetaStoryTestBase
 		return true;
 	}
 };
-IMPLEMENT_STATE_TREE_INSTANT_TEST(FMetaStoryTest_OutputBinding, "System.MetaStory.Binding.OutputBinding");
+IMPLEMENT_METASTORY_INSTANT_TEST(FMetaStoryTest_OutputBinding, "System.MetaStory.Binding.OutputBinding");
 } // namespace UE::MetaStory::Tests
 
 UE_ENABLE_OPTIMIZATION_SHIP

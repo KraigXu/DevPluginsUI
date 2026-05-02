@@ -40,7 +40,7 @@ namespace UE::MetaStory
 {
 
 /**
- * Widget that displays a list of State Tree nodes which match base types and specified schema.
+ * Widget that displays a list of MetaStory nodes which match base types and specified schema.
  * Can be used e.g. in popup menus to select node types.
  */
 class SCompactTreeDebuggerView final : public SCompactTreeView

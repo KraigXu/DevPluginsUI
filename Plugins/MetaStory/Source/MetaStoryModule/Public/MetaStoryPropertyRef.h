@@ -150,7 +150,7 @@ struct FMetaStoryPropertyRef
 
 	/** @return pointer to the property if possible, nullptr otherwise. */
 	template<class T, bool bWithWriteAccess>
-	std::conditional_t<bWithWriteAccess, T*, const T*> GetPtrFromStrongExecutionContext(const TStateTreeStrongExecutionContext<bWithWriteAccess>& Context)
+	std::conditional_t<bWithWriteAccess, T*, const T*> GetPtrFromStrongExecutionContext(const TMetaStoryStrongExecutionContext<bWithWriteAccess>& Context)
 	{
 		UE::MetaStory::Async::FActivePathInfo ActivePath = Context.GetActivePathInfo();
 		if (ActivePath.IsValid())
@@ -173,7 +173,7 @@ struct FMetaStoryPropertyRef
 
 	/** @return a tuple of pointers of the given types to the property if possible, nullptr otherwise. */
 	template <class... T, bool bWithWriteAccess>
-	std::conditional_t<bWithWriteAccess, TTuple<T*...>, TTuple<const T*...>> GetPtrTupleFromStrongExecutionContext(const TStateTreeStrongExecutionContext<bWithWriteAccess>& Context) const
+	std::conditional_t<bWithWriteAccess, TTuple<T*...>, TTuple<const T*...>> GetPtrTupleFromStrongExecutionContext(const TMetaStoryStrongExecutionContext<bWithWriteAccess>& Context) const
 	{
 		UE::MetaStory::Async::FActivePathInfo ActivePath = Context.GetActivePathInfo();
 		if (ActivePath.IsValid())
@@ -227,29 +227,29 @@ struct TStructOpsTypeTraits<FMetaStoryPropertyRef> : public TStructOpsTypeTraits
 };
 
 /**
- * TStateTreePropertyRef is a type-safe FMetaStoryPropertyRef wrapper against a single given type.
+ * TMetaStoryTypedPropertyRef is a type-safe FMetaStoryPropertyRef wrapper against a single given type.
  * @note When used as a property, this automatically defines PropertyRef property meta-data.
  *
  * Example:
  *
  *  // Reference to float
  *	UPROPERTY(EditAnywhere)
- *	TStateTreePropertyRef<float> RefToFloat;
+ *	TMetaStoryTypedPropertyRef<float> RefToFloat;
  *
  *  // Reference to FTestStructBase
  *	UPROPERTY(EditAnywhere)
- *	TStateTreePropertyRef<FTestStructBase> RefToTest;
+ *	TMetaStoryTypedPropertyRef<FTestStructBase> RefToTest;
  *
  *  // Reference to TArray<FTestStructBase>
  *	UPROPERTY(EditAnywhere)
- *	TStateTreePropertyRef<TArray<FTestStructBase>> RefToArrayOfTests;
+ *	TMetaStoryTypedPropertyRef<TArray<FTestStructBase>> RefToArrayOfTests;
  *
  *  // Reference to FTestStructBase or TArray<FTestStructBase>
  *	UPROPERTY(EditAnywhere, meta = (CanRefToArray))
- *	TStateTreePropertyRef<FTestStructBase> RefToSingleOrArrayOfTests;
+ *	TMetaStoryTypedPropertyRef<FTestStructBase> RefToSingleOrArrayOfTests;
  */
 template <class TRef>
-struct TStateTreePropertyRef
+struct TMetaStoryTypedPropertyRef
 {
 	/** @return pointer to the property if possible, nullptr otherwise. */
 	TRef* GetMutablePtr(FMetaStoryExecutionContext& Context) const
@@ -283,7 +283,7 @@ struct FMetaStoryPropertyRefExternalHandle
 {
 	FMetaStoryPropertyRefExternalHandle(FMetaStoryPropertyRef InPropertyRef, FMetaStoryExecutionContext& InContext)
 		: WeakInstanceStorage(InContext.GetMutableInstanceData()->GetWeakMutableStorage())
-		, WeakStateTree(InContext.GetCurrentlyProcessedFrame()->MetaStory)
+		, WeakMetaStory(InContext.GetCurrentlyProcessedFrame()->MetaStory)
 		, RootState(InContext.GetCurrentlyProcessedFrame()->RootState)
 		, PropertyRef(InPropertyRef)
 	{
@@ -308,7 +308,7 @@ struct FMetaStoryPropertyRefExternalHandle
 		FMetaStoryInstanceStorage& InstanceStorage = *WeakInstanceStorage.Pin();
 		TConstArrayView<FMetaStoryExecutionFrame> ActiveFrames = InstanceStorage.GetExecutionState().ActiveFrames;
 		const FMetaStoryExecutionFrame* ParentFrame = nullptr;
-		const FMetaStoryExecutionFrame* Frame = FMetaStoryExecutionContext::FindFrame(WeakStateTree.Get(), RootState, ActiveFrames, ParentFrame);
+		const FMetaStoryExecutionFrame* Frame = FMetaStoryExecutionContext::FindFrame(WeakMetaStory.Get(), RootState, ActiveFrames, ParentFrame);
 
 		if (Frame == nullptr)
 		{
@@ -320,7 +320,7 @@ struct FMetaStoryPropertyRefExternalHandle
 
 protected:
 	TWeakPtr<FMetaStoryInstanceStorage> WeakInstanceStorage;
-	TWeakObjectPtr<const UMetaStory> WeakStateTree = nullptr;
+	TWeakObjectPtr<const UMetaStory> WeakMetaStory = nullptr;
 	FMetaStoryStateHandle RootState = FMetaStoryStateHandle::Invalid;
 	FMetaStoryPropertyRef PropertyRef;
 };
@@ -329,10 +329,10 @@ protected:
  * Single type safe external handle allows to wrap-up property reference to make it accessible without having an access to MetaStoryExecutionContext. Useful for capturing property reference in callbacks.
  */
 template <class TRef>
-struct TStateTreePropertyRefExternalHandle : public FMetaStoryPropertyRefExternalHandle
+struct TMetaStoryTypedPropertyRefExternalHandle : public FMetaStoryPropertyRefExternalHandle
 {
 	using FMetaStoryPropertyRefExternalHandle::FMetaStoryPropertyRefExternalHandle;
-	TStateTreePropertyRefExternalHandle(TStateTreePropertyRef<TRef> InPropertyRef, FMetaStoryExecutionContext& InContext)
+	TMetaStoryTypedPropertyRefExternalHandle(TMetaStoryTypedPropertyRef<TRef> InPropertyRef, FMetaStoryExecutionContext& InContext)
 		: FMetaStoryPropertyRefExternalHandle(InPropertyRef.GetInternalPropertyRef(), InContext)
 	{
 	}
@@ -376,9 +376,9 @@ enum class EMetaStoryPropertyRefType : uint8
 };
 
 /**
- * FMetaStoryBlueprintPropertyRef is a PropertyRef intended to be used in State Tree Blueprint nodes like tasks, conditions or evaluators, but also as a MetaStory parameter.
+ * FMetaStoryBlueprintPropertyRef is a PropertyRef intended to be used in MetaStory Blueprint nodes like tasks, conditions or evaluators, but also as a MetaStory parameter.
  */
-USTRUCT(BlueprintType, DisplayName = "State Tree Property Ref")
+USTRUCT(BlueprintType, DisplayName = "MetaStory Property Ref")
 struct FMetaStoryBlueprintPropertyRef : public FMetaStoryPropertyRef
 {
 	GENERATED_BODY()
@@ -406,7 +406,7 @@ private:
 	UPROPERTY(EditAnywhere, Category = "InternalType")
 	uint8 bIsRefToArray : 1 = false;
 
-	/** If specified, the reference can be left unbound, otherwise the State Tree compiler report error if the reference is not bound. */
+	/** If specified, the reference can be left unbound, otherwise the MetaStory compiler reports an error if the reference is not bound. */
 	UPROPERTY(EditAnywhere, Category = "Parameter")
 	uint8 bIsOptional : 1 = false;
 

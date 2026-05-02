@@ -13,9 +13,9 @@ namespace UE::MetaStoryEditor
 {
 const FLazyName FWorkspaceTabHost::BindingTabId = "MetaStoryEditor_Binding";
 const FLazyName FWorkspaceTabHost::DebuggerTabId = "MetaStoryEditor_Debugger";
-const FLazyName FWorkspaceTabHost::OutlinerTabId = "MetaStoryEditor_StateTreeOutliner";
-const FLazyName FWorkspaceTabHost::SearchTabId = "MetaStoryEditor_StateTreeSearch";
-const FLazyName FWorkspaceTabHost::StatisticsTabId = "MetaStoryEditor_StateTreeStatistics";
+const FLazyName FWorkspaceTabHost::OutlinerTabId = "MetaStoryEditor_Outliner";
+const FLazyName FWorkspaceTabHost::SearchTabId = "MetaStoryEditor_Search";
+const FLazyName FWorkspaceTabHost::StatisticsTabId = "MetaStoryEditor_Statistics";
 
 TConstArrayView<FMinorWorkspaceTabConfig> FWorkspaceTabHost::GetTabConfigs() const
 {

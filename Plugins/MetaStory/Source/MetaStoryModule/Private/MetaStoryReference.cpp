@@ -1,4 +1,4 @@
-﻿// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "MetaStoryReference.h"
 #include "MetaStory.h"
@@ -78,7 +78,7 @@ bool FMetaStoryReference::RequiresParametersSync() const
 	}
 	else
 	{
-		// Empty state tree should not have parameters
+		// Empty MetaStory should not have parameters
 		bShouldSync = Parameters.IsValid();
 	}
 	
@@ -121,11 +121,11 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 void FMetaStoryReference::PostSerialize(const FArchive& Ar)
 {
 PRAGMA_DISABLE_DEPRECATION_WARNINGS
-	const int32 CurrentStateTreeCustomVersion = UE::MetaStory::CustomVersions::GetEffectiveAssetArchiveVersion(Ar);
+	const int32 CurrentMetaStoryCustomVersion = UE::MetaStory::CustomVersions::GetEffectiveAssetArchiveVersion(Ar);
 	constexpr int32 OverridableParametersVersion = FMetaStoryCustomVersion::OverridableParameters;
 PRAGMA_ENABLE_DEPRECATION_WARNINGS
 
-	if (CurrentStateTreeCustomVersion < OverridableParametersVersion)
+	if (CurrentMetaStoryCustomVersion < OverridableParametersVersion)
 	{
 		// In earlier versions, all parameters were overwritten.
 		if (const UPropertyBag* Bag = Parameters.GetPropertyBagStruct())
