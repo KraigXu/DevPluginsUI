@@ -282,52 +282,52 @@ FMetaStoryEditorStyle::FMetaStoryEditorStyle()
 	}
 
 	{
-		// From plugin
+		// From plugin (Resources/Icons/MetaStory_*.svg; logo files MetaStory.svg / MetaStory_64.svg)
 		Set("ClassThumbnail.MetaStory", new IMAGE_BRUSH_SVG("Icons/MetaStory_64", CoreStyleConstants::Icon64x64));
 		Set("ClassIcon.MetaStory", new IMAGE_BRUSH_SVG("Icons/MetaStory", CoreStyleConstants::Icon16x16));
 
-		Set("MetaStoryEditor.AddSiblingState", new IMAGE_BRUSH_SVG("Icons/Sibling_State", CoreStyleConstants::Icon16x16));
-		Set("MetaStoryEditor.AddChildState", new IMAGE_BRUSH_SVG("Icons/Child_State", CoreStyleConstants::Icon16x16));
+		Set("MetaStoryEditor.AddSiblingState", new IMAGE_BRUSH_SVG("Icons/MetaStory_Sibling_State", CoreStyleConstants::Icon16x16));
+		Set("MetaStoryEditor.AddChildState", new IMAGE_BRUSH_SVG("Icons/MetaStory_Child_State", CoreStyleConstants::Icon16x16));
 
-		Set("MetaStoryEditor.PasteStatesAsSiblings", new IMAGE_BRUSH_SVG("Icons/Sibling_State", CoreStyleConstants::Icon16x16));
-		Set("MetaStoryEditor.PasteStatesAsChildren", new IMAGE_BRUSH_SVG("Icons/Child_State", CoreStyleConstants::Icon16x16));
+		Set("MetaStoryEditor.PasteStatesAsSiblings", new IMAGE_BRUSH_SVG("Icons/MetaStory_Sibling_State", CoreStyleConstants::Icon16x16));
+		Set("MetaStoryEditor.PasteStatesAsChildren", new IMAGE_BRUSH_SVG("Icons/MetaStory_Child_State", CoreStyleConstants::Icon16x16));
 
-		Set("MetaStoryEditor.StateConditions", new IMAGE_BRUSH_SVG("Icons/State_Conditions", CoreStyleConstants::Icon16x16));
+		Set("MetaStoryEditor.StateConditions", new IMAGE_BRUSH_SVG("Icons/MetaStory_State_Conditions", CoreStyleConstants::Icon16x16));
 
-		Set("MetaStoryEditor.Conditions", new IMAGE_BRUSH_SVG("Icons/Conditions", CoreStyleConstants::Icon16x16));
-		Set("MetaStoryEditor.Conditions.Large", new IMAGE_BRUSH_SVG("Icons/Conditions", CoreStyleConstants::Icon24x24));
-		Set("MetaStoryEditor.Evaluators", new IMAGE_BRUSH_SVG("Icons/Evaluators", CoreStyleConstants::Icon16x16));
-		Set("MetaStoryEditor.Parameters", new IMAGE_BRUSH_SVG("Icons/Parameters", CoreStyleConstants::Icon16x16));
-		Set("MetaStoryEditor.Utility", new IMAGE_BRUSH_SVG("Icons/Utility", CoreStyleConstants::Icon16x16));
-		Set("MetaStoryEditor.Utility.Large", new IMAGE_BRUSH_SVG("Icons/Utility", CoreStyleConstants::Icon24x24));
-		Set("MetaStoryEditor.Tasks", new IMAGE_BRUSH_SVG("Icons/Tasks", CoreStyleConstants::Icon16x16));
-		Set("MetaStoryEditor.Tasks.Large", new IMAGE_BRUSH_SVG("Icons/Tasks", CoreStyleConstants::Icon24x24));
-		Set("MetaStoryEditor.Transitions", new IMAGE_BRUSH_SVG("Icons/Transitions", CoreStyleConstants::Icon16x16));
+		Set("MetaStoryEditor.Conditions", new IMAGE_BRUSH_SVG("Icons/MetaStory_Conditions", CoreStyleConstants::Icon16x16));
+		Set("MetaStoryEditor.Conditions.Large", new IMAGE_BRUSH_SVG("Icons/MetaStory_Conditions", CoreStyleConstants::Icon24x24));
+		Set("MetaStoryEditor.Evaluators", new IMAGE_BRUSH_SVG("Icons/MetaStory_Evaluators", CoreStyleConstants::Icon16x16));
+		Set("MetaStoryEditor.Parameters", new IMAGE_BRUSH_SVG("Icons/MetaStory_Parameters", CoreStyleConstants::Icon16x16));
+		Set("MetaStoryEditor.Utility", new IMAGE_BRUSH_SVG("Icons/MetaStory_Utility", CoreStyleConstants::Icon16x16));
+		Set("MetaStoryEditor.Utility.Large", new IMAGE_BRUSH_SVG("Icons/MetaStory_Utility", CoreStyleConstants::Icon24x24));
+		Set("MetaStoryEditor.Tasks", new IMAGE_BRUSH_SVG("Icons/MetaStory_Tasks", CoreStyleConstants::Icon16x16));
+		Set("MetaStoryEditor.Tasks.Large", new IMAGE_BRUSH_SVG("Icons/MetaStory_Tasks", CoreStyleConstants::Icon24x24));
+		Set("MetaStoryEditor.Transitions", new IMAGE_BRUSH_SVG("Icons/MetaStory_Transitions", CoreStyleConstants::Icon16x16));
 
-		Set("MetaStoryEditor.TasksCompletion.Enabled", new IMAGE_BRUSH_SVG("Icons/ConsiderTask", CoreStyleConstants::Icon16x16));
-		Set("MetaStoryEditor.TasksCompletion.Disabled", new IMAGE_BRUSH_SVG("Icons/NotConsiderTask", CoreStyleConstants::Icon16x16));
+		Set("MetaStoryEditor.TasksCompletion.Enabled", new IMAGE_BRUSH_SVG("Icons/MetaStory_ConsiderTask", CoreStyleConstants::Icon16x16));
+		Set("MetaStoryEditor.TasksCompletion.Disabled", new IMAGE_BRUSH_SVG("Icons/MetaStory_NotConsiderTask", CoreStyleConstants::Icon16x16));
 
-		Set("MetaStoryEditor.StateSubtree", new IMAGE_BRUSH_SVG("Icons/State_Subtree", CoreStyleConstants::Icon16x16));
-		Set("MetaStoryEditor.StateLinked", new IMAGE_BRUSH_SVG("Icons/State_Linked", CoreStyleConstants::Icon16x16));
+		Set("MetaStoryEditor.StateSubtree", new IMAGE_BRUSH_SVG("Icons/MetaStory_State_Subtree", CoreStyleConstants::Icon16x16));
+		Set("MetaStoryEditor.StateLinked", new IMAGE_BRUSH_SVG("Icons/MetaStory_State_Linked", CoreStyleConstants::Icon16x16));
 
-		Set("MetaStoryEditor.Transition.Dash", new IMAGE_BRUSH_SVG("Icons/Transition_Dash", CoreStyleConstants::Icon16x16, FStyleColors::Foreground));
-		Set("MetaStoryEditor.Transition.Goto", new IMAGE_BRUSH_SVG("Icons/Transition_Goto", CoreStyleConstants::Icon16x16, FStyleColors::Foreground));
-		Set("MetaStoryEditor.Transition.Next", new IMAGE_BRUSH_SVG("Icons/Transition_Next", CoreStyleConstants::Icon16x16, FStyleColors::Foreground));
-		Set("MetaStoryEditor.Transition.Parent", new IMAGE_BRUSH_SVG("Icons/Transition_Parent", CoreStyleConstants::Icon16x16, FStyleColors::Foreground));
+		Set("MetaStoryEditor.Transition.Dash", new IMAGE_BRUSH_SVG("Icons/MetaStory_Transition_Dash", CoreStyleConstants::Icon16x16, FStyleColors::Foreground));
+		Set("MetaStoryEditor.Transition.Goto", new IMAGE_BRUSH_SVG("Icons/MetaStory_Transition_Goto", CoreStyleConstants::Icon16x16, FStyleColors::Foreground));
+		Set("MetaStoryEditor.Transition.Next", new IMAGE_BRUSH_SVG("Icons/MetaStory_Transition_Next", CoreStyleConstants::Icon16x16, FStyleColors::Foreground));
+		Set("MetaStoryEditor.Transition.Parent", new IMAGE_BRUSH_SVG("Icons/MetaStory_Transition_Parent", CoreStyleConstants::Icon16x16, FStyleColors::Foreground));
 
-		Set("MetaStoryEditor.Transition.Condition", new IMAGE_BRUSH_SVG("Icons/State_Conditions", CoreStyleConstants::Icon16x16, FStyleColors::AccentGray));
+		Set("MetaStoryEditor.Transition.Condition", new IMAGE_BRUSH_SVG("Icons/MetaStory_State_Conditions", CoreStyleConstants::Icon16x16, FStyleColors::AccentGray));
 
 		// Common Node Icons
-		Set("Node.Movement", new IMAGE_BRUSH_SVG("Icons/Movement", CoreStyleConstants::Icon16x16));
-		Set("Node.Tag", new IMAGE_BRUSH_SVG("Icons/Tag", CoreStyleConstants::Icon16x16));
-		Set("Node.RunParallel", new IMAGE_BRUSH_SVG("Icons/RunParallel", CoreStyleConstants::Icon16x16));
-		Set("Node.Task", new IMAGE_BRUSH_SVG("Icons/Task", CoreStyleConstants::Icon16x16));
-		Set("Node.Text", new IMAGE_BRUSH_SVG("Icons/Text", CoreStyleConstants::Icon16x16));
-		Set("Node.Function", new IMAGE_BRUSH_SVG("Icons/Function", CoreStyleConstants::Icon16x16));
+		Set("Node.Movement", new IMAGE_BRUSH_SVG("Icons/MetaStory_Movement", CoreStyleConstants::Icon16x16));
+		Set("Node.Tag", new IMAGE_BRUSH_SVG("Icons/MetaStory_Tag", CoreStyleConstants::Icon16x16));
+		Set("Node.RunParallel", new IMAGE_BRUSH_SVG("Icons/MetaStory_RunParallel", CoreStyleConstants::Icon16x16));
+		Set("Node.Task", new IMAGE_BRUSH_SVG("Icons/MetaStory_Task", CoreStyleConstants::Icon16x16));
+		Set("Node.Text", new IMAGE_BRUSH_SVG("Icons/MetaStory_Text", CoreStyleConstants::Icon16x16));
+		Set("Node.Function", new IMAGE_BRUSH_SVG("Icons/MetaStory_Function", CoreStyleConstants::Icon16x16));
 
 		// Runtime flag
-		Set("MetaStoryEditor.Flags.Tick", new IMAGE_BRUSH_SVG("Icons/Tick", CoreStyleConstants::Icon16x16));
-		Set("MetaStoryEditor.Flags.TickOnEvent", new IMAGE_BRUSH_SVG("Icons/TickEvent", CoreStyleConstants::Icon16x16));
+		Set("MetaStoryEditor.Flags.Tick", new IMAGE_BRUSH_SVG("Icons/MetaStory_Tick", CoreStyleConstants::Icon16x16));
+		Set("MetaStoryEditor.Flags.TickOnEvent", new IMAGE_BRUSH_SVG("Icons/MetaStory_TickEvent", CoreStyleConstants::Icon16x16));
 	}
 	{
 		Set("Colors.StateLinkingIn", FLinearColor::Yellow);

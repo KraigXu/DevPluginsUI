@@ -45,8 +45,10 @@ protected:
 	UE_API static void Unregister();
 
 	UE_API static const FString EngineSlateContentDir;
-	UE_API static const FString MetaStoryPluginContentDir;
 	UE_API static const FLazyName StateTitleTextStyleName;
+
+	/** Slate Resources directory for this plugin (project or engine plugin). */
+	static UE_API FString GetPluginResourcesDir();
 private:
 	UE_API FMetaStoryStyle();
 };

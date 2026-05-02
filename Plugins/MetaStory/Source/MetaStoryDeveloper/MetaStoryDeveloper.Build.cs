@@ -22,6 +22,7 @@ namespace UnrealBuildTool.Rules
 				new string[] {
 					"CoreUObject",
 					"InputCore",
+					"Projects",
 					"RewindDebuggerRuntimeInterface",
 					"Slate",
 					"MetaStoryModule",

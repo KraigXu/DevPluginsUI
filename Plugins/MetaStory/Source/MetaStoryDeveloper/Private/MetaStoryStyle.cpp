@@ -2,7 +2,9 @@
 
 #include "MetaStoryStyle.h"
 
+#include "Interfaces/IPluginManager.h"
 #include "MetaStoryTypes.h"
+#include "Misc/Paths.h"
 #include "Styling/CoreStyle.h"
 #include "Styling/SlateStyleMacros.h"
 #include "Styling/SlateStyleRegistry.h"
@@ -11,7 +13,16 @@
 
 const FLazyName FMetaStoryStyle::StateTitleTextStyleName("MetaStory.State.Title");
 const FString FMetaStoryStyle::EngineSlateContentDir(FPaths::EngineContentDir() / TEXT("Slate"));
-const FString FMetaStoryStyle::MetaStoryPluginContentDir(FPaths::EnginePluginsDir() / TEXT("Runtime/MetaStory/Resources"));
+
+FString FMetaStoryStyle::GetPluginResourcesDir()
+{
+	if (TSharedPtr<IPlugin> Plugin = IPluginManager::Get().FindPlugin(TEXT("MetaStory")))
+	{
+		return FPaths::Combine(Plugin->GetBaseDir(), TEXT("Resources"));
+	}
+	// Fallback when plugin discovery is unavailable (matches legacy engine-plugin layout).
+	return FPaths::Combine(FPaths::EnginePluginsDir(), TEXT("Runtime/MetaStory/Resources"));
+}
 
 FMetaStoryStyle::FMetaStoryStyle() : FMetaStoryStyle(TEXT("MetaStoryStyle"))
 {
@@ -21,7 +32,7 @@ FMetaStoryStyle::FMetaStoryStyle(const FName& InStyleSetName)
 	: FSlateStyleSet(InStyleSetName)
 {
 	SetCoreContentRoot(EngineSlateContentDir);
-	SetContentRoot(MetaStoryPluginContentDir);
+	SetContentRoot(GetPluginResourcesDir());
 
 	const FTextBlockStyle& NormalText = FAppStyle::Get().GetWidgetStyle<FTextBlockStyle>("NormalText");
 
@@ -74,14 +85,14 @@ FMetaStoryStyle::FMetaStoryStyle(const FName& InStyleSetName)
 	}
 
 	{
-		// From plugin
-		Set("MetaStoryEditor.SelectNone", new IMAGE_BRUSH_SVG("Icons/Select_None", CoreStyleConstants::Icon16x16));
-		Set("MetaStoryEditor.TryEnterState", new IMAGE_BRUSH_SVG("Icons/Try_Enter_State", CoreStyleConstants::Icon16x16));
-		Set("MetaStoryEditor.TrySelectChildrenInOrder", new IMAGE_BRUSH_SVG("Icons/Try_Select_Children_In_Order", CoreStyleConstants::Icon16x16));
-		Set("MetaStoryEditor.TrySelectChildrenAtRandom", new IMAGE_BRUSH_SVG("Icons/Try_Select_Children_At_Random", CoreStyleConstants::Icon16x16));
-		Set("MetaStoryEditor.TryFollowTransitions", new IMAGE_BRUSH_SVG("Icons/Try_Follow_Transitions", CoreStyleConstants::Icon16x16));
+		// From plugin (Resources/Icons/MetaStory_*.svg)
+		Set("MetaStoryEditor.SelectNone", new IMAGE_BRUSH_SVG("Icons/MetaStory_Select_None", CoreStyleConstants::Icon16x16));
+		Set("MetaStoryEditor.TryEnterState", new IMAGE_BRUSH_SVG("Icons/MetaStory_Try_Enter_State", CoreStyleConstants::Icon16x16));
+		Set("MetaStoryEditor.TrySelectChildrenInOrder", new IMAGE_BRUSH_SVG("Icons/MetaStory_Try_Select_Children_In_Order", CoreStyleConstants::Icon16x16));
+		Set("MetaStoryEditor.TrySelectChildrenAtRandom", new IMAGE_BRUSH_SVG("Icons/MetaStory_Try_Select_Children_At_Random", CoreStyleConstants::Icon16x16));
+		Set("MetaStoryEditor.TryFollowTransitions", new IMAGE_BRUSH_SVG("Icons/MetaStory_Try_Follow_Transitions", CoreStyleConstants::Icon16x16));
 
-		Set("MetaStoryEditor.Debugger.Condition.OnTransition", new IMAGE_BRUSH_SVG("Icons/State_Conditions", CoreStyleConstants::Icon16x16, FStyleColors::AccentGray));
+		Set("MetaStoryEditor.Debugger.Condition.OnTransition", new IMAGE_BRUSH_SVG("Icons/MetaStory_State_Conditions", CoreStyleConstants::Icon16x16, FStyleColors::AccentGray));
 	}
 
 	{
