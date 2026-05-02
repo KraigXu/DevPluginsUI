@@ -25,7 +25,7 @@ class FMetaStoryDeveloperModule final : public IModuleInterface
 
 #if WITH_METASTORY_TRACE
 		IModularFeatures::Get().UnregisterModularFeature(IRewindDebuggerRuntimeExtension::ModularFeatureName, RewindDebuggerRecordingExtension.Get());
-#endif // WITH_METASTORY_TRAC
+#endif // WITH_METASTORY_TRACE
 	}
 	//~ End IModuleInterface
 

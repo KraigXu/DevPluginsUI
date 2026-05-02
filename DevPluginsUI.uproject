@@ -24,7 +24,7 @@
 		},
 		{
 			"Name": "StateTree",
-			"Enabled": false
+			"Enabled": true
 		}
 	]
 }

@@ -2,21 +2,20 @@
 <AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
 
   <!--
-  *
-  * StateTree Visualizers
-  *
+  * MetaStory debugger visualizations (Visual Studio Natvis).
+  * Type names must match C++ symbols in MetaStoryModule.
   -->
 
-  <Type Name="FStateTreeInstanceData">
+  <Type Name="FMetaStoryInstanceData">
     <DisplayString>{{ Instances={InstanceStorage.Object->InstanceStructs.NumItems}, TemporaryInstances={InstanceStorage.Object->TemporaryInstances.ArrayNum}, Events={InstanceStorage.Object->EventQueue.Object->SharedEvents.ArrayNum}, TransitionRequests={InstanceStorage.Object->TransitionRequests.ArrayNum} }}</DisplayString>
     <Expand>
       <ExpandedItem>*InstanceStorage.Object</ExpandedItem>
     </Expand>
   </Type>
 
-  <Type Name="FStateTreeActiveStates">
+  <Type Name="FMetaStoryActiveStates">
     <DisplayString Condition="NumStates == 0">Empty</DisplayString>
-    <DisplayString Condition="NumStates &gt; 0">{{ NumItems={NumItems} }} </DisplayString>
+    <DisplayString Condition="NumStates &gt; 0">{{ NumStates={NumStates} }}</DisplayString>
     <Expand>
       <IndexListItems Condition="NumStates != 0">
         <Size>NumStates</Size>
@@ -28,8 +27,8 @@
   <Type Name="FMetaStoryCompactState">
     <DisplayString>{Name}</DisplayString>
   </Type>
-  
-  <Type Name="FStateTreeStateHandle">
+
+  <Type Name="FMetaStoryStateHandle">
     <DisplayString Condition="Index == 0">Root</DisplayString>
     <DisplayString Condition="Index == 0xffff">Invalid</DisplayString>
     <DisplayString Condition="Index == 0xfffe">Succeeded</DisplayString>
@@ -38,23 +37,24 @@
     <DisplayString Condition="Index &gt; 0 &amp;&amp; Index &lt; 0xfffc">Index={Index}</DisplayString>
   </Type>
 
-  <Type Name="FStateTreeIndex16">
+  <Type Name="FMetaStoryIndex16">
     <DisplayString Condition="Value == 0xffff">Invalid</DisplayString>
     <DisplayString Condition="Value != 0xffff">{Value}</DisplayString>
   </Type>
 
-  <Type Name="FStateTreeIndex8">
+  <Type Name="FMetaStoryIndex8">
     <DisplayString Condition="Value == 0xff">Invalid</DisplayString>
     <DisplayString Condition="Value != 0xff">{Value}</DisplayString>
   </Type>
 
-  <Type Name="FStateTreeExecutionFrame">
-    <Intrinsic Name="stateTree" Category="Method" Expression="*(UStateTree**)&amp;StateTree.ObjectPtr.Handle" />
-    <Intrinsic Name="stateName" Category="Method" Expression="((FMetaStoryCompactState*)stateTree()-&gt;States.AllocatorInstance.Data)[stateHandle.Index].Name">
-      <Parameter Name="stateHandle" Type="FStateTreeStateHandle" />
-    </Intrinsic>
-    <DisplayString Condition="stateTree() == nullptr">Empty</DisplayString>
-    <DisplayString Condition="stateTree() != nullptr">{{ StateTree={stateTree()->NamePrivate}, Root={stateName(RootState)}, NumActiveStates={ActiveStates.NumStates} }} </DisplayString>
+  <Type Name="FMetaStoryExecutionFrame">
+    <DisplayString>{{ MetaStory={MetaStory}, RootState={RootState}, NumActiveStates={ActiveStates.NumStates} }}</DisplayString>
+    <Expand>
+      <Item Name="MetaStory">MetaStory</Item>
+      <Item Name="RootState">RootState</Item>
+      <Item Name="ActiveStates">ActiveStates</Item>
+      <Item Name="ActiveTasksStatus">ActiveTasksStatus</Item>
+    </Expand>
   </Type>
-  
+
 </AutoVisualizer>

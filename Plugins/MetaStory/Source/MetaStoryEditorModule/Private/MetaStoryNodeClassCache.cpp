@@ -121,27 +121,25 @@ FMetaStoryNodeClassCache::FMetaStoryNodeClassCache()
 
 FMetaStoryNodeClassCache::~FMetaStoryNodeClassCache()
 {
+	// ReloadCompleteDelegate is global; must not be gated on AssetRegistry module load.
+	FCoreUObjectDelegates::ReloadCompleteDelegate.RemoveAll(this);
+
 	// Unregister with the Asset Registry to be informed when it is done loading up files.
 	if (FModuleManager::Get().IsModuleLoaded(TEXT("AssetRegistry")))
 	{
-		IAssetRegistry* AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry")).TryGet();
-		if (AssetRegistry)
+		if (IAssetRegistry* AssetRegistry = FModuleManager::GetModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry")).TryGet())
 		{
 			AssetRegistry->OnFilesLoaded().RemoveAll(this);
 			AssetRegistry->OnAssetAdded().RemoveAll(this);
 			AssetRegistry->OnAssetRemoved().RemoveAll(this);
 		}
+	}
 
-		// Unregister to have Populate called when doing a Reload.
-		FCoreUObjectDelegates::ReloadCompleteDelegate.RemoveAll(this);
-
-		// Unregister to have Populate called when a Blueprint is compiled.
-		if (GEditor != nullptr)
-		{
-			// GEditor can't have been destructed before we call this or we'll crash.
-			GEditor->OnBlueprintCompiled().RemoveAll(this);
-			GEditor->OnClassPackageLoadedOrUnloaded().RemoveAll(this);
-		}
+	// GEditor delegates are independent of AssetRegistry; unregister whenever the editor object still exists.
+	if (GEditor != nullptr)
+	{
+		GEditor->OnBlueprintCompiled().RemoveAll(this);
+		GEditor->OnClassPackageLoadedOrUnloaded().RemoveAll(this);
 	}
 }
 

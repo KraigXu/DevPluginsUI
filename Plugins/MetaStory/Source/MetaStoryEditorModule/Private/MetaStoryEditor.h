@@ -99,6 +99,8 @@ private:
 
 	TSharedPtr<FMetaStoryEditorModeUILayer> ModeUILayer;
 	TSharedPtr<IToolkit> HostedToolkit;
+	/** Kept until OnClose so UToolMenus::UnregisterOwner runs even if OnToolkitHostingFinished cleared HostedToolkit first. */
+	TSharedPtr<IToolkit> ToolkitForToolMenuOwner;
 	TSharedPtr<FWorkspaceItem> WorkspaceMenuCategory;
 	TSharedPtr<FStandaloneStateTreeEditorHost> EditorHost;
 

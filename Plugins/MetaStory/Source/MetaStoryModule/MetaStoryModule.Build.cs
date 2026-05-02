@@ -1,5 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
+using System.IO;
+
 namespace UnrealBuildTool.Rules
 {
 	public class MetaStoryModule : ModuleRules
@@ -9,6 +11,8 @@ namespace UnrealBuildTool.Rules
 			CppCompileWarningSettings.UnsafeTypeCastWarningLevel = WarningLevel.Warning;
 
 			bAllowUETypesInNamespaces = true;
+
+			PublicDebugVisualizerPaths.Add(Path.Combine(ModuleDirectory, "MetaStory.natvis"));
 
 			PublicIncludePaths.AddRange(
 				new string[] {

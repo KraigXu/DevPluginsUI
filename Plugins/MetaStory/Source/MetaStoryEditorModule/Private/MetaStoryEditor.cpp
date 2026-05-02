@@ -267,6 +267,7 @@ void FMetaStoryEditor::OnToolkitHostingStarted(const TSharedRef<IToolkit>& Toolk
 {
 	ModeUILayer->OnToolkitHostingStarted(Toolkit);
 	HostedToolkit = Toolkit;
+	ToolkitForToolMenuOwner = Toolkit;
 }
 
 void FMetaStoryEditor::OnToolkitHostingFinished(const TSharedRef<IToolkit>& Toolkit)
@@ -297,11 +298,12 @@ FLinearColor FMetaStoryEditor::GetWorldCentricTabColorScale() const
 
 void FMetaStoryEditor::OnClose()
 {
-	if (HostedToolkit.IsValid())
+	if (ToolkitForToolMenuOwner.IsValid())
 	{
-		UToolMenus::UnregisterOwner(&(*HostedToolkit));	
-		HostedToolkit = nullptr;
+		UToolMenus::UnregisterOwner(&(*ToolkitForToolMenuOwner));
+		ToolkitForToolMenuOwner.Reset();
 	}
+	HostedToolkit.Reset();
 }
 
 TSharedRef<SDockTab> FMetaStoryEditor::SpawnTab_StateTreeView(const FSpawnTabArgs& Args)
@@ -437,10 +439,8 @@ void FMetaStoryEditor::RegisterMenu()
 	if (!ToolMenus->IsMenuRegistered(FileMenuName))
 	{
 		const FName ParentFileMenuName = TEXT("MainFrame.MainMenu.File");
-		UToolMenus::Get()->RegisterMenu(FileMenuName, ParentFileMenuName, EMultiBoxType::ToolBar);
 		{
 			UToolMenu* FileMenu = UToolMenus::Get()->RegisterMenu(FileMenuName, ParentFileMenuName);
-			const FName FileStateTreeSection = "FileStateTree";
 			FToolMenuSection& Section = FileMenu->AddSection("MetaStory", LOCTEXT("MetaStoryHeading", "MetaStory"));
 			FToolMenuInsert InsertPosition("FileLoadAndSave", EToolMenuInsertType::After);
 			Section.InsertPosition = InsertPosition;
