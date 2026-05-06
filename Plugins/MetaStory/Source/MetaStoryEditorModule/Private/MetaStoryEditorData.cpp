@@ -1,10 +1,11 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "MetaStoryEditorData.h"
+#include "MetaStoryMetaplotTopology.h"
 #include "MetaStory.h"
+#include "MetaStoryDelegates.h"
 #include "MetaStoryConditionBase.h"
 #include "MetaStoryConsiderationBase.h"
-#include "MetaStoryDelegates.h"
 #include "MetaStoryEditorDataExtension.h"
 #include "MetaStoryEditorModule.h"
 #include "MetaStoryEditorSchema.h"
@@ -147,6 +148,27 @@ void UMetaStoryEditorData::OnStateParametersChanged(const UMetaStory& MetaStory,
 	}
 }
 
+void UMetaStoryEditorData::EnsureEmbeddedMetaplotFlow()
+{
+	if (!bUseMetaplotFlowTopology || MetaplotFlow)
+	{
+		return;
+	}
+
+	Modify();
+	MetaplotFlow = NewObject<UMetaplotFlow>(this, TEXT("MetaplotFlow"), RF_Transactional);
+
+	FMetaplotNode StartNode;
+	StartNode.NodeId = FGuid::NewGuid();
+	StartNode.NodeType = EMetaplotNodeType::Start;
+	StartNode.NodeName = INVTEXT("Start");
+	StartNode.StageIndex = 0;
+	StartNode.LayerIndex = 0;
+	MetaplotFlow->Nodes.Add(StartNode);
+	MetaplotFlow->StartNodeId = StartNode.NodeId;
+	MetaplotFlow->SyncNodeStatesWithNodes();
+}
+
 void UMetaStoryEditorData::PostLoad()
 {
 	Super::PostLoad();
@@ -174,6 +196,20 @@ void UMetaStoryEditorData::PostLoad()
 		if (Extension)
 		{
 			Extension->ConditionalPostLoad();
+		}
+	}
+
+	if (bUseMetaplotFlowTopology)
+	{
+		EnsureEmbeddedMetaplotFlow();
+	}
+
+	if (bUseMetaplotFlowTopology && MetaplotFlow)
+	{
+		MetaplotFlow->ConditionalPostLoad();
+		if (!UE::MetaStory::MetaplotTopology::RebuildShadowStates(*this, nullptr))
+		{
+			UE_LOG(LogMetaStoryEditor, Error, TEXT("Metaplot topology: RebuildShadowStates failed during PostLoad."));
 		}
 	}
 
@@ -219,6 +255,18 @@ void UMetaStoryEditorData::PostEditChangeChainProperty(FPropertyChangedChainEven
 		else if (MemberName == GET_MEMBER_NAME_CHECKED(UMetaStoryEditorData, RootParameterPropertyBag))
 		{
 			UE::MetaStory::Delegates::OnParametersChanged.Broadcast(*MetaStory);
+		}
+		else if (MemberName == GET_MEMBER_NAME_CHECKED(UMetaStoryEditorData, bUseMetaplotFlowTopology))
+		{
+			if (bUseMetaplotFlowTopology)
+			{
+				EnsureEmbeddedMetaplotFlow();
+				if (MetaplotFlow)
+				{
+					(void)UE::MetaStory::MetaplotTopology::RebuildShadowStates(*this, nullptr);
+				}
+				UE::MetaStory::Delegates::OnGlobalDataChanged.Broadcast(*MetaStory);
+			}
 		}
 
 		// Ensure unique ID on duplicated items.

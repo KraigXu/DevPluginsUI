@@ -46,6 +46,10 @@
 		{
 			"Name": "PropertyBindingUtils",
 			"Enabled": true
+		},
+		{
+			"Name": "Metaplot",
+			"Enabled": true
 		}
 	]
 }

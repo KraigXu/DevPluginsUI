@@ -7,13 +7,20 @@
 #include "Modules/ModuleManager.h"
 #include "SEnumCombo.h"
 #include "SPositiveActionButton.h"
-#include "SMetaStoryViewRow.h"
 #include "MetaStoryViewModel.h"
 #include "MetaStoryState.h"
 #include "MetaStoryEditorCommands.h"
+#include "MetaStoryEditorData.h"
+#include "MetaStoryMetaplotTopology.h"
 #include "MetaStoryEditorUserSettings.h"
 #include "Widgets/Layout/SScrollBox.h"
+#include "Widgets/Layout/SScrollBar.h"
 #include "Widgets/Layout/SSpacer.h"
+#include "Widgets/Layout/SBorder.h"
+#include "Widgets/SBoxPanel.h"
+#include "Widgets/Images/SImage.h"
+#include "Widgets/Input/SComboButton.h"
+#include "Styling/AppStyle.h"
 
 #include "DetailCategoryBuilder.h"
 #include "DetailLayoutBuilder.h"
@@ -21,15 +28,162 @@
 #include "IDetailCustomization.h"
 #include "IDetailsView.h"
 #include "PropertyEditorModule.h"
+#include "ScopedTransaction.h"
+
+#include "Flow/MetaplotFlow.h"
 
 #define LOCTEXT_NAMESPACE "MetaStoryEditor"
 
-SMetaStoryView::SMetaStoryView()
-	: RequestedRenameState(nullptr)
-	, bItemsDirty(false)
-	, bUpdatingSelection(false)
+namespace MetaStoryViewMetaplotGraphPrivate
 {
+	static bool IsTransitionRuleValid(const UMetaplotFlow* Flow, const FGuid& SourceNodeId, const FGuid& TargetNodeId)
+	{
+		if (!Flow || !SourceNodeId.IsValid() || !TargetNodeId.IsValid() || SourceNodeId == TargetNodeId)
+		{
+			return false;
+		}
+
+		const FMetaplotNode* SourceNode = Flow->Nodes.FindByPredicate([SourceNodeId](const FMetaplotNode& Node)
+		{
+			return Node.NodeId == SourceNodeId;
+		});
+		const FMetaplotNode* TargetNode = Flow->Nodes.FindByPredicate([TargetNodeId](const FMetaplotNode& Node)
+		{
+			return Node.NodeId == TargetNodeId;
+		});
+		if (!SourceNode || !TargetNode)
+		{
+			return false;
+		}
+
+		if (TargetNode->StageIndex <= SourceNode->StageIndex)
+		{
+			return false;
+		}
+
+		if (SourceNode->LayerIndex == TargetNode->LayerIndex && TargetNode->StageIndex != SourceNode->StageIndex + 1)
+		{
+			return false;
+		}
+
+		return true;
+	}
+
+	static bool WouldCreateCycle(const UMetaplotFlow* Flow, const FGuid& SourceNodeId, const FGuid& TargetNodeId)
+	{
+		if (!Flow || !SourceNodeId.IsValid() || !TargetNodeId.IsValid() || SourceNodeId == TargetNodeId)
+		{
+			return true;
+		}
+
+		TSet<FGuid> Visited;
+		TArray<FGuid> Stack;
+		Stack.Add(TargetNodeId);
+
+		while (!Stack.IsEmpty())
+		{
+			const FGuid Current = Stack.Pop(EAllowShrinking::No);
+			if (!Current.IsValid() || Visited.Contains(Current))
+			{
+				continue;
+			}
+
+			Visited.Add(Current);
+			if (Current == SourceNodeId)
+			{
+				return true;
+			}
+
+			for (const FMetaplotTransition& Transition : Flow->Transitions)
+			{
+				if (Transition.SourceNodeId == Current && Transition.TargetNodeId.IsValid())
+				{
+					Stack.Add(Transition.TargetNodeId);
+				}
+			}
+		}
+
+		return false;
+	}
+
+	static bool IsValidCellForNodeMove(const UMetaplotFlow* Flow, const FGuid& MovingNodeId, int32 NewStage, int32 NewLayer)
+	{
+		if (!Flow || !MovingNodeId.IsValid())
+		{
+			return false;
+		}
+
+		if (NewStage < 0 || NewLayer < 0)
+		{
+			return false;
+		}
+
+		for (const FMetaplotNode& Node : Flow->Nodes)
+		{
+			if (Node.NodeId == MovingNodeId)
+			{
+				continue;
+			}
+			if (Node.StageIndex == NewStage && Node.LayerIndex == NewLayer)
+			{
+				return false;
+			}
+		}
+
+		auto ResolveStage = [&](const FGuid& NodeId) -> int32
+		{
+			if (NodeId == MovingNodeId)
+			{
+				return NewStage;
+			}
+			const FMetaplotNode* Found = Flow->Nodes.FindByPredicate([NodeId](const FMetaplotNode& N)
+			{
+				return N.NodeId == NodeId;
+			});
+			return Found ? Found->StageIndex : 0;
+		};
+
+		auto ResolveLayer = [&](const FGuid& NodeId) -> int32
+		{
+			if (NodeId == MovingNodeId)
+			{
+				return NewLayer;
+			}
+			const FMetaplotNode* Found = Flow->Nodes.FindByPredicate([NodeId](const FMetaplotNode& N)
+			{
+				return N.NodeId == NodeId;
+			});
+			return Found ? Found->LayerIndex : 0;
+		};
+
+		for (const FMetaplotTransition& Tr : Flow->Transitions)
+		{
+			if (!Tr.SourceNodeId.IsValid() || !Tr.TargetNodeId.IsValid() || Tr.SourceNodeId == Tr.TargetNodeId)
+			{
+				continue;
+			}
+
+			const int32 SrcStage = ResolveStage(Tr.SourceNodeId);
+			const int32 DstStage = ResolveStage(Tr.TargetNodeId);
+			const int32 SrcLayer = ResolveLayer(Tr.SourceNodeId);
+			const int32 DstLayer = ResolveLayer(Tr.TargetNodeId);
+
+			if (DstStage <= SrcStage)
+			{
+				return false;
+			}
+
+			if (SrcLayer == DstLayer && DstStage != SrcStage + 1)
+			{
+				return false;
+			}
+		}
+
+		return true;
+	}
 }
+
+SMetaStoryView::SMetaStoryView() = default;
 
 SMetaStoryView::~SMetaStoryView()
 {
@@ -64,7 +218,10 @@ void SMetaStoryView::Construct(const FArguments& InArgs, TSharedRef<FMetaStoryVi
 
 	SettingsChangedHandle = GetMutableDefault<UMetaStoryEditorUserSettings>()->OnSettingsChanged.AddSP(this, &SMetaStoryView::HandleUserSettingsChanged);
 
-	bUpdatingSelection = false;
+	if (const UMetaStoryEditorData* EditorData = MetaStoryViewModel->GetMetaStoryEditorData())
+	{
+		EditingFlowAsset = EditorData->MetaplotFlow;
+	}
 
 	TSharedRef<SScrollBar> HorizontalScrollBar = SNew(SScrollBar)
 		.Orientation(Orient_Horizontal)
@@ -73,18 +230,6 @@ void SMetaStoryView::Construct(const FArguments& InArgs, TSharedRef<FMetaStoryVi
 	TSharedRef<SScrollBar> VerticalScrollBar = SNew(SScrollBar)
 		.Orientation(Orient_Vertical)
 		.Thickness(FVector2D(12.0f, 12.0f));
-
-	MetaStoryViewModel->GetSubTrees(Subtrees);
-
-	TreeView = SNew(STreeView<TWeakObjectPtr<UMetaStoryState>>)
-		.OnGenerateRow(this, &SMetaStoryView::HandleGenerateRow)
-		.OnGetChildren(this, &SMetaStoryView::HandleGetChildren)
-		.TreeItemsSource(&Subtrees)
-		.OnSelectionChanged(this, &SMetaStoryView::HandleTreeSelectionChanged)
-		.OnExpansionChanged(this, &SMetaStoryView::HandleTreeExpansionChanged)
-		.OnContextMenuOpening(this, &SMetaStoryView::HandleContextMenuOpening)
-		.AllowOverscroll(EAllowOverscroll::Yes)
-		.ExternalScrollbar(VerticalScrollBar);
 
 	ChildSlot
 	[
@@ -100,7 +245,6 @@ void SMetaStoryView::Construct(const FArguments& InArgs, TSharedRef<FMetaStoryVi
 			[
 				SNew(SHorizontalBox)
 
-				// New State
 				+ SHorizontalBox::Slot()
 				.VAlign(VAlign_Center)
 				.Padding(4.0f, 2.0f)
@@ -108,7 +252,7 @@ void SMetaStoryView::Construct(const FArguments& InArgs, TSharedRef<FMetaStoryVi
 				[
 					SNew(SPositiveActionButton)
 					.ToolTipText(LOCTEXT("AddStateToolTip", "Add New State"))
-					.Icon(FAppStyle::Get().GetBrush("Icons.Plus")) 
+					.Icon(FAppStyle::Get().GetBrush("Icons.Plus"))
 					.Text(LOCTEXT("AddState", "Add State"))
 					.OnClicked(this, &SMetaStoryView::HandleAddStateButton)
 				]
@@ -141,7 +285,7 @@ void SMetaStoryView::Construct(const FArguments& InArgs, TSharedRef<FMetaStoryVi
 			]
 		]
 
-		+SVerticalBox::Slot()
+		+ SVerticalBox::Slot()
 		.Padding(0.0f, 6.0f, 0.0f, 0.0f)
 		[
 			SNew(SHorizontalBox)
@@ -152,10 +296,18 @@ void SMetaStoryView::Construct(const FArguments& InArgs, TSharedRef<FMetaStoryVi
 				SAssignNew(ViewBox, SScrollBox)
 				.Orientation(Orient_Horizontal)
 				.ExternalScrollbar(HorizontalScrollBar)
-				+SScrollBox::Slot()
+				+ SScrollBox::Slot()
 				.FillSize(1.0f)
 				[
-					TreeView.ToSharedRef()
+					SAssignNew(FlowGraph, SMetaStoryFlowGraph)
+					.FlowAsset(EditingFlowAsset)
+					.OnNodeSelected(FOnMetaplotGraphNodeSelected::CreateSP(this, &SMetaStoryView::OnMainGraphNodeSelected))
+					.OnCreateNodeRequested(FOnMetaplotGraphCreateNodeRequested::CreateSP(this, &SMetaStoryView::OnMainGraphCreateNodeRequested))
+					.OnCreateTransition(FOnMetaplotGraphCreateTransition::CreateSP(this, &SMetaStoryView::OnMainGraphCreateTransition))
+					.OnMoveNode(FOnMetaplotGraphMoveNode::CreateSP(this, &SMetaStoryView::OnMainGraphMoveNode))
+					.OnDeleteNodeRequested(FOnMetaplotGraphDeleteNodeRequested::CreateSP(this, &SMetaStoryView::OnMainGraphDeleteNodeRequested))
+					.OnDeleteTransitionRequested(FOnMetaplotGraphDeleteTransitionRequested::CreateSP(this, &SMetaStoryView::OnMainGraphDeleteTransitionRequested))
+					.OnHorizontalPanChanged(FOnMetaplotGraphHorizontalPanChanged::CreateSP(this, &SMetaStoryView::OnMainGraphHorizontalPanChanged))
 				]
 			]
 
@@ -165,17 +317,40 @@ void SMetaStoryView::Construct(const FArguments& InArgs, TSharedRef<FMetaStoryVi
 				VerticalScrollBar
 			]
 		]
-		+SVerticalBox::Slot()
+		+ SVerticalBox::Slot()
 		.AutoHeight()
 		[
 			HorizontalScrollBar
 		]
 	];
 
-	UpdateTree(true);
+	SyncFlowGraphFromEditorData();
 
 	CommandList = InCommandList;
 	BindCommands();
+}
+
+void SMetaStoryView::SyncFlowGraphFromEditorData()
+{
+	if (!MetaStoryViewModel || !FlowGraph.IsValid())
+	{
+		return;
+	}
+
+	if (const UMetaStoryEditorData* EditorData = MetaStoryViewModel->GetMetaStoryEditorData())
+	{
+		EditingFlowAsset = EditorData->MetaplotFlow;
+	}
+	else
+	{
+		EditingFlowAsset = nullptr;
+	}
+
+	if (UMetaplotFlow* Flow = EditingFlowAsset.Get())
+	{
+		FlowGraph->SetFlowAsset(Flow);
+	}
+	FlowGraph->SetSelectedNodeId(SelectedNodeId);
 }
 
 void SMetaStoryView::BindCommands()
@@ -244,7 +419,7 @@ void SMetaStoryView::BindCommands()
 				{
 					return ECheckBoxState::Undetermined;
 				}
-				
+
 				if (bCanDisable)
 				{
 					return ECheckBoxState::Checked;
@@ -255,7 +430,6 @@ void SMetaStoryView::BindCommands()
 					return ECheckBoxState::Unchecked;
 				}
 
-				// Should not happen since action is not visible in this case
 				return ECheckBoxState::Undetermined;
 			}),
 		FIsActionButtonVisible::CreateSPLambda(this, [this]
@@ -311,7 +485,7 @@ void SMetaStoryView::BindCommands()
 		{
 			return MetaStoryViewModel.IsValid();
 		}));
-#endif // WITH_METASTORY_TRACE_DEBUGGER
+#endif
 }
 
 bool SMetaStoryView::HasSelection() const
@@ -347,206 +521,58 @@ bool SMetaStoryView::CanPasteNodesToSelectedStates() const
 
 FReply SMetaStoryView::OnKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent)
 {
-	if(CommandList->ProcessCommandBindings(InKeyEvent))
+	if (CommandList->ProcessCommandBindings(InKeyEvent))
 	{
 		return FReply::Handled();
 	}
-	else
-	{
-		return SCompoundWidget::OnKeyDown(MyGeometry, InKeyEvent);
-	}
+	return SCompoundWidget::OnKeyDown(MyGeometry, InKeyEvent);
 }
 
 void SMetaStoryView::SavePersistentExpandedStates()
 {
-	if (!MetaStoryViewModel)
-	{
-		return;
-	}
-
-	TSet<TWeakObjectPtr<UMetaStoryState>> ExpandedStates;
-	TreeView->GetExpandedItems(ExpandedStates);
-	MetaStoryViewModel->SetPersistentExpandedStates(ExpandedStates);
-}
-
-void SMetaStoryView::Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime)
-{
-	if (bItemsDirty)
-	{
-		UpdateTree(/*bExpandPersistent*/true);
-	}
-
-	if (RequestedRenameState && !TreeView->IsPendingRefresh())
-	{
-		if (TSharedPtr<SMetaStoryViewRow> Row = StaticCastSharedPtr<SMetaStoryViewRow>(TreeView->WidgetFromItem(RequestedRenameState)))
-		{
-			Row->RequestRename();
-		}
-		RequestedRenameState = nullptr;
-	}
-}
-
-void SMetaStoryView::UpdateTree(bool bExpandPersistent)
-{
-	if (!MetaStoryViewModel)
-	{
-		return;
-	}
-
-	TSet<TWeakObjectPtr<UMetaStoryState>> ExpandedStates;
-	if (bExpandPersistent)
-	{
-		// Get expanded state from the tree data.
-		MetaStoryViewModel->GetPersistentExpandedStates(ExpandedStates);
-	}
-	else
-	{
-		// Restore current expanded state.
-		TreeView->GetExpandedItems(ExpandedStates);
-	}
-
-	// Remember selection
-	TArray<TWeakObjectPtr<UMetaStoryState>> SelectedStates;
-	MetaStoryViewModel->GetSelectedStates(SelectedStates);
-
-	// Regenerate items
-	MetaStoryViewModel->GetSubTrees(Subtrees);
-	TreeView->SetTreeItemsSource(&Subtrees);
-
-	// Restore expanded state
-	for (const TWeakObjectPtr<UMetaStoryState>& State : ExpandedStates)
-	{
-		TreeView->SetItemExpansion(State, true);
-	}
-
-	// Restore selected state
-	TreeView->ClearSelection();
-	TreeView->SetItemSelection(SelectedStates, true);
-
-	TreeView->RequestTreeRefresh();
-
-	bItemsDirty = false;
 }
 
 void SMetaStoryView::HandleUserSettingsChanged()
 {
-	TreeView->RebuildList();
 }
 
 void SMetaStoryView::HandleModelAssetChanged()
 {
-	// this only refresh the list. i.e. each row widget will not be refreshed
-	bItemsDirty = true;
-
-	// we need to rebuild the list to update each row widget
-	TreeView->RebuildList();
+	SyncFlowGraphFromEditorData();
 }
 
 void SMetaStoryView::HandleModelStatesRemoved(const TSet<UMetaStoryState*>& AffectedParents)
 {
-	bItemsDirty = true;
+	SyncFlowGraphFromEditorData();
 }
 
 void SMetaStoryView::HandleModelStatesMoved(const TSet<UMetaStoryState*>& AffectedParents, const TSet<UMetaStoryState*>& MovedStates)
 {
-	bItemsDirty = true;
+	SyncFlowGraphFromEditorData();
 }
 
 void SMetaStoryView::HandleModelStateAdded(UMetaStoryState* ParentState, UMetaStoryState* NewState)
 {
-	bItemsDirty = true;
-
-	// Request to rename the state immediately.
-	RequestedRenameState = NewState;
-
 	if (MetaStoryViewModel.IsValid())
 	{
 		MetaStoryViewModel->SetSelection(NewState);
 	}
+	SyncFlowGraphFromEditorData();
 }
 
 void SMetaStoryView::HandleModelStatesChanged(const TSet<UMetaStoryState*>& AffectedStates, const FPropertyChangedEvent& PropertyChangedEvent)
 {
-	// When the tasks or conditions array changed(this includes both normal array operations: Add, Remove. Clear, Move,
-	// and Paste or Duplicate an element in the array), The TreeView needs to be rebuilt because new elements came in or old elements have gone or both.
-	// This will not rebuild the list when we change an inner property in a condition or in a task node because of InstanceStruct wrapper
-	// @todo: change it to cache and re-set the content of the widget instead of rebuilding the whole list for perf
-	if (PropertyChangedEvent.MemberProperty->GetFName() == GET_MEMBER_NAME_CHECKED(UMetaStoryState, Tasks)
-		|| PropertyChangedEvent.MemberProperty->GetFName() == GET_MEMBER_NAME_CHECKED(UMetaStoryState, EnterConditions)
-		|| PropertyChangedEvent.MemberProperty->GetFName() == GET_MEMBER_NAME_CHECKED(UMetaStoryState, bHasRequiredEventToEnter)
-		|| PropertyChangedEvent.MemberProperty->GetFName() == GET_MEMBER_NAME_CHECKED(UMetaStoryState, RequiredEventToEnter))
-	{
-		TreeView->RebuildList();
-	}
+	SyncFlowGraphFromEditorData();
 }
 
 void SMetaStoryView::HandleModelStateNodesChanged(const UMetaStoryState* AffectedState)
 {
-	TreeView->RebuildList();
+	SyncFlowGraphFromEditorData();
 }
 
 void SMetaStoryView::HandleModelSelectionChanged(const TArray<TWeakObjectPtr<UMetaStoryState>>& SelectedStates)
 {
-	if (bUpdatingSelection)
-	{
-		return;
-	}
-
-	TreeView->ClearSelection();
-
-	if (SelectedStates.Num() > 0)
-	{
-		TreeView->SetItemSelection(SelectedStates, /*bSelected*/true);
-
-		if (SelectedStates.Num() == 1)
-		{
-			TreeView->RequestScrollIntoView(SelectedStates[0]);	
-		}
-	}
-}
-
-
-TSharedRef<ITableRow> SMetaStoryView::HandleGenerateRow(TWeakObjectPtr<UMetaStoryState> InState, const TSharedRef<STableViewBase>& InOwnerTableView)
-{
-	return SNew(SMetaStoryViewRow, InOwnerTableView, InState, ViewBox, MetaStoryViewModel.ToSharedRef());
-}
-
-void SMetaStoryView::HandleGetChildren(TWeakObjectPtr<UMetaStoryState> InParent, TArray<TWeakObjectPtr<UMetaStoryState>>& OutChildren)
-{
-	if (const UMetaStoryState* Parent = InParent.Get())
-	{
-		OutChildren.Append(Parent->Children);
-	}
-}
-
-void SMetaStoryView::HandleTreeSelectionChanged(TWeakObjectPtr<UMetaStoryState> InSelectedItem, ESelectInfo::Type SelectionType)
-{
-	if (!MetaStoryViewModel)
-	{
-		return;
-	}
-
-	// Do not report code based selection changes.
-	if (SelectionType == ESelectInfo::Direct)
-	{
-		return;
-	}
-
-	TArray<TWeakObjectPtr<UMetaStoryState>> SelectedItems = TreeView->GetSelectedItems();
-
-	bUpdatingSelection = true;
-	MetaStoryViewModel->SetSelection(SelectedItems);
-	bUpdatingSelection = false;
-}
-
-void SMetaStoryView::HandleTreeExpansionChanged(TWeakObjectPtr<UMetaStoryState> InSelectedItem, bool bExpanded)
-{
-	// Not calling Modify() on the state as we don't want the expansion to dirty the asset.
-	// @todo: this is temporary fix for a bug where adding a state will reset the expansion state. 
-	if (UMetaStoryState* State = InSelectedItem.Get())
-	{
-		State->bExpanded = bExpanded;
-	}
+	(void)SelectedStates;
 }
 
 TSharedRef<SWidget> SMetaStoryView::HandleGenerateSettingsMenu()
@@ -621,12 +647,12 @@ TSharedPtr<SWidget> SMetaStoryView::HandleContextMenuOpening()
 	MenuBuilder.AddSubMenu(
 		LOCTEXT("AddState", "Add State"),
 		FText(),
-		FNewMenuDelegate::CreateLambda([this](FMenuBuilder& MenuBuilder)
+		FNewMenuDelegate::CreateLambda([this](FMenuBuilder& InMenuBuilder)
 		{
-			MenuBuilder.AddMenuEntry(FMetaStoryEditorCommands::Get().AddSiblingState);
-			MenuBuilder.AddMenuEntry(FMetaStoryEditorCommands::Get().AddChildState);
+			InMenuBuilder.AddMenuEntry(FMetaStoryEditorCommands::Get().AddSiblingState);
+			InMenuBuilder.AddMenuEntry(FMetaStoryEditorCommands::Get().AddChildState);
 		}),
-		/*bInOpenSubMenuOnClick =*/false,
+		false,
 		FSlateIcon(FAppStyle::GetAppStyleSetName(), "Icons.Plus")
 	);
 
@@ -638,16 +664,16 @@ TSharedPtr<SWidget> SMetaStoryView::HandleContextMenuOpening()
 	MenuBuilder.AddSubMenu(
 		LOCTEXT("Paste", "Paste"),
 		FText(),
-		FNewMenuDelegate::CreateLambda([this](FMenuBuilder& MenuBuilder)
+		FNewMenuDelegate::CreateLambda([this](FMenuBuilder& InMenuBuilder)
 		{
-			MenuBuilder.AddMenuEntry(FMetaStoryEditorCommands::Get().PasteStatesAsSiblings);
-			MenuBuilder.AddMenuEntry(FMetaStoryEditorCommands::Get().PasteStatesAsChildren);
-			MenuBuilder.AddMenuEntry(FMetaStoryEditorCommands::Get().PasteNodesToSelectedStates);
+			InMenuBuilder.AddMenuEntry(FMetaStoryEditorCommands::Get().PasteStatesAsSiblings);
+			InMenuBuilder.AddMenuEntry(FMetaStoryEditorCommands::Get().PasteStatesAsChildren);
+			InMenuBuilder.AddMenuEntry(FMetaStoryEditorCommands::Get().PasteNodesToSelectedStates);
 		}),
-		/*bInOpenSubMenuOnClick =*/false,
+		false,
 		FSlateIcon(FAppStyle::GetAppStyleSetName(), "GenericCommands.Paste")
 	);
-	
+
 	MenuBuilder.AddMenuEntry(FMetaStoryEditorCommands::Get().DuplicateStates);
 	MenuBuilder.AddMenuEntry(FMetaStoryEditorCommands::Get().DeleteStates);
 	MenuBuilder.AddMenuEntry(FMetaStoryEditorCommands::Get().RenameState);
@@ -658,11 +684,257 @@ TSharedPtr<SWidget> SMetaStoryView::HandleContextMenuOpening()
 	MenuBuilder.AddSeparator();
 	MenuBuilder.AddMenuEntry(FMetaStoryEditorCommands::Get().EnableOnEnterStateBreakpoint);
 	MenuBuilder.AddMenuEntry(FMetaStoryEditorCommands::Get().EnableOnExitStateBreakpoint);
-#endif // WITH_METASTORY_TRACE_DEBUGGER
-	
+#endif
+
 	return MenuBuilder.MakeWidget();
 }
 
+bool SMetaStoryView::IsMetaplotFlowTopologyActive() const
+{
+	if (!MetaStoryViewModel)
+	{
+		return false;
+	}
+	const UMetaStoryEditorData* EditorData = MetaStoryViewModel->GetMetaStoryEditorData();
+	return EditorData && EditorData->bUseMetaplotFlowTopology && EditorData->MetaplotFlow != nullptr;
+}
+
+bool SMetaStoryView::TryMetaplotToolbarAddState(EMetaplotToolbarAddOp Op)
+{
+	if (!IsMetaplotFlowTopologyActive() || !MetaStoryViewModel)
+	{
+		return false;
+	}
+
+	UMetaStoryEditorData* EditorData = const_cast<UMetaStoryEditorData*>(MetaStoryViewModel->GetMetaStoryEditorData());
+	UMetaplotFlow* Flow = EditorData->MetaplotFlow;
+	if (!Flow)
+	{
+		return false;
+	}
+
+	UMetaStoryState* Sel = GetFirstSelectedState();
+	const auto FindPlotNodePtr = [Flow](const FGuid& Id) -> const FMetaplotNode*
+	{
+		if (!Id.IsValid())
+		{
+			return nullptr;
+		}
+		for (const FMetaplotNode& N : Flow->Nodes)
+		{
+			if (N.NodeId == Id)
+			{
+				return &N;
+			}
+		}
+		return nullptr;
+	};
+	const FMetaplotNode* SelPlotNode = Sel ? FindPlotNodePtr(Sel->ID) : nullptr;
+
+	const auto IsContainerRoot = [&](const UMetaStoryState* S) -> bool
+	{
+		return S && EditorData->SubTrees.Num() > 0 && EditorData->SubTrees[0] == S;
+	};
+
+	bool bHaveSource = false;
+	FGuid SourceNodeId;
+	int32 NewStage = 0;
+	int32 NewLayer = 0;
+
+	const auto PlanAppendAfterMaxStage = [&]()
+	{
+		int32 MaxStage = 0;
+		for (const FMetaplotNode& N : Flow->Nodes)
+		{
+			MaxStage = FMath::Max(MaxStage, N.StageIndex);
+		}
+		NewStage = MaxStage + 1;
+		NewLayer = 0;
+		const FMetaplotNode* SrcPick = nullptr;
+		for (const FMetaplotNode& N : Flow->Nodes)
+		{
+			if (N.StageIndex == MaxStage && (!SrcPick || N.LayerIndex > SrcPick->LayerIndex))
+			{
+				SrcPick = &N;
+			}
+		}
+		if (SrcPick)
+		{
+			bHaveSource = true;
+			SourceNodeId = SrcPick->NodeId;
+		}
+		else if (Flow->StartNodeId.IsValid())
+		{
+			bHaveSource = true;
+			SourceNodeId = Flow->StartNodeId;
+		}
+	};
+
+	switch (Op)
+	{
+	case EMetaplotToolbarAddOp::Main:
+		if (!Sel)
+		{
+			PlanAppendAfterMaxStage();
+		}
+		else if (IsContainerRoot(Sel))
+		{
+			const FMetaplotNode* StartN = FindPlotNodePtr(Flow->StartNodeId);
+			if (StartN)
+			{
+				NewStage = StartN->StageIndex + 1;
+				NewLayer = StartN->LayerIndex;
+			}
+			else
+			{
+				NewStage = 1;
+				NewLayer = 0;
+			}
+			if (Flow->StartNodeId.IsValid())
+			{
+				bHaveSource = true;
+				SourceNodeId = Flow->StartNodeId;
+			}
+		}
+		else if (SelPlotNode)
+		{
+			NewStage = SelPlotNode->StageIndex + 1;
+			NewLayer = SelPlotNode->LayerIndex;
+			bHaveSource = true;
+			SourceNodeId = SelPlotNode->NodeId;
+		}
+		else
+		{
+			return false;
+		}
+		break;
+
+	case EMetaplotToolbarAddOp::Sibling:
+		if (!Sel)
+		{
+			PlanAppendAfterMaxStage();
+		}
+		else if (!SelPlotNode)
+		{
+			return false;
+		}
+		else
+		{
+			NewStage = SelPlotNode->StageIndex;
+			NewLayer = SelPlotNode->LayerIndex + 1;
+			for (const FMetaplotTransition& T : Flow->Transitions)
+			{
+				if (T.TargetNodeId == SelPlotNode->NodeId && T.SourceNodeId.IsValid())
+				{
+					bHaveSource = true;
+					SourceNodeId = T.SourceNodeId;
+					break;
+				}
+			}
+		}
+		break;
+
+	case EMetaplotToolbarAddOp::Child:
+		if (!Sel)
+		{
+			return false;
+		}
+		if (IsContainerRoot(Sel))
+		{
+			const FMetaplotNode* StartN = FindPlotNodePtr(Flow->StartNodeId);
+			if (StartN)
+			{
+				NewStage = StartN->StageIndex + 1;
+				NewLayer = StartN->LayerIndex;
+			}
+			else
+			{
+				NewStage = 1;
+				NewLayer = 0;
+			}
+			if (Flow->StartNodeId.IsValid())
+			{
+				bHaveSource = true;
+				SourceNodeId = Flow->StartNodeId;
+			}
+		}
+		else if (SelPlotNode)
+		{
+			NewStage = SelPlotNode->StageIndex + 1;
+			NewLayer = SelPlotNode->LayerIndex;
+			bHaveSource = true;
+			SourceNodeId = SelPlotNode->NodeId;
+		}
+		else
+		{
+			return false;
+		}
+		break;
+
+	default:
+		return false;
+	}
+
+	const FScopedTransaction Transaction(LOCTEXT("MetaplotToolbarAddState", "Add Metaplot Flow State"));
+	EditorData->Modify();
+	Flow->Modify();
+
+	FMetaplotNode NewNode;
+	NewNode.NodeId = FGuid::NewGuid();
+	NewNode.NodeType = EMetaplotNodeType::Normal;
+	const UEnum* NodeTypeEnum = StaticEnum<EMetaplotNodeType>();
+	const FText NodeTypeText = NodeTypeEnum
+		? NodeTypeEnum->GetDisplayNameTextByValue(static_cast<int64>(EMetaplotNodeType::Normal))
+		: LOCTEXT("ToolbarFallbackNodeTypeText", "Normal");
+	NewNode.NodeName = FText::Format(LOCTEXT("ToolbarNewNodeNameFormat", "{0} State"), NodeTypeText);
+	NewNode.Description = FText::GetEmpty();
+	NewStage = FMath::Max(0, NewStage);
+	NewLayer = FMath::Max(0, NewLayer);
+	NewNode.StageIndex = NewStage;
+	NewNode.LayerIndex = NewLayer;
+
+	while (Flow->Nodes.ContainsByPredicate([&](const FMetaplotNode& Node)
+	{
+		return Node.NodeId != NewNode.NodeId && Node.StageIndex == NewNode.StageIndex && Node.LayerIndex == NewNode.LayerIndex;
+	}))
+	{
+		++NewNode.LayerIndex;
+	}
+
+	Flow->Nodes.Add(NewNode);
+	Flow->SyncNodeStatesWithNodes();
+
+	if (bHaveSource && SourceNodeId.IsValid() && SourceNodeId != NewNode.NodeId)
+	{
+		const bool bDup = Flow->Transitions.ContainsByPredicate([&](const FMetaplotTransition& T)
+		{
+			return T.SourceNodeId == SourceNodeId && T.TargetNodeId == NewNode.NodeId;
+		});
+		if (!bDup
+			&& MetaStoryViewMetaplotGraphPrivate::IsTransitionRuleValid(Flow, SourceNodeId, NewNode.NodeId)
+			&& !MetaStoryViewMetaplotGraphPrivate::WouldCreateCycle(Flow, SourceNodeId, NewNode.NodeId))
+		{
+			FMetaplotTransition Tr;
+			Tr.SourceNodeId = SourceNodeId;
+			Tr.TargetNodeId = NewNode.NodeId;
+			Flow->Transitions.Add(Tr);
+		}
+	}
+
+	Flow->MarkPackageDirty();
+
+	(void)UE::MetaStory::MetaplotTopology::RebuildShadowStates(*EditorData, nullptr);
+
+	if (UMetaStoryState* NewState = MetaStoryViewModel->GetMutableStateByID(NewNode.NodeId))
+	{
+		MetaStoryViewModel->SetSelection(NewState);
+	}
+
+	MetaStoryViewModel->NotifyAssetChangedExternally();
+	SyncFlowGraphFromEditorData();
+
+	return true;
+}
 
 FReply SMetaStoryView::HandleAddStateButton()
 {
@@ -670,18 +942,26 @@ FReply SMetaStoryView::HandleAddStateButton()
 	{
 		return FReply::Handled();
 	}
-	
+
+	if (TryMetaplotToolbarAddState(EMetaplotToolbarAddOp::Main))
+	{
+		return FReply::Handled();
+	}
+
+	if (IsMetaplotFlowTopologyActive())
+	{
+		return FReply::Handled();
+	}
+
 	TArray<UMetaStoryState*> SelectedStates;
 	MetaStoryViewModel->GetSelectedStates(SelectedStates);
 	UMetaStoryState* FirstSelectedState = SelectedStates.Num() > 0 ? SelectedStates[0] : nullptr;
 
 	if (FirstSelectedState != nullptr)
 	{
-		// If the state is root, add child state, else sibling.
 		if (FirstSelectedState->Parent == nullptr)
 		{
 			MetaStoryViewModel->AddChildState(FirstSelectedState);
-			TreeView->SetItemExpansion(FirstSelectedState, true);
 		}
 		else
 		{
@@ -690,7 +970,6 @@ FReply SMetaStoryView::HandleAddStateButton()
 	}
 	else
 	{
-		// Add root state at the lowest level.
 		MetaStoryViewModel->AddState(nullptr);
 	}
 
@@ -709,22 +988,44 @@ UMetaStoryState* SMetaStoryView::GetFirstSelectedState() const
 
 void SMetaStoryView::HandleAddSiblingState()
 {
-	if (MetaStoryViewModel)
+	if (!MetaStoryViewModel)
 	{
-		MetaStoryViewModel->AddState(GetFirstSelectedState());
+		return;
 	}
+
+	if (TryMetaplotToolbarAddState(EMetaplotToolbarAddOp::Sibling))
+	{
+		return;
+	}
+
+	if (IsMetaplotFlowTopologyActive())
+	{
+		return;
+	}
+
+	MetaStoryViewModel->AddState(GetFirstSelectedState());
 }
 
 void SMetaStoryView::HandleAddChildState()
 {
-	if (MetaStoryViewModel)
+	if (!MetaStoryViewModel)
 	{
-		UMetaStoryState* ParentState = GetFirstSelectedState();
-		if (ParentState)
-		{
-			MetaStoryViewModel->AddChildState(ParentState);
-			TreeView->SetItemExpansion(ParentState, true);
-		}
+		return;
+	}
+
+	if (TryMetaplotToolbarAddState(EMetaplotToolbarAddOp::Child))
+	{
+		return;
+	}
+
+	if (IsMetaplotFlowTopologyActive())
+	{
+		return;
+	}
+
+	if (UMetaStoryState* ParentState = GetFirstSelectedState())
+	{
+		MetaStoryViewModel->AddChildState(ParentState);
 	}
 }
 
@@ -787,17 +1088,15 @@ void SMetaStoryView::HandleDeleteStates()
 
 void SMetaStoryView::HandleRenameState()
 {
-	RequestedRenameState = GetFirstSelectedState();
 }
 
 void SMetaStoryView::HandleEnableSelectedStates()
 {
 	if (MetaStoryViewModel)
 	{
-		// Process CanEnable first so in case of undetermined state (mixed selection) we Enable by default. 
 		if (CanEnableStates())
 		{
-			MetaStoryViewModel->SetSelectedStatesEnabled(true);	
+			MetaStoryViewModel->SetSelectedStatesEnabled(true);
 		}
 		else if (CanDisableStates())
 		{
@@ -814,6 +1113,253 @@ void SMetaStoryView::HandleDisableSelectedStates()
 	}
 }
 
+void SMetaStoryView::OnMainGraphNodeSelected(FGuid NodeId)
+{
+	SelectedNodeId = NodeId;
+	if (FlowGraph.IsValid())
+	{
+		FlowGraph->SetSelectedNodeId(NodeId);
+	}
+
+	// 与 Outliner / UMetaStoryEditorMode 一致：通过 ViewModel 选中状态，Details 才会 SetObjects。
+	if (!MetaStoryViewModel)
+	{
+		return;
+	}
+
+	if (!NodeId.IsValid())
+	{
+		MetaStoryViewModel->ClearSelection();
+		return;
+	}
+
+	if (UMetaStoryState* State = MetaStoryViewModel->GetMutableStateByID(NodeId))
+	{
+		MetaStoryViewModel->SetSelection(State);
+	}
+}
+
+void SMetaStoryView::OnMainGraphMoveNode(FGuid NodeId, int32 NewStage, int32 NewLayer)
+{
+	if (!EditingFlowAsset.IsValid() || !NodeId.IsValid())
+	{
+		return;
+	}
+
+	NewStage = FMath::Max(0, NewStage);
+	NewLayer = FMath::Max(0, NewLayer);
+
+	UMetaplotFlow* Flow = EditingFlowAsset.Get();
+	if (!MetaStoryViewMetaplotGraphPrivate::IsValidCellForNodeMove(Flow, NodeId, NewStage, NewLayer))
+	{
+		return;
+	}
+
+	const int32 NodeIndex = Flow->Nodes.IndexOfByPredicate([NodeId](const FMetaplotNode& N)
+	{
+		return N.NodeId == NodeId;
+	});
+	if (!Flow->Nodes.IsValidIndex(NodeIndex))
+	{
+		return;
+	}
+
+	FMetaplotNode& Node = Flow->Nodes[NodeIndex];
+	if (Node.StageIndex == NewStage && Node.LayerIndex == NewLayer)
+	{
+		return;
+	}
+
+	const FScopedTransaction Transaction(LOCTEXT("MoveMetaplotNodeTransaction", "Move Metaplot Node"));
+	Flow->Modify();
+
+	Node.StageIndex = NewStage;
+	Node.LayerIndex = NewLayer;
+
+	Flow->MarkPackageDirty();
+	SyncFlowGraphFromEditorData();
+}
+
+void SMetaStoryView::OnMainGraphCreateNodeRequested(EMetaplotNodeType NodeType, int32 StageIndex, int32 LayerIndex)
+{
+	if (!EditingFlowAsset.IsValid())
+	{
+		return;
+	}
+
+	UMetaplotFlow* Flow = EditingFlowAsset.Get();
+
+	const FScopedTransaction Transaction(LOCTEXT("CreateNodeByContextMenuTransaction", "Create Metaplot Node From Graph Search"));
+	Flow->Modify();
+
+	FMetaplotNode NewNode;
+	NewNode.NodeId = FGuid::NewGuid();
+	NewNode.NodeType = NodeType;
+	const UEnum* NodeTypeEnum = StaticEnum<EMetaplotNodeType>();
+	const FText NodeTypeText = NodeTypeEnum
+		? NodeTypeEnum->GetDisplayNameTextByValue(static_cast<int64>(NodeType))
+		: LOCTEXT("FallbackNodeTypeText", "Normal");
+	NewNode.NodeName = FText::Format(LOCTEXT("ContextCreateNodeNameFormat", "{0} Node"), NodeTypeText);
+	NewNode.Description = LOCTEXT("ContextCreateNodeDescription", "Created from graph search");
+	NewNode.StageIndex = FMath::Max(0, StageIndex);
+	NewNode.LayerIndex = FMath::Max(0, LayerIndex);
+
+	while (Flow->Nodes.ContainsByPredicate([&NewNode](const FMetaplotNode& Node)
+	{
+		return Node.StageIndex == NewNode.StageIndex && Node.LayerIndex == NewNode.LayerIndex;
+	}))
+	{
+		++NewNode.LayerIndex;
+	}
+
+	Flow->Nodes.Add(NewNode);
+	Flow->SyncNodeStatesWithNodes();
+	if (NodeType == EMetaplotNodeType::Start || !Flow->StartNodeId.IsValid())
+	{
+		Flow->StartNodeId = NewNode.NodeId;
+	}
+
+	SelectedNodeId = NewNode.NodeId;
+	Flow->MarkPackageDirty();
+	SyncFlowGraphFromEditorData();
+}
+
+void SMetaStoryView::OnMainGraphDeleteNodeRequested(FGuid NodeId)
+{
+	if (!NodeId.IsValid())
+	{
+		return;
+	}
+
+	SelectedNodeId = NodeId;
+	DeleteMetaplotNode(NodeId);
+}
+
+void SMetaStoryView::DeleteMetaplotNode(FGuid NodeId)
+{
+	if (!EditingFlowAsset.IsValid() || !NodeId.IsValid())
+	{
+		return;
+	}
+
+	UMetaplotFlow* Flow = EditingFlowAsset.Get();
+	const int32 NodeIndex = Flow->Nodes.IndexOfByPredicate([NodeId](const FMetaplotNode& Node)
+	{
+		return Node.NodeId == NodeId;
+	});
+	if (NodeIndex == INDEX_NONE)
+	{
+		return;
+	}
+
+	const FScopedTransaction Transaction(LOCTEXT("DeleteNodeTransaction", "Delete Metaplot Node"));
+	Flow->Modify();
+
+	const FGuid NodeIdToDelete = NodeId;
+	Flow->Nodes.RemoveAt(NodeIndex);
+	Flow->NodeStates.RemoveAll([NodeIdToDelete](const FMetaplotNodeState& State)
+	{
+		return State.ID == NodeIdToDelete;
+	});
+	Flow->Transitions.RemoveAll([NodeIdToDelete](const FMetaplotTransition& Transition)
+	{
+		return Transition.SourceNodeId == NodeIdToDelete || Transition.TargetNodeId == NodeIdToDelete;
+	});
+
+	if (Flow->StartNodeId == NodeIdToDelete)
+	{
+		Flow->StartNodeId = Flow->Nodes.IsEmpty() ? FGuid() : Flow->Nodes[0].NodeId;
+	}
+
+	if (SelectedNodeId == NodeIdToDelete)
+	{
+		SelectedNodeId.Invalidate();
+	}
+
+	Flow->MarkPackageDirty();
+	SyncFlowGraphFromEditorData();
+}
+
+void SMetaStoryView::OnMainGraphDeleteTransitionRequested(FGuid SourceNodeId, FGuid TargetNodeId)
+{
+	DeleteMetaplotTransitionByPair(SourceNodeId, TargetNodeId);
+}
+
+void SMetaStoryView::DeleteMetaplotTransitionByPair(FGuid SourceNodeId, FGuid TargetNodeId)
+{
+	if (!EditingFlowAsset.IsValid() || !SourceNodeId.IsValid() || !TargetNodeId.IsValid())
+	{
+		return;
+	}
+
+	UMetaplotFlow* Flow = EditingFlowAsset.Get();
+	const int32 TransitionIndex = Flow->Transitions.IndexOfByPredicate([SourceNodeId, TargetNodeId](const FMetaplotTransition& Transition)
+	{
+		return Transition.SourceNodeId == SourceNodeId && Transition.TargetNodeId == TargetNodeId;
+	});
+	if (TransitionIndex == INDEX_NONE)
+	{
+		return;
+	}
+
+	const FScopedTransaction Transaction(LOCTEXT("DeleteTransitionTransaction", "Delete Metaplot Transition"));
+	Flow->Modify();
+	Flow->Transitions.RemoveAt(TransitionIndex);
+
+	Flow->MarkPackageDirty();
+	SyncFlowGraphFromEditorData();
+}
+
+void SMetaStoryView::OnMainGraphCreateTransition(FGuid SourceNodeId, FGuid TargetNodeId)
+{
+	if (!EditingFlowAsset.IsValid() || !SourceNodeId.IsValid() || !TargetNodeId.IsValid() || SourceNodeId == TargetNodeId)
+	{
+		return;
+	}
+
+	UMetaplotFlow* Flow = EditingFlowAsset.Get();
+
+	const bool bSourceExists = Flow->Nodes.ContainsByPredicate([SourceNodeId](const FMetaplotNode& Node)
+	{
+		return Node.NodeId == SourceNodeId;
+	});
+	const bool bTargetExists = Flow->Nodes.ContainsByPredicate([TargetNodeId](const FMetaplotNode& Node)
+	{
+		return Node.NodeId == TargetNodeId;
+	});
+	if (!bSourceExists || !bTargetExists)
+	{
+		return;
+	}
+
+	const bool bAlreadyExists = Flow->Transitions.ContainsByPredicate([SourceNodeId, TargetNodeId](const FMetaplotTransition& Transition)
+	{
+		return Transition.SourceNodeId == SourceNodeId && Transition.TargetNodeId == TargetNodeId;
+	});
+	if (bAlreadyExists ||
+		!MetaStoryViewMetaplotGraphPrivate::IsTransitionRuleValid(Flow, SourceNodeId, TargetNodeId) ||
+		MetaStoryViewMetaplotGraphPrivate::WouldCreateCycle(Flow, SourceNodeId, TargetNodeId))
+	{
+		return;
+	}
+
+	const FScopedTransaction Transaction(LOCTEXT("CreateTransitionByPinTransaction", "Create Metaplot Transition By Pin"));
+	Flow->Modify();
+
+	FMetaplotTransition NewTransition;
+	NewTransition.SourceNodeId = SourceNodeId;
+	NewTransition.TargetNodeId = TargetNodeId;
+	Flow->Transitions.Add(NewTransition);
+
+	Flow->MarkPackageDirty();
+	SyncFlowGraphFromEditorData();
+}
+
+void SMetaStoryView::OnMainGraphHorizontalPanChanged(float InPanScreenX)
+{
+	(void)InPanScreenX;
+}
+
 TSharedPtr<FMetaStoryViewModel> SMetaStoryView::GetViewModel() const
 {
 	return MetaStoryViewModel;
@@ -821,20 +1367,10 @@ TSharedPtr<FMetaStoryViewModel> SMetaStoryView::GetViewModel() const
 
 void SMetaStoryView::SetSelection(const TArray<TWeakObjectPtr<UMetaStoryState>>& SelectedStates) const
 {
-	for (const TWeakObjectPtr<UMetaStoryState>& WeakState : SelectedStates)
+	if (MetaStoryViewModel)
 	{
-		if (const UMetaStoryState* SelectedState = WeakState.Get())
-		{
-			UMetaStoryState* ParentState = SelectedState->Parent;
-			while (ParentState)
-			{
-				constexpr bool bShouldExpandItem(true);
-				TreeView->SetItemExpansion(ParentState, bShouldExpandItem);
-				ParentState = ParentState->Parent;
-			}
-		}
+		MetaStoryViewModel->SetSelection(SelectedStates);
 	}
-	MetaStoryViewModel->SetSelection(SelectedStates);
 }
 
 #undef LOCTEXT_NAMESPACE

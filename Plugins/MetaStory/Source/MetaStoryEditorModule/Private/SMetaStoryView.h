@@ -2,19 +2,17 @@
 
 #pragma once
 
+#include "SMetaStoryFlowGraph.h"
 #include "Widgets/SCompoundWidget.h"
-#include "Widgets/Views/STreeView.h"
 
 class FMetaStoryViewModel;
-class ITableRow;
-class SScrollBar;
-class STableViewBase;
-namespace ESelectInfo { enum Type : int; }
 struct FPropertyChangedEvent;
 class UMetaStoryState;
+class UMetaplotFlow;
 class SScrollBox;
 class FUICommandList;
 
+/** MetaStory 主视图：Metaplot 流程图编辑；状态树 UI 已移除，状态操作仍通过 ViewModel（与 Outliner 等一致）。 */
 class SMetaStoryView : public SCompoundWidget
 {
 public:
@@ -26,6 +24,7 @@ public:
 
 	void Construct(const FArguments& InArgs, TSharedRef<FMetaStoryViewModel> MetaStoryViewModel, const TSharedRef<FUICommandList>& InCommandList);
 
+	/** 状态树展开状态已无 UI 可保存；保留空实现以兼容 MetaStoryEditor 调用。 */
 	void SavePersistentExpandedStates();
 
 	TSharedPtr<FMetaStoryViewModel> GetViewModel() const;
@@ -34,14 +33,9 @@ public:
 
 private:
 	virtual FReply OnKeyDown(const FGeometry& MyGeometry, const FKeyEvent& InKeyEvent) override;
-	virtual void Tick(const FGeometry& AllottedGeometry, const double InCurrentTime, const float InDeltaTime) override;
 
-	void UpdateTree(bool bExpandPersistent = false);
-
-	//~ Editor/User settings handlers
 	void HandleUserSettingsChanged();
 
-	//~ ViewModel handlers
 	void HandleModelAssetChanged();
 	void HandleModelStatesRemoved(const TSet<UMetaStoryState*>& AffectedParents);
 	void HandleModelStatesMoved(const TSet<UMetaStoryState*>& AffectedParents, const TSet<UMetaStoryState*>& MovedStates);
@@ -50,17 +44,9 @@ private:
 	void HandleModelStateNodesChanged(const UMetaStoryState* AffectedState);
 	void HandleModelSelectionChanged(const TArray<TWeakObjectPtr<UMetaStoryState>>& SelectedStates);
 
-	//~ Treeview handlers
-	TSharedRef<ITableRow> HandleGenerateRow(TWeakObjectPtr<UMetaStoryState> InState, const TSharedRef<STableViewBase>& InOwnerTableView);
-	void HandleGetChildren(TWeakObjectPtr<UMetaStoryState> InParent, TArray<TWeakObjectPtr<UMetaStoryState>>& OutChildren);
-	void HandleTreeSelectionChanged(TWeakObjectPtr<UMetaStoryState> InSelectedItem, ESelectInfo::Type SelectionType);
-	void HandleTreeExpansionChanged(TWeakObjectPtr<UMetaStoryState> InSelectedItem, bool bExpanded);
-	
 	TSharedPtr<SWidget> HandleContextMenuOpening();
 	TSharedRef<SWidget> HandleGenerateSettingsMenu();
 
-	//~ Action handlers
-	//~ @todo: these are also defined in the outliner, figure out how to share code.
 	UMetaStoryState* GetFirstSelectedState() const;
 	FReply HandleAddStateButton();
 	void HandleAddSiblingState();
@@ -76,6 +62,14 @@ private:
 	void HandleEnableSelectedStates();
 	void HandleDisableSelectedStates();
 
+	void OnMainGraphNodeSelected(FGuid NodeId);
+	void OnMainGraphCreateNodeRequested(EMetaplotNodeType NodeType, int32 StageIndex, int32 LayerIndex);
+	void OnMainGraphCreateTransition(FGuid SourceNodeId, FGuid TargetNodeId);
+	void OnMainGraphMoveNode(FGuid NodeId, int32 NewStage, int32 NewLayer);
+	void OnMainGraphDeleteNodeRequested(FGuid NodeId);
+	void OnMainGraphDeleteTransitionRequested(FGuid SourceNodeId, FGuid TargetNodeId);
+	void OnMainGraphHorizontalPanChanged(float InPanScreenX);
+
 	bool HasSelection() const;
 	bool CanPasteStates() const;
 	bool CanEnableStates() const;
@@ -84,17 +78,30 @@ private:
 
 	void BindCommands();
 
+	/** 从 ViewModel 的 EditorData 刷新 Metaplot Flow 指针并推送到 FlowGraph。 */
+	void SyncFlowGraphFromEditorData();
+	void DeleteMetaplotNode(FGuid NodeId);
+	void DeleteMetaplotTransitionByPair(FGuid SourceNodeId, FGuid TargetNodeId);
+
+	enum class EMetaplotToolbarAddOp : uint8
+	{
+		Main,
+		Sibling,
+		Child,
+	};
+	bool IsMetaplotFlowTopologyActive() const;
+	/** 在 Metaplot 拓扑模式下向 Flow 添加节点并 Rebuild 影子树；成功则不再走 SubTrees 的 AddState。 */
+	bool TryMetaplotToolbarAddState(EMetaplotToolbarAddOp Op);
+
 	TSharedPtr<FMetaStoryViewModel> MetaStoryViewModel;
 
-	TSharedPtr<STreeView<TWeakObjectPtr<UMetaStoryState>>> TreeView;
-	TSharedPtr<SScrollBar> ExternalScrollbar;
+	TSharedPtr<SMetaStoryFlowGraph> FlowGraph;
 	TSharedPtr<SScrollBox> ViewBox;
-	TArray<TWeakObjectPtr<UMetaStoryState>> Subtrees;
+
+	TWeakObjectPtr<UMetaplotFlow> EditingFlowAsset;
+	FGuid SelectedNodeId;
 
 	TSharedPtr<FUICommandList> CommandList;
 
-	UMetaStoryState* RequestedRenameState;
 	FDelegateHandle SettingsChangedHandle;
-	bool bItemsDirty;
-	bool bUpdatingSelection;
 };

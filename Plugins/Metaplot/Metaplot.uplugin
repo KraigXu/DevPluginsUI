@@ -13,10 +13,6 @@
 		{
 			"Name": "StructUtils",
 			"Enabled": true
-		},
-		{
-			"Name": "MetaStory",
-			"Enabled": true
 		}
 	],
 	"Modules": [

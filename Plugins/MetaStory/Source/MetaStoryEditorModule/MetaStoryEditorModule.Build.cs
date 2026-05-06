@@ -30,6 +30,7 @@ namespace UnrealBuildTool.Rules
 				"PropertyEditor",
 				"MetaStoryDeveloper",
 				"MetaStoryModule",
+				"Metaplot",
 				"SourceControl",
 				"Projects",
 				"BlueprintGraph",

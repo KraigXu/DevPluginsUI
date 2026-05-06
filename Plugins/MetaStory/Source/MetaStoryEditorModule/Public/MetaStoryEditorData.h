@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "Flow/MetaplotFlow.h"
 #include "MetaStoryState.h"
 #include "MetaStoryEditorPropertyBindings.h"
 #include "MetaStoryEditorTypes.h"
@@ -121,6 +122,12 @@ public:
 	UE_API virtual void PostLoad() override;
 	UE_API virtual void PostEditChangeChainProperty(FPropertyChangedChainEvent& PropertyChangedEvent) override;
 	UE_API virtual void PostDuplicate(EDuplicateMode::Type DuplicateMode) override;
+
+	/**
+	 * 若已启用 Metaplot 拓扑但 MetaplotFlow 为空，则创建内嵌 UMetaplotFlow（Outer=this）并带默认 Start 节点。
+	 * 该字段不是外部资产引用，Details 中不会出现「选 .uasset」；需内嵌实例或由此函数自动创建。
+	 */
+	UE_API void EnsureEmbeddedMetaplotFlow();
 #endif
 
 	/** @return the public parameters ID that could be used for bindings within the Tree. */
@@ -377,6 +384,17 @@ public:
 	/** Schema describing how the editor schema is customized. */
 	UPROPERTY(Instanced, NoClear)
 	TObjectPtr<UMetaStoryEditorSchema> EditorSchema = nullptr;
+
+	/**
+	 * When true, UMetaplotFlow is the source of topology; shadow UMetaStoryState trees are rebuilt before compile.
+	 * New graph-based MetaStory assets use this; legacy hand-authored trees keep it false.
+	 */
+	UPROPERTY(EditDefaultsOnly, Category = "Topology|Metaplot", meta = (ToolTip = "启用后以 UMetaplotFlow 为拓扑真源；开启时若未内嵌流程将自动创建默认 Start 图。"))
+	bool bUseMetaplotFlowTopology = false;
+
+	/** 内嵌于本 EditorData 的 Metaplot 图（Outer=this），非外部资产引用；展开即可编辑节点/迁移。 */
+	UPROPERTY(EditDefaultsOnly, Instanced, Category = "Topology|Metaplot", meta = (EditCondition = "bUseMetaplotFlowTopology", ToolTip = "内嵌子对象，无需也不支持关联外部 Metaplot 资源；为空时保存/勾选拓扑后会自动创建。"))
+	TObjectPtr<UMetaplotFlow> MetaplotFlow = nullptr;
 
 	/** The editor data extensions. A place to add extra information for plugins. */
 	UPROPERTY(EditDefaultsOnly, Instanced, Category = "Extension", NoClear)
