@@ -10,8 +10,42 @@
 #include "MetaStoryDelegates.h"
 #include "MetaStoryPropertyHelpers.h"
 #include "Customizations/MetaStoryEditorNodeUtils.h"
+#include "Flow/MetaStoryFlow.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(MetaStoryState)
+
+#if WITH_EDITOR
+/** 将 MetaStoryFlowRoot 下影子 State 的显示名/描述写回内嵌 UMetaStoryFlow 节点，供流程图 SMetaStoryFlowGraph 与资产一致。 */
+static void MetaStorySyncEmbeddedFlowNodeDisplayFromShadowState(UMetaStoryState& State)
+{
+	UMetaStoryState* ParentState = State.Parent;
+	if (!ParentState || ParentState->Name != FName(TEXT("MetaStoryFlowRoot")))
+	{
+		return;
+	}
+	UMetaStoryEditorData* EditorData = State.GetTypedOuter<UMetaStoryEditorData>();
+	if (!EditorData || !EditorData->MetaStoryFlow || !State.ID.IsValid())
+	{
+		return;
+	}
+	UMetaStoryFlow* Flow = EditorData->MetaStoryFlow;
+	for (FMetaStoryFlowNode& Node : Flow->Nodes)
+	{
+		if (Node.NodeId != State.ID)
+		{
+			continue;
+		}
+		Flow->Modify();
+		Node.NodeName = FText::FromName(State.Name);
+		Node.Description = FText::FromString(State.Description);
+		if (UMetaStory* MetaStory = EditorData->GetTypedOuter<UMetaStory>())
+		{
+			UE::MetaStory::Delegates::OnGlobalDataChanged.Broadcast(*MetaStory);
+		}
+		return;
+	}
+}
+#endif
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -123,6 +157,7 @@ void UMetaStoryState::PostEditChangeChainProperty(FPropertyChangedChainEvent& Pr
 	const FMetaStoryEditPropertyPath ChangePropertyPath(PropertyChangedEvent);
 
 	static const FMetaStoryEditPropertyPath StateNamePath(UMetaStoryState::StaticClass(), TEXT("Name"));
+	static const FMetaStoryEditPropertyPath StateDescriptionPath(UMetaStoryState::StaticClass(), TEXT("Description"));
 	static const FMetaStoryEditPropertyPath StateTypePath(UMetaStoryState::StaticClass(), TEXT("Type"));
 	static const FMetaStoryEditPropertyPath SelectionBehaviorPath(UMetaStoryState::StaticClass(), TEXT("SelectionBehavior"));
 	static const FMetaStoryEditPropertyPath StateLinkedSubtreePath(UMetaStoryState::StaticClass(), TEXT("LinkedSubtree"));
@@ -135,6 +170,12 @@ void UMetaStoryState::PostEditChangeChainProperty(FPropertyChangedChainEvent& Pr
 	static const FMetaStoryEditPropertyPath StateTransitionsConditionsPath(UMetaStoryState::StaticClass(), TEXT("Transitions.Conditions"));
 	static const FMetaStoryEditPropertyPath StateTransitionsIDPath(UMetaStoryState::StaticClass(), TEXT("Transitions.ID"));
 
+#if WITH_EDITOR
+	if (ChangePropertyPath.IsPathExact(StateNamePath) || ChangePropertyPath.IsPathExact(StateDescriptionPath))
+	{
+		MetaStorySyncEmbeddedFlowNodeDisplayFromShadowState(*this);
+	}
+#endif
 
 	// Broadcast name changes so that the UI can update.
 	if (ChangePropertyPath.IsPathExact(StateNamePath))

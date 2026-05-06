@@ -126,7 +126,7 @@ UObject* UMetaStoryFactory::FactoryCreateNew(UClass* Class, UObject* InParent, F
 	NewMetaStory->EditorData = EditorData;
 
 	EditorData->Schema = NewObject<UMetaStorySchema>(EditorData, MetaStorySchemaClass, FName(), RF_Transactional);
-	EditorData->AddRootState();
+	EditorData->EnsureEmbeddedMetaStoryFlow();
 
 	TNonNullSubclassOf<UMetaStoryEditorSchema> EditorSchemaClass = FMetaStoryEditorModule::GetModule().GetEditorSchemaClass(MetaStorySchemaClass.Get());
 	EditorData->EditorSchema = NewObject<UMetaStoryEditorSchema>(EditorData, EditorSchemaClass, FName(), RF_Transactional);

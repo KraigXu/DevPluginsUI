@@ -3,6 +3,10 @@
 #include "SMetaStoryFlowGraph.h"
 
 #include "Flow/MetaStoryFlow.h"
+#include "MetaStoryEditorData.h"
+#include "MetaStoryEditorStyle.h"
+#include "MetaStoryState.h"
+#include "MetaStoryViewModel.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Framework/Commands/UIAction.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
@@ -103,7 +107,6 @@ namespace MetaStoryFlowGraphWidgetPrivate
 {
 	struct FNodeSearchItem
 	{
-		EMetaStoryFlowNodeType Type = EMetaStoryFlowNodeType::Normal;
 		FText Label;
 		FText Keywords;
 	};
@@ -126,11 +129,7 @@ namespace MetaStoryFlowGraphWidgetPrivate
 			LayerIndex = InArgs._LayerIndex;
 
 			AllItems = {
-				MakeItem(EMetaStoryFlowNodeType::Start, TEXT("Start"), TEXT("开始 起始 起点")),
-				MakeItem(EMetaStoryFlowNodeType::Normal, TEXT("Normal"), TEXT("普通 常规")),
-				MakeItem(EMetaStoryFlowNodeType::Conditional, TEXT("Conditional"), TEXT("条件 分支 判断")),
-				MakeItem(EMetaStoryFlowNodeType::Parallel, TEXT("Parallel"), TEXT("并行")),
-				MakeItem(EMetaStoryFlowNodeType::Terminal, TEXT("Terminal"), TEXT("结束 终止"))
+				MakeItem(TEXT("节点"), TEXT("节点 新建 流程"))
 			};
 			FilteredItems = AllItems;
 
@@ -176,10 +175,9 @@ namespace MetaStoryFlowGraphWidgetPrivate
 		}
 
 	private:
-		static TSharedPtr<FNodeSearchItem> MakeItem(EMetaStoryFlowNodeType Type, const TCHAR* LabelText, const TCHAR* KeywordsText)
+		static TSharedPtr<FNodeSearchItem> MakeItem(const TCHAR* LabelText, const TCHAR* KeywordsText)
 		{
 			TSharedPtr<FNodeSearchItem> Item = MakeShared<FNodeSearchItem>();
-			Item->Type = Type;
 			Item->Label = FText::FromString(LabelText);
 			Item->Keywords = FText::FromString(KeywordsText);
 			return Item;
@@ -241,7 +239,7 @@ namespace MetaStoryFlowGraphWidgetPrivate
 			}
 			if (OnCreateNodeRequested.IsBound())
 			{
-				OnCreateNodeRequested.Execute(Item->Type, StageIndex, LayerIndex);
+				OnCreateNodeRequested.Execute(StageIndex, LayerIndex);
 			}
 			if (OnCloseMenu.IsBound())
 			{
@@ -308,52 +306,53 @@ namespace MetaStoryFlowGraphWidgetPrivate
 		return Range;
 	}
 
-	static FLinearColor GetTypeAccent(const EMetaStoryFlowNodeType Type)
+	/** 与 `SMetaStoryViewRow::GetTitleColor` 一致的 sRGB 插值（用于 Root/Subtree 压暗）。 */
+	static FLinearColor LerpColorSRGB(const FLinearColor ColorA, const FLinearColor ColorB, float T)
 	{
-		switch (Type)
-		{
-		case EMetaStoryFlowNodeType::Start:
-			return FLinearColor(0.25f, 0.65f, 0.35f, 1.0f);
-		case EMetaStoryFlowNodeType::Normal:
-			return FLinearColor(0.30f, 0.55f, 0.95f, 1.0f);
-		case EMetaStoryFlowNodeType::Conditional:
-			return FLinearColor(0.95f, 0.75f, 0.25f, 1.0f);
-		case EMetaStoryFlowNodeType::Parallel:
-			return FLinearColor(0.75f, 0.45f, 0.95f, 1.0f);
-		case EMetaStoryFlowNodeType::Terminal:
-			return FLinearColor(0.95f, 0.40f, 0.35f, 1.0f);
-		default:
-			return FLinearColor(0.55f, 0.55f, 0.58f, 1.0f);
-		}
+		const FColor A = ColorA.ToFColorSRGB();
+		const FColor B = ColorB.ToFColorSRGB();
+		return FLinearColor(FColor(
+			static_cast<uint8>(FMath::RoundToInt(static_cast<float>(A.R) * (1.f - T) + static_cast<float>(B.R) * T)),
+			static_cast<uint8>(FMath::RoundToInt(static_cast<float>(A.G) * (1.f - T) + static_cast<float>(B.G) * T)),
+			static_cast<uint8>(FMath::RoundToInt(static_cast<float>(A.B) * (1.f - T) + static_cast<float>(B.B) * T)),
+			static_cast<uint8>(FMath::RoundToInt(static_cast<float>(A.A) * (1.f - T) + static_cast<float>(B.A) * T))));
 	}
 
-	static TCHAR GetTypeGlyph(const EMetaStoryFlowNodeType Type)
+	/** 无 EditorData / 无影子 State 时的回退强调色。 */
+	static FLinearColor GetUnifiedNodeAccent()
 	{
-		switch (Type)
-		{
-		case EMetaStoryFlowNodeType::Start: return TEXT('S');
-		case EMetaStoryFlowNodeType::Normal: return TEXT('N');
-		case EMetaStoryFlowNodeType::Conditional: return TEXT('C');
-		case EMetaStoryFlowNodeType::Parallel: return TEXT('P');
-		case EMetaStoryFlowNodeType::Terminal: return TEXT('T');
-		default: return TEXT('?');
-		}
+		return FLinearColor(0.30f, 0.55f, 0.95f, 1.0f);
 	}
 
-	static FString GetTypeLabel(const EMetaStoryFlowNodeType Type)
+	/**
+	 * 权威来源：与 Outliner 一致 — `UMetaStoryState::ColorRef` + `UMetaStoryEditorData::Colors` Theme 表。
+	 * Root（Parent==nullptr）或 Subtree 类型与 State 行相同做压暗。
+	 */
+	static FLinearColor GetNodeAccentFromEditor(const UMetaStoryEditorData* EditorData, const FGuid& NodeId)
 	{
-		switch (Type)
+		if (!EditorData || !NodeId.IsValid())
 		{
-		case EMetaStoryFlowNodeType::Start: return TEXT("Start");
-		case EMetaStoryFlowNodeType::Normal: return TEXT("Normal");
-		case EMetaStoryFlowNodeType::Conditional: return TEXT("Conditional");
-		case EMetaStoryFlowNodeType::Parallel: return TEXT("Parallel");
-		case EMetaStoryFlowNodeType::Terminal: return TEXT("Terminal");
-		default: return TEXT("Node");
+			return GetUnifiedNodeAccent();
 		}
+		const UMetaStoryState* State = EditorData->GetStateByID(NodeId);
+		if (!State)
+		{
+			return GetUnifiedNodeAccent();
+		}
+		if (const FMetaStoryEditorColor* FoundColor = EditorData->FindColor(State->ColorRef))
+		{
+			FLinearColor Color = FoundColor->Color;
+			const bool bRootOrSubtree = (State->Parent == nullptr) || (State->Type == EMetaStoryStateType::Subtree);
+			if (bRootOrSubtree)
+			{
+				Color = LerpColorSRGB(FoundColor->Color, FLinearColor(FColor::Black), 0.25f);
+			}
+			return Color;
+		}
+		return FLinearColor(FColor(31, 151, 167));
 	}
 
-	static int32 GetTaskCount(const UMetaStoryFlow* Flow, const FGuid& NodeId)
+	static int32 GetTaskCountFromFlowNodeStates(const UMetaStoryFlow* Flow, const FGuid& NodeId)
 	{
 		if (!Flow || !NodeId.IsValid())
 		{
@@ -365,6 +364,27 @@ namespace MetaStoryFlowGraphWidgetPrivate
 			return Entry.ID == NodeId;
 		});
 		return NodeState ? NodeState->Tasks.Num() : 0;
+	}
+
+	static int32 GetTaskCountFromShadowState(const UMetaStoryEditorData* EditorData, const FGuid& NodeId)
+	{
+		if (!EditorData || !NodeId.IsValid())
+		{
+			return 0;
+		}
+		if (const UMetaStoryState* State = EditorData->GetStateByID(NodeId))
+		{
+			return State->Tasks.Num();
+		}
+		return 0;
+	}
+
+	/** 与 Details / 编译使用的影子 State 与 Flow 内嵌 NodeStates 对齐，取较大值避免不同步时显示偏小。 */
+	static int32 GetDisplayTaskCount(const UMetaStoryFlow* Flow, const UMetaStoryEditorData* EditorData, const FGuid& NodeId)
+	{
+		const int32 A = GetTaskCountFromFlowNodeStates(Flow, NodeId);
+		const int32 B = GetTaskCountFromShadowState(EditorData, NodeId);
+		return FMath::Max(A, B);
 	}
 
 	static void AppendUniquePoint(TArray<FVector2D>& Points, const FVector2D& Point)
@@ -407,7 +427,7 @@ namespace MetaStoryFlowGraphWidgetPrivate
 		const FVector2D& GridOrigin,
 		TArray<FVector2D>& OutPoints)
 	{
-		const float GridMidX = SnapToGridStep(MidX, StageGridStep, GridOrigin.X);
+		const float GridMidX = SnapToGridStep(MidX, StageGridStep, static_cast<float>(GridOrigin.X));
 		const TArray<FVector2D> RawPoints =
 		{
 			Start,
@@ -427,9 +447,9 @@ namespace MetaStoryFlowGraphWidgetPrivate
 		const FVector2D& GridOrigin,
 		TArray<FVector2D>& OutPoints)
 	{
-		const float GridEntryX = SnapToGridStep(EntryX, StageGridStep, GridOrigin.X);
-		const float GridExitX = SnapToGridStep(ExitX, StageGridStep, GridOrigin.X);
-		const float GridBridgeY = SnapToGridStep(BridgeY, LayerGridStep, GridOrigin.Y);
+		const float GridEntryX = SnapToGridStep(EntryX, StageGridStep, static_cast<float>(GridOrigin.X));
+		const float GridExitX = SnapToGridStep(ExitX, StageGridStep, static_cast<float>(GridOrigin.X));
+		const float GridBridgeY = SnapToGridStep(BridgeY, LayerGridStep, static_cast<float>(GridOrigin.Y));
 		const TArray<FVector2D> RawPoints =
 		{
 			Start,
@@ -448,21 +468,24 @@ namespace MetaStoryFlowGraphWidgetPrivate
 		const FVector2D& GridOrigin,
 		TArray<FVector2D>& OutPoints)
 	{
-		BuildRoundedOrthogonalPathViaX(Start, End, (Start.X + End.X) * 0.5f, GridOrigin, OutPoints);
+		BuildRoundedOrthogonalPathViaX(Start, End, static_cast<float>((Start.X + End.X) * 0.5), GridOrigin, OutPoints);
 	}
 
 	static float DistanceSquaredToSegment(const FVector2D& Point, const FVector2D& SegmentStart, const FVector2D& SegmentEnd)
 	{
 		const FVector2D Segment = SegmentEnd - SegmentStart;
-		const float SegmentLenSq = Segment.SizeSquared();
-		if (SegmentLenSq <= KINDA_SMALL_NUMBER)
+		const double SegmentLenSq = static_cast<double>(Segment.SizeSquared());
+		if (SegmentLenSq <= static_cast<double>(KINDA_SMALL_NUMBER))
 		{
-			return (Point - SegmentStart).SizeSquared();
+			return static_cast<float>((Point - SegmentStart).SizeSquared());
 		}
 
-		const float T = FMath::Clamp(FVector2D::DotProduct(Point - SegmentStart, Segment) / SegmentLenSq, 0.0f, 1.0f);
-		const FVector2D Closest = SegmentStart + Segment * T;
-		return (Point - Closest).SizeSquared();
+		const double T = FMath::Clamp(
+			static_cast<double>(FVector2D::DotProduct(Point - SegmentStart, Segment)) / SegmentLenSq,
+			0.0,
+			1.0);
+		const FVector2D Closest = SegmentStart + Segment * static_cast<float>(T);
+		return static_cast<float>((Point - Closest).SizeSquared());
 	}
 }
 
@@ -487,6 +510,18 @@ void SMetaStoryFlowGraph::SetFlowAsset(UMetaStoryFlow* InFlow)
 	Invalidate(EInvalidateWidgetReason::Paint);
 }
 
+void SMetaStoryFlowGraph::SetEditorData(const UMetaStoryEditorData* InEditorData)
+{
+	WeakEditorData = InEditorData;
+	Invalidate(EInvalidateWidgetReason::Paint);
+}
+
+void SMetaStoryFlowGraph::SetViewModel(TSharedPtr<FMetaStoryViewModel> InViewModel)
+{
+	WeakViewModel = InViewModel;
+	Invalidate(EInvalidateWidgetReason::Paint);
+}
+
 void SMetaStoryFlowGraph::SetSelectedNodeId(const FGuid& InNodeId)
 {
 	SelectedNodeId = InNodeId;
@@ -506,7 +541,7 @@ bool SMetaStoryFlowGraph::GetHorizontalScrollbarState(float& OutOffsetFraction, 
 	float MinX, MinY, MaxX, MaxY;
 	GetContentBounds(MinX, MinY, MaxX, MaxY);
 	const float ContentWidth = FMath::Max(1.0f, MaxX - MinX);
-	const float ViewWidth = FMath::Max(1.0f, CachedLocalSize.X);
+	const float ViewWidth = FMath::Max(1.0f, static_cast<float>(CachedLocalSize.X));
 
 	OutThumbSizeFraction = FMath::Clamp(ViewWidth / ContentWidth, 0.0f, 1.0f);
 	if (OutThumbSizeFraction >= 1.0f)
@@ -516,7 +551,7 @@ bool SMetaStoryFlowGraph::GetHorizontalScrollbarState(float& OutOffsetFraction, 
 	}
 
 	const float MaxOffset = ContentWidth - ViewWidth;
-	const float CurrentOffset = FMath::Clamp(-PanScreen.X - MinX, 0.0f, MaxOffset);
+	const float CurrentOffset = FMath::Clamp(static_cast<float>(-PanScreen.X - MinX), 0.0f, MaxOffset);
 	OutOffsetFraction = MaxOffset > KINDA_SMALL_NUMBER ? (CurrentOffset / MaxOffset) : 0.0f;
 	return true;
 }
@@ -532,15 +567,16 @@ FVector2D SMetaStoryFlowGraph::GetNodeSize(const FMetaStoryFlowNode& Node)
 	const int32 DescLen = Desc.Len();
 	const int32 Lines = DescLen > 0 ? FMath::Clamp((DescLen + 39) / 40, 1, 3) : 0;
 	const float DescHeight = Lines > 0 ? Lines * 14.0f + 6.0f : 0.0f;
-	const float Height = FMath::Clamp(52.0f + DescHeight, 72.0f, 200.0f);
+	// Title + Stage/Layer meta + optional description（单一节点样式，无类型行；任务数以徽章显示）。
+	const float Height = FMath::Clamp(44.0f + DescHeight, 68.0f, 200.0f);
 	return FVector2D(NodeWidth, Height);
 }
 
 FVector2D SMetaStoryFlowGraph::GetNodeTopLeftGraph(const FMetaStoryFlowNode& Node) const
 {
 	const FVector2D Size = GetNodeSize(Node);
-	const float X = Node.StageIndex * StageCellWidth + (StageCellWidth - NodeWidth) * 0.5f;
-	const float Y = Node.LayerIndex * LayerCellHeight + (LayerCellHeight - Size.Y) * 0.5f;
+	const float X = static_cast<float>(Node.StageIndex * StageCellWidth + (StageCellWidth - NodeWidth) * 0.5f);
+	const float Y = static_cast<float>(Node.LayerIndex * LayerCellHeight + (LayerCellHeight - Size.Y) * 0.5f);
 	return FVector2D(X, Y);
 }
 
@@ -587,12 +623,12 @@ FVector2D SMetaStoryFlowGraph::LocalToGraph(const FVector2D& LocalPos, const FVe
 
 void SMetaStoryFlowGraph::ClampPanToContent(const FVector2D& LocalSize)
 {
-	const float PrevPanX = PanScreen.X;
+	const float PrevPanX = static_cast<float>(PanScreen.X);
 
 	float BoundMinX, BoundMinY, BoundMaxX, BoundMaxY;
 	GetContentBounds(BoundMinX, BoundMinY, BoundMaxX, BoundMaxY);
 
-	const float MinPanX = (LocalSize.X - MetaStoryFlowGraphWidgetPrivate::ViewInsetRight) - BoundMaxX;
+	const float MinPanX = static_cast<float>(LocalSize.X - MetaStoryFlowGraphWidgetPrivate::ViewInsetRight) - BoundMaxX;
 	const float MaxPanX = MetaStoryFlowGraphWidgetPrivate::ViewInsetLeft - BoundMinX;
 	if (MinPanX > MaxPanX)
 	{
@@ -603,7 +639,7 @@ void SMetaStoryFlowGraph::ClampPanToContent(const FVector2D& LocalSize)
 		PanScreen.X = FMath::Clamp(PanScreen.X, MinPanX, MaxPanX);
 	}
 
-	const float MinPanY = (LocalSize.Y - MetaStoryFlowGraphWidgetPrivate::ViewInsetBottom) - BoundMaxY;
+	const float MinPanY = static_cast<float>(LocalSize.Y - MetaStoryFlowGraphWidgetPrivate::ViewInsetBottom) - BoundMaxY;
 	const float MaxPanY = MetaStoryFlowGraphWidgetPrivate::ViewInsetTop - BoundMinY;
 	if (MinPanY > MaxPanY)
 	{
@@ -643,10 +679,10 @@ void SMetaStoryFlowGraph::GetContentBounds(float& OutMinX, float& OutMinY, float
 	{
 		const FVector2D TopLeft = GetNodeTopLeftGraph(Node);
 		const FVector2D Size = GetNodeSize(Node);
-		MinX = FMath::Min(MinX, TopLeft.X - PinStubLength);
-		MinY = FMath::Min(MinY, TopLeft.Y);
-		MaxX = FMath::Max(MaxX, TopLeft.X + Size.X + PinStubLength);
-		MaxY = FMath::Max(MaxY, TopLeft.Y + Size.Y);
+		MinX = FMath::Min(MinX, static_cast<float>(TopLeft.X - PinStubLength));
+		MinY = FMath::Min(MinY, static_cast<float>(TopLeft.Y));
+		MaxX = FMath::Max(MaxX, static_cast<float>(TopLeft.X + Size.X + PinStubLength));
+		MaxY = FMath::Max(MaxY, static_cast<float>(TopLeft.Y + Size.Y));
 		MaxLayer = FMath::Max(MaxLayer, Node.LayerIndex);
 	}
 
@@ -1015,8 +1051,8 @@ void SMetaStoryFlowGraph::UpdateDragNodePlacementPreview(const FVector2D& LocalP
 	const FVector2D TLGraph = LocalToGraph(LocalPos, LocalSize) - DragGrabOffsetGraph;
 	const FVector2D Sz = GetNodeSize(*Node);
 	const FVector2D Center = TLGraph + Sz * 0.5f;
-	DragPreviewStage = FMath::Max(0, FMath::FloorToInt(Center.X / StageCellWidth));
-	DragPreviewLayer = FMath::Max(0, FMath::FloorToInt(Center.Y / LayerCellHeight));
+	DragPreviewStage = static_cast<int32>(FMath::Max(0, FMath::FloorToInt(static_cast<float>(Center.X / StageCellWidth))));
+	DragPreviewLayer = static_cast<int32>(FMath::Max(0, FMath::FloorToInt(static_cast<float>(Center.Y / LayerCellHeight))));
 	bDragNodePlacementValid = MetaStoryFlowGraphPlacement::IsValidCellForNodeMove(Flow, DragNodeId, DragPreviewStage, DragPreviewLayer);
 }
 
@@ -1121,8 +1157,8 @@ FReply SMetaStoryFlowGraph::OnMouseButtonDown(const FGeometry& MyGeometry, const
 		}
 
 		const FVector2D GraphPos = LocalToGraph(LocalPos, CachedLocalSize);
-		const int32 TargetStage = FMath::Max(0, FMath::FloorToInt(GraphPos.X / StageCellWidth));
-		const int32 TargetLayer = FMath::Max(0, FMath::FloorToInt(GraphPos.Y / LayerCellHeight));
+		const int32 TargetStage = static_cast<int32>(FMath::Max(0, FMath::FloorToInt(static_cast<float>(GraphPos.X / StageCellWidth))));
+		const int32 TargetLayer = static_cast<int32>(FMath::Max(0, FMath::FloorToInt(static_cast<float>(GraphPos.Y / LayerCellHeight))));
 		OpenCreateNodeSearchMenuAtScreen(MouseEvent, TargetStage, TargetLayer);
 		return FReply::Handled();
 	}
@@ -1312,6 +1348,13 @@ int32 SMetaStoryFlowGraph::OnPaint(
 	const FSlateFontInfo TitleFont = FCoreStyle::GetDefaultFontStyle("Bold", 10);
 	const FSlateFontInfo SmallFont = FCoreStyle::GetDefaultFontStyle("Regular", 8);
 
+	const FMetaStoryEditorStyle& FlowTheme = FMetaStoryEditorStyle::Get();
+	auto FlowC = [&FlowTheme](const TCHAR* Key, const FLinearColor& Fallback) -> FLinearColor
+	{
+		// UE5 FSlateStyleSet::GetColor(Name, Specifier*, Default) — 第二个参数为样式限定符，不是默认值。
+		return FlowTheme.GetColor(FName(Key), nullptr, Fallback);
+	};
+
 	const FVector2D LocalSize = AllottedGeometry.GetLocalSize();
 	CachedLocalSize = LocalSize;
 
@@ -1328,11 +1371,16 @@ int32 SMetaStoryFlowGraph::OnPaint(
 		RootGeo,
 		WhiteBox,
 		ESlateDrawEffect::None,
-		FLinearColor(0.07f, 0.07f, 0.075f, 1.0f));
+		FlowC(TEXT("FlowGraph.Canvas.Background"), FLinearColor(0.07f, 0.07f, 0.075f, 1.0f)));
 
 	++LayerId;
 
 	UMetaStoryFlow* Flow = WeakFlow.Get();
+	const TSharedPtr<FMetaStoryViewModel> RuntimeVM = WeakViewModel.Pin();
+	const auto IsRuntimeNodeActive = [RuntimeVM](const FGuid& NodeId) -> bool
+	{
+		return RuntimeVM && RuntimeVM->IsStateIdActiveInDebugger(NodeId);
+	};
 
 	float BoundMinX, BoundMinY, BoundMaxX, BoundMaxY;
 	GetContentBounds(BoundMinX, BoundMinY, BoundMaxX, BoundMaxY);
@@ -1344,9 +1392,9 @@ int32 SMetaStoryFlowGraph::OnPaint(
 		const int32 MaxStage = GridRange.MaxStage;
 		const int32 MinLayer = GridRange.MinLayer;
 		const int32 MaxLayer = GridRange.MaxLayer;
-		const FLinearColor GridColor(1.0f, 1.0f, 1.0f, 0.06f);
-		const FLinearColor StageBandA(0.17f, 0.23f, 0.34f, 0.05f);
-		const FLinearColor StageBandB(0.11f, 0.15f, 0.22f, 0.035f);
+		const FLinearColor GridColor = FlowC(TEXT("FlowGraph.Grid.Line"), FLinearColor(1.0f, 1.0f, 1.0f, 0.06f));
+		const FLinearColor StageBandA = FlowC(TEXT("FlowGraph.StageBand.A"), FLinearColor(0.17f, 0.23f, 0.34f, 0.05f));
+		const FLinearColor StageBandB = FlowC(TEXT("FlowGraph.StageBand.B"), FLinearColor(0.11f, 0.15f, 0.22f, 0.035f));
 		const float HeaderTop = MetaStoryFlowGraphWidgetPrivate::GridHeaderTop;
 		const float HeaderHeight = MetaStoryFlowGraphWidgetPrivate::GridHeaderHeight;
 
@@ -1371,7 +1419,7 @@ int32 SMetaStoryFlowGraph::OnPaint(
 				MakeGeo(LocalHeaderTL, LocalHeaderSize),
 				WhiteBox,
 				ESlateDrawEffect::None,
-				FLinearColor(0.08f, 0.11f, 0.17f, 0.78f));
+				FlowC(TEXT("FlowGraph.StageHeader.Background"), FLinearColor(0.08f, 0.11f, 0.17f, 0.78f)));
 
 			const FString StageLabel = FString::Printf(TEXT("S%d"), S);
 			FSlateDrawElement::MakeText(
@@ -1381,7 +1429,7 @@ int32 SMetaStoryFlowGraph::OnPaint(
 				StageLabel,
 				SmallFont,
 				ESlateDrawEffect::None,
-				FLinearColor(0.82f, 0.90f, 1.0f, 0.95f));
+				FlowC(TEXT("FlowGraph.StageHeader.Text"), FLinearColor(0.82f, 0.90f, 1.0f, 0.95f)));
 		}
 
 		for (int32 S = MinStage; S <= MaxStage + 1; ++S)
@@ -1432,7 +1480,7 @@ int32 SMetaStoryFlowGraph::OnPaint(
 					LayerLabel,
 					SmallFont,
 					ESlateDrawEffect::None,
-					FLinearColor(0.70f, 0.76f, 0.84f, 0.9f));
+					FlowC(TEXT("FlowGraph.LayerLabel.Text"), FLinearColor(0.70f, 0.76f, 0.84f, 0.9f)));
 			}
 		}
 
@@ -1447,7 +1495,7 @@ int32 SMetaStoryFlowGraph::OnPaint(
 			RootGeo,
 			TimelineLine,
 			ESlateDrawEffect::None,
-			FLinearColor(0.40f, 0.72f, 0.98f, 0.95f),
+			FlowC(TEXT("FlowGraph.Timeline.Accent"), FLinearColor(0.40f, 0.72f, 0.98f, 0.95f)),
 			true,
 			2.0f);
 
@@ -1464,7 +1512,7 @@ int32 SMetaStoryFlowGraph::OnPaint(
 			RootGeo,
 			Arrow,
 			ESlateDrawEffect::None,
-			FLinearColor(0.40f, 0.72f, 0.98f, 0.95f),
+			FlowC(TEXT("FlowGraph.Timeline.Accent"), FLinearColor(0.40f, 0.72f, 0.98f, 0.95f)),
 			true,
 			2.0f);
 	}
@@ -1511,8 +1559,8 @@ int32 SMetaStoryFlowGraph::OnPaint(
 				const FVector2D CellTL = GraphToLocal(FVector2D(S * StageCellWidth, L * LayerCellHeight), LocalSize);
 				const FVector2D CellSz(StageCellWidth, LayerCellHeight);
 				const FLinearColor CellColor = bOk
-					? FLinearColor(0.15f, 0.85f, 0.35f, 0.14f)
-					: FLinearColor(0.95f, 0.28f, 0.22f, 0.11f);
+					? FlowC(TEXT("FlowGraph.DragCell.Valid"), FLinearColor(0.15f, 0.85f, 0.35f, 0.14f))
+					: FlowC(TEXT("FlowGraph.DragCell.Invalid"), FLinearColor(0.95f, 0.28f, 0.22f, 0.11f));
 				FSlateDrawElement::MakeBox(
 					OutDrawElements,
 					LayerId,
@@ -1621,22 +1669,25 @@ int32 SMetaStoryFlowGraph::OnPaint(
 			{
 				const float EntryGraphX = (Lane.SrcStage + 1) * StageCellWidth - 28.0f;
 				const float ExitGraphX = Lane.DstStage * StageCellWidth + 28.0f;
-				const float EntryX = GraphToLocal(FVector2D(EntryGraphX, 0.0f), LocalSize).X;
-				const float ExitX = GraphToLocal(FVector2D(ExitGraphX, 0.0f), LocalSize).X;
-				const float BridgeY = ((P0.Y + P3.Y) * 0.5f) + LaneOffset * 10.0f;
+				const float EntryX = static_cast<float>(GraphToLocal(FVector2D(EntryGraphX, 0.0f), LocalSize).X);
+				const float ExitX = static_cast<float>(GraphToLocal(FVector2D(ExitGraphX, 0.0f), LocalSize).X);
+				const float BridgeY = static_cast<float>((P0.Y + P3.Y) * 0.5f + LaneOffset * 10.0f);
 				MetaStoryFlowGraphWidgetPrivate::BuildBundledOrthogonalPath(
 					P0,
 					P3,
-					FMath::Clamp(EntryX, P0.X + 22.0f, P3.X - 40.0f),
-					FMath::Clamp(ExitX, P0.X + 40.0f, P3.X - 22.0f),
+					FMath::Clamp(EntryX, static_cast<float>(P0.X) + 22.0f, static_cast<float>(P3.X) - 40.0f),
+					FMath::Clamp(ExitX, static_cast<float>(P0.X) + 40.0f, static_cast<float>(P3.X) - 22.0f),
 					BridgeY,
 					PanScreen,
 					PathPoints);
 			}
 			else
 			{
-				const float MidBase = (P0.X + P3.X) * 0.5f;
-				const float MidX = FMath::Clamp(MidBase + MidXOffset, P0.X + 24.0f, P3.X - 24.0f);
+				const float MidBase = static_cast<float>((P0.X + P3.X) * 0.5);
+				const float MidX = FMath::Clamp(
+					MidBase + MidXOffset,
+					static_cast<float>(P0.X) + 24.0f,
+					static_cast<float>(P3.X) - 24.0f);
 				MetaStoryFlowGraphWidgetPrivate::BuildRoundedOrthogonalPathViaX(P0, P3, MidX, PanScreen, PathPoints);
 			}
 			if (PathPoints.Num() >= 2)
@@ -1644,10 +1695,12 @@ int32 SMetaStoryFlowGraph::OnPaint(
 				const bool bEmphasized = (Lane.Src.NodeId == SelectedNodeId) ||
 					(Lane.Dst.NodeId == SelectedNodeId) ||
 					(Lane.Src.NodeId == HoveredNodeId) ||
-					(Lane.Dst.NodeId == HoveredNodeId);
+					(Lane.Dst.NodeId == HoveredNodeId) ||
+					IsRuntimeNodeActive(Lane.Src.NodeId) ||
+					IsRuntimeNodeActive(Lane.Dst.NodeId);
 				const FLinearColor LineColor = bEmphasized
-					? FLinearColor(0.38f, 0.78f, 1.0f, 0.96f)
-					: FLinearColor(0.68f, 0.70f, 0.74f, 0.52f);
+					? FlowC(TEXT("FlowGraph.Link.Emphasized"), FLinearColor(0.38f, 0.78f, 1.0f, 0.96f))
+					: FlowC(TEXT("FlowGraph.Link.Default"), FLinearColor(0.68f, 0.70f, 0.74f, 0.52f));
 				const float LineThickness = bEmphasized ? 3.4f : 2.5f;
 
 				FSlateDrawElement::MakeLines(
@@ -1673,25 +1726,25 @@ int32 SMetaStoryFlowGraph::OnPaint(
 			const FVector2D P3 = DragCurrentLocal;
 			TArray<FVector2D> PreviewPath;
 			MetaStoryFlowGraphWidgetPrivate::BuildRoundedOrthogonalPath(P0, P3, PanScreen, PreviewPath);
-			FLinearColor InvalidPreviewColor(1.0f, 0.45f, 0.35f, 0.92f);
+			FLinearColor InvalidPreviewColor = FlowC(TEXT("FlowGraph.Preview.Invalid"), FLinearColor(1.0f, 0.45f, 0.35f, 0.92f));
 			switch (HoveredPinInvalidReason)
 			{
 			case EConnectionInvalidReason::BackwardStage:
-				InvalidPreviewColor = FLinearColor(0.65f, 0.65f, 0.68f, 0.95f);
+				InvalidPreviewColor = FlowC(TEXT("FlowGraph.Preview.InvalidBackward"), FLinearColor(0.65f, 0.65f, 0.68f, 0.95f));
 				break;
 			case EConnectionInvalidReason::SameRowSkipStage:
-				InvalidPreviewColor = FLinearColor(1.0f, 0.62f, 0.30f, 0.95f);
+				InvalidPreviewColor = FlowC(TEXT("FlowGraph.Preview.InvalidSkipStage"), FLinearColor(1.0f, 0.62f, 0.30f, 0.95f));
 				break;
 			case EConnectionInvalidReason::Duplicate:
-				InvalidPreviewColor = FLinearColor(0.95f, 0.80f, 0.30f, 0.95f);
+				InvalidPreviewColor = FlowC(TEXT("FlowGraph.Preview.InvalidDuplicate"), FLinearColor(0.95f, 0.80f, 0.30f, 0.95f));
 				break;
 			default:
 				break;
 			}
 			const FLinearColor PreviewColor = bHoveredPinAcceptsConnection
-				? FLinearColor(0.35f, 0.75f, 1.0f, 0.9f)
+				? FlowC(TEXT("FlowGraph.Preview.Valid"), FLinearColor(0.35f, 0.75f, 1.0f, 0.9f))
 				: (HoveredPinInvalidReason == EConnectionInvalidReason::None
-					? FLinearColor(0.35f, 0.75f, 1.0f, 0.9f)
+					? FlowC(TEXT("FlowGraph.Preview.Valid"), FLinearColor(0.35f, 0.75f, 1.0f, 0.9f))
 					: InvalidPreviewColor);
 			if (PreviewPath.Num() >= 2)
 			{
@@ -1710,6 +1763,8 @@ int32 SMetaStoryFlowGraph::OnPaint(
 
 	++LayerId;
 
+	const UMetaStoryEditorData* EditorDataForTasks = WeakEditorData.Get();
+
 	// Nodes
 	if (Flow)
 	{
@@ -1720,13 +1775,39 @@ int32 SMetaStoryFlowGraph::OnPaint(
 			const FVector2D Sz = GetNodeSize(Node);
 			const FVector2D LocalTL = GraphToLocal(TL, LocalSize);
 
-			const FLinearColor Accent = MetaStoryFlowGraphWidgetPrivate::GetTypeAccent(Node.NodeType);
-			const bool bIsStart = Flow->StartNodeId == Node.NodeId;
+			const FLinearColor Accent = MetaStoryFlowGraphWidgetPrivate::GetNodeAccentFromEditor(EditorDataForTasks, Node.NodeId);
 			const bool bSelected = Node.NodeId == SelectedNodeId;
 			const bool bHover = Node.NodeId == HoveredNodeId;
+			const bool bRuntimeActive = IsRuntimeNodeActive(Node.NodeId);
+
+			if (bRuntimeActive)
+			{
+				const float GlowPad = 4.0f;
+				const FLinearColor RAC = FlowC(TEXT("FlowGraph.Node.RuntimeActive"), FLinearColor(0.25f, 0.92f, 0.55f, 1.0f));
+				const FVector2D GlowTL = LocalTL - FVector2D(GlowPad, GlowPad);
+				const FVector2D GlowSz = Sz + FVector2D(GlowPad * 2.0f, GlowPad * 2.0f);
+				TArray<FVector2D> GlowRect;
+				GlowRect.Reserve(5);
+				GlowRect.Add(GlowTL);
+				GlowRect.Add(GlowTL + FVector2D(GlowSz.X, 0.0f));
+				GlowRect.Add(GlowTL + GlowSz);
+				GlowRect.Add(GlowTL + FVector2D(0.0f, GlowSz.Y));
+				GlowRect.Add(GlowTL);
+				FSlateDrawElement::MakeLines(
+					OutDrawElements,
+					LayerId,
+					RootGeo,
+					GlowRect,
+					ESlateDrawEffect::None,
+					RAC,
+					true,
+					2.5f);
+			}
 
 			const FLinearColor Fill = bHover ? Accent * 1.15f : Accent * 0.85f;
-			const FLinearColor Border = bSelected ? FLinearColor(0.35f, 0.75f, 1.0f, 1.0f) : FLinearColor(0.12f, 0.12f, 0.14f, 1.0f);
+			const FLinearColor Border = bSelected
+				? FlowC(TEXT("FlowGraph.Node.BorderSelected"), FLinearColor(0.35f, 0.75f, 1.0f, 1.0f))
+				: FlowC(TEXT("FlowGraph.Node.Border"), FLinearColor(0.12f, 0.12f, 0.14f, 1.0f));
 			const float BorderThick = bSelected ? 2.5f : 1.5f;
 
 			FSlateDrawElement::MakeBox(
@@ -1745,45 +1826,61 @@ int32 SMetaStoryFlowGraph::OnPaint(
 			FSlateDrawElement::MakeBox(OutDrawElements, LayerId, MakeGeo(LocalTL + FVector2D(Sz.X - T, 0.0f), FVector2D(T, Sz.Y)), WhiteBox, ESlateDrawEffect::None, EdgeCol);
 
 			const FString Title = Node.NodeName.IsEmpty() ? FString(TEXT("Unnamed")) : Node.NodeName.ToString();
+			const float TitleMaxW = FMath::Max(24.0f, static_cast<float>(Sz.X - 48.0f));
 			FSlateDrawElement::MakeText(
 				OutDrawElements,
 				LayerId,
-				MakeGeo(LocalTL + FVector2D(10.0f, 8.0f), FVector2D(Sz.X - 20.0f, 20.0f)),
+				MakeGeo(LocalTL + FVector2D(10.0f, 8.0f), FVector2D(TitleMaxW, 20.0f)),
 				Title,
 				TitleFont,
 				ESlateDrawEffect::None,
-				FLinearColor::White);
-
-			const FString TypeLine = MetaStoryFlowGraphWidgetPrivate::GetTypeLabel(Node.NodeType) + (bIsStart ? TEXT("  · Start") : TEXT(""));
-			FSlateDrawElement::MakeText(
-				OutDrawElements,
-				LayerId,
-				MakeGeo(LocalTL + FVector2D(10.0f, 26.0f), FVector2D(Sz.X - 20.0f, 16.0f)),
-				TypeLine,
-				SmallFont,
-				ESlateDrawEffect::None,
-				FLinearColor(0.85f, 0.88f, 0.92f, 1.0f));
+				FlowC(TEXT("FlowGraph.Node.Title"), FLinearColor::White));
 
 			const FString Meta = FString::Printf(TEXT("Stage %d  ·  Layer %d"), Node.StageIndex, Node.LayerIndex);
 			FSlateDrawElement::MakeText(
 				OutDrawElements,
 				LayerId,
-				MakeGeo(LocalTL + FVector2D(10.0f, 40.0f), FVector2D(Sz.X - 20.0f, 20.0f)),
+				MakeGeo(LocalTL + FVector2D(10.0f, 26.0f), FVector2D(Sz.X - 20.0f, 20.0f)),
 				Meta,
 				SmallFont,
 				ESlateDrawEffect::None,
-				FLinearColor(0.65f, 0.68f, 0.72f, 1.0f));
+				FlowC(TEXT("FlowGraph.Node.MetaText"), FLinearColor(0.65f, 0.68f, 0.72f, 1.0f)));
 
-			const int32 TaskCount = MetaStoryFlowGraphWidgetPrivate::GetTaskCount(Flow, Node.NodeId);
-			const FString TaskMeta = FString::Printf(TEXT("Tasks %d"), TaskCount);
+			const int32 TaskCount = MetaStoryFlowGraphWidgetPrivate::GetDisplayTaskCount(Flow, EditorDataForTasks, Node.NodeId);
+			const FString CountLabel = TaskCount > 99 ? FString(TEXT("99+")) : FString::FromInt(TaskCount);
+			const FSlateFontInfo BadgeFont = FCoreStyle::GetDefaultFontStyle("Bold", 9);
+			const float BadgeH = 17.0f;
+			const float BadgePadX = 5.0f;
+			const float RightMargin = 8.0f;
+			const float DigitW = TaskCount > 99 ? 7.0f : (TaskCount > 9 ? 7.5f : 8.0f);
+			const float BadgeW = FMath::Clamp(BadgePadX * 2.0f + CountLabel.Len() * DigitW, 22.0f, 46.0f);
+			const float BadgeX = static_cast<float>(Sz.X - RightMargin - BadgeW);
+			const float BadgeY = 6.0f;
+			const FLinearColor BadgeFill = FlowC(TEXT("FlowGraph.Badge.Background"), FLinearColor(0.06f, 0.07f, 0.09f, 0.94f));
+			const FLinearColor BadgeBorderCol = Accent * 0.55f + FlowC(TEXT("FlowGraph.Node.Border"), FLinearColor(0.12f, 0.12f, 0.14f, 1.0f)) * 0.45f;
+			FSlateDrawElement::MakeBox(
+				OutDrawElements,
+				LayerId,
+				MakeGeo(LocalTL + FVector2D(BadgeX, BadgeY), FVector2D(BadgeW, BadgeH)),
+				WhiteBox,
+				ESlateDrawEffect::None,
+				BadgeFill);
+			const float BB = 1.0f;
+			FSlateDrawElement::MakeBox(OutDrawElements, LayerId, MakeGeo(LocalTL + FVector2D(BadgeX, BadgeY), FVector2D(BadgeW, BB)), WhiteBox, ESlateDrawEffect::None, BadgeBorderCol);
+			FSlateDrawElement::MakeBox(OutDrawElements, LayerId, MakeGeo(LocalTL + FVector2D(BadgeX, BadgeY + BadgeH - BB), FVector2D(BadgeW, BB)), WhiteBox, ESlateDrawEffect::None, BadgeBorderCol);
+			FSlateDrawElement::MakeBox(OutDrawElements, LayerId, MakeGeo(LocalTL + FVector2D(BadgeX, BadgeY), FVector2D(BB, BadgeH)), WhiteBox, ESlateDrawEffect::None, BadgeBorderCol);
+			FSlateDrawElement::MakeBox(OutDrawElements, LayerId, MakeGeo(LocalTL + FVector2D(BadgeX + BadgeW - BB, BadgeY), FVector2D(BB, BadgeH)), WhiteBox, ESlateDrawEffect::None, BadgeBorderCol);
+			const FLinearColor CountCol = TaskCount == 0
+				? FlowC(TEXT("FlowGraph.Badge.CountZero"), FLinearColor(0.52f, 0.55f, 0.60f, 1.0f))
+				: FlowC(TEXT("FlowGraph.Badge.CountNonZero"), FLinearColor(0.92f, 0.94f, 0.98f, 1.0f));
 			FSlateDrawElement::MakeText(
 				OutDrawElements,
 				LayerId,
-				MakeGeo(LocalTL + FVector2D(10.0f, 52.0f), FVector2D(Sz.X - 20.0f, 16.0f)),
-				TaskMeta,
-				SmallFont,
+				MakeGeo(LocalTL + FVector2D(BadgeX + BadgePadX, BadgeY + 1.0f), FVector2D(BadgeW - BadgePadX * 2.0f, BadgeH)),
+				CountLabel,
+				BadgeFont,
 				ESlateDrawEffect::None,
-				FLinearColor(0.60f, 0.76f, 0.95f, 1.0f));
+				CountCol);
 
 			const FString Desc = Node.Description.ToString();
 			if (Desc.Len() > 0)
@@ -1797,23 +1894,12 @@ int32 SMetaStoryFlowGraph::OnPaint(
 				FSlateDrawElement::MakeText(
 					OutDrawElements,
 					LayerId,
-					MakeGeo(LocalTL + FVector2D(10.0f, 68.0f), FVector2D(Sz.X - 20.0f, 68.0f)),
+					MakeGeo(LocalTL + FVector2D(10.0f, 44.0f), FVector2D(Sz.X - 20.0f, 68.0f)),
 					Short,
 					SmallFont,
 					ESlateDrawEffect::None,
-					FLinearColor(0.75f, 0.78f, 0.82f, 1.0f));
+					FlowC(TEXT("FlowGraph.Node.DescText"), FLinearColor(0.75f, 0.78f, 0.82f, 1.0f)));
 			}
-
-			FString Badge;
-			Badge.AppendChar(MetaStoryFlowGraphWidgetPrivate::GetTypeGlyph(Node.NodeType));
-			FSlateDrawElement::MakeText(
-				OutDrawElements,
-				LayerId,
-				MakeGeo(LocalTL + FVector2D(Sz.X - 26.0f, 8.0f), FVector2D(24.0f, 24.0f)),
-				Badge,
-				FCoreStyle::GetDefaultFontStyle("Black", 14),
-				ESlateDrawEffect::None,
-				Accent);
 
 			const FVector2D LeftPinLocal = GraphToLocal(GetPinGraphPosition(DrawLayout, EPinSide::Left), LocalSize);
 			const FVector2D RightPinLocal = GraphToLocal(GetPinGraphPosition(DrawLayout, EPinSide::Right), LocalSize);
@@ -1826,33 +1912,34 @@ int32 SMetaStoryFlowGraph::OnPaint(
 			const float LeftRadius = PinRadius + (bLeftHover || bLeftDrag ? 1.5f : 0.0f);
 			const float RightRadius = PinRadius + (bRightHover || bRightDrag ? 1.5f : 0.0f);
 			const FLinearColor PinFill(0.11f, 0.13f, 0.16f, 1.0f);
-			const FLinearColor ActiveValidColor(0.35f, 0.75f, 1.0f, 1.0f);
-			FLinearColor ActiveInvalidColor(1.0f, 0.35f, 0.35f, 1.0f);
+			const FLinearColor ActiveValidColor = FlowC(TEXT("FlowGraph.Pin.ActiveValid"), FLinearColor(0.35f, 0.75f, 1.0f, 1.0f));
+			FLinearColor ActiveInvalidColor = FlowC(TEXT("FlowGraph.Pin.ActiveInvalid"), FLinearColor(1.0f, 0.35f, 0.35f, 1.0f));
 			switch (HoveredPinInvalidReason)
 			{
 			case EConnectionInvalidReason::BackwardStage:
-				ActiveInvalidColor = FLinearColor(0.65f, 0.65f, 0.68f, 1.0f);
+				ActiveInvalidColor = FlowC(TEXT("FlowGraph.Preview.InvalidBackward"), FLinearColor(0.65f, 0.65f, 0.68f, 1.0f));
 				break;
 			case EConnectionInvalidReason::SameRowSkipStage:
-				ActiveInvalidColor = FLinearColor(1.0f, 0.62f, 0.30f, 1.0f);
+				ActiveInvalidColor = FlowC(TEXT("FlowGraph.Preview.InvalidSkipStage"), FLinearColor(1.0f, 0.62f, 0.30f, 1.0f));
 				break;
 			case EConnectionInvalidReason::Cycle:
-				ActiveInvalidColor = FLinearColor(1.0f, 0.35f, 0.35f, 1.0f);
+				ActiveInvalidColor = FlowC(TEXT("FlowGraph.Pin.ActiveInvalid"), FLinearColor(1.0f, 0.35f, 0.35f, 1.0f));
 				break;
 			case EConnectionInvalidReason::Duplicate:
-				ActiveInvalidColor = FLinearColor(0.95f, 0.80f, 0.30f, 1.0f);
+				ActiveInvalidColor = FlowC(TEXT("FlowGraph.Preview.InvalidDuplicate"), FLinearColor(0.95f, 0.80f, 0.30f, 1.0f));
 				break;
 			case EConnectionInvalidReason::SameNode:
-				ActiveInvalidColor = FLinearColor(1.0f, 0.45f, 0.45f, 1.0f);
+				ActiveInvalidColor = FlowC(TEXT("FlowGraph.Preview.Invalid"), FLinearColor(1.0f, 0.45f, 0.45f, 1.0f));
 				break;
 			default:
-				ActiveInvalidColor = FLinearColor(1.0f, 0.35f, 0.35f, 1.0f);
+				ActiveInvalidColor = FlowC(TEXT("FlowGraph.Pin.ActiveInvalid"), FLinearColor(1.0f, 0.35f, 0.35f, 1.0f));
 				break;
 			}
+			const FLinearColor PinIdleColor = FlowC(TEXT("FlowGraph.Pin.Idle"), FLinearColor(0.70f, 0.74f, 0.80f, 0.95f));
 			const bool bLeftInvalid = bLeftHover && bDraggingConnection && !bHoveredPinAcceptsConnection;
 			const bool bRightInvalid = bRightHover && bDraggingConnection && !bHoveredPinAcceptsConnection;
-			const FLinearColor LeftOutline = bLeftDrag ? ActiveValidColor : (bLeftInvalid ? ActiveInvalidColor : ((bLeftHover || bLeftDrag) ? ActiveValidColor : FLinearColor(0.70f, 0.74f, 0.80f, 0.95f)));
-			const FLinearColor RightOutline = bRightDrag ? ActiveValidColor : (bRightInvalid ? ActiveInvalidColor : ((bRightHover || bRightDrag) ? ActiveValidColor : FLinearColor(0.70f, 0.74f, 0.80f, 0.95f)));
+			const FLinearColor LeftOutline = bLeftDrag ? ActiveValidColor : (bLeftInvalid ? ActiveInvalidColor : ((bLeftHover || bLeftDrag) ? ActiveValidColor : PinIdleColor));
+			const FLinearColor RightOutline = bRightDrag ? ActiveValidColor : (bRightInvalid ? ActiveInvalidColor : ((bRightHover || bRightDrag) ? ActiveValidColor : PinIdleColor));
 			const FVector2D LeftStubLocal = GraphToLocal(GetPinStubGraphPosition(DrawLayout, EPinSide::Left), LocalSize);
 			const FVector2D RightStubLocal = GraphToLocal(GetPinStubGraphPosition(DrawLayout, EPinSide::Right), LocalSize);
 
@@ -1991,7 +2078,7 @@ int32 SMetaStoryFlowGraph::OnPaint(
 			ReasonText,
 			SmallFont,
 			ESlateDrawEffect::None,
-			FLinearColor(1.0f, 0.70f, 0.65f, 0.98f));
+			FlowC(TEXT("FlowGraph.Hint.Warning"), FLinearColor(1.0f, 0.70f, 0.65f, 0.98f)));
 	}
 
 	if (bDraggingNode && DragNodeId.IsValid() && !bDragNodePlacementValid)
@@ -2004,7 +2091,7 @@ int32 SMetaStoryFlowGraph::OnPaint(
 			FString(TEXT("不可放置：与连线 Stage/Layer 规则冲突或格子已被占用")),
 			SmallFont,
 			ESlateDrawEffect::None,
-			FLinearColor(1.0f, 0.70f, 0.65f, 0.98f));
+			FlowC(TEXT("FlowGraph.Hint.Warning"), FLinearColor(1.0f, 0.70f, 0.65f, 0.98f)));
 	}
 
 	++LayerId;
@@ -2016,6 +2103,6 @@ void SMetaStoryFlowGraph::BroadcastHorizontalPanChanged() const
 {
 	if (OnHorizontalPanChanged.IsBound())
 	{
-		OnHorizontalPanChanged.Execute(PanScreen.X);
+		OnHorizontalPanChanged.Execute(static_cast<float>(PanScreen.X));
 	}
 }

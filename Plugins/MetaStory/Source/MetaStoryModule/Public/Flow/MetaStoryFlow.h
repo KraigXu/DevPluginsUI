@@ -76,9 +76,6 @@ struct FMetaStoryFlowNodeState
 	FText Description;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "State")
-	EMetaStoryFlowNodeType Type = EMetaStoryFlowNodeType::Normal;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "State")
 	bool bEnabled = true;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "State")

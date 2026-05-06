@@ -162,8 +162,8 @@ void UMetaStoryEditingSubsystem::ValidateMetaStory(TNotNull<UMetaStory*> InMetaS
 		if (EditorData == nullptr)
 		{
 			EditorData = NewObject<UMetaStoryEditorData>(MetaStory, EditorDataClass.Get(), FName(), RF_Transactional);
-			EditorData->AddRootState();
 			EditorData->Schema = NewObject<UMetaStorySchema>(EditorData, SchemaClass.Get());
+			EditorData->EnsureEmbeddedMetaStoryFlow();
 			EditorData->EditorBindings.SetBindingsOwner(EditorData);
 
 			constexpr bool bMarkDirty = false;
@@ -175,9 +175,9 @@ void UMetaStoryEditingSubsystem::ValidateMetaStory(TNotNull<UMetaStory*> InMetaS
 			// The current EditorData is not of the correct type. The data needs to be patched by the schema desired editor data subclass.
 			UMetaStoryEditorData* PreviousEditorData = EditorData;
 			EditorData = CastChecked<UMetaStoryEditorData>(StaticDuplicateObject(EditorData, MetaStory, FName(), RF_Transactional, EditorDataClass.Get()));
-			if (EditorData->SubTrees.Num() == 0)
+			if (EditorData->SubTrees.Num() == 0 && EditorData->MetaStoryFlow == nullptr)
 			{
-				EditorData->AddRootState();
+				EditorData->EnsureEmbeddedMetaStoryFlow();
 			}
 			if (EditorData->Schema == nullptr || !EditorData->Schema->IsA(SchemaClass.Get()))
 			{

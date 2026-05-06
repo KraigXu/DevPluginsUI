@@ -6,14 +6,231 @@
 #include "MetaStoryCompilerLog.h"
 #include "MetaStoryEditorData.h"
 #include "MetaStoryEditorModule.h"
+#include "MetaStoryEditorNode.h"
+#include "MetaStoryNodeBase.h"
 #include "MetaStoryState.h"
 #include "MetaStoryTasksStatus.h"
 #include "MetaStoryTypes.h"
+#include "Customizations/MetaStoryEditorNodeUtils.h"
+
+#include "UObject/UObjectGlobals.h"
 
 namespace UE::MetaStory::FlowTopology
 {
 	namespace Private
 	{
+		static const FName GMetaStoryFlowRootStateName(TEXT("MetaStoryFlowRoot"));
+
+		/**
+		 * Per-flow-node editor state that lives on shadow UMetaStoryState objects but is not rebuilt from UMetaStoryFlow alone.
+		 * Must be snapshotted before SubTrees.Reset(); otherwise PostLoad / compile rebuild drops deserialized user edits (Color, Tag, tasks, conditions, …).
+		 */
+		struct FFlowShadowNodeEditorStash
+		{
+			TArray<FMetaStoryEditorNode> Tasks;
+			TArray<FMetaStoryEditorNode> EnterConditions;
+			TArray<FMetaStoryEditorNode> Considerations;
+			FMetaStoryEditorNode SingleTask;
+
+			FMetaStoryEditorColorRef ColorRef;
+			FGameplayTag Tag;
+			EMetaStoryTaskCompletionType TasksCompletion = EMetaStoryTaskCompletionType::Any;
+			EMetaStoryStateSelectionBehavior SelectionBehavior = EMetaStoryStateSelectionBehavior::TryEnterState;
+			bool bEnabled = true;
+			float Weight = 1.f;
+			bool bHasCustomTickRate = false;
+			float CustomTickRate = 0.f;
+			bool bCheckPrerequisitesWhenActivatingChildDirectly = true;
+			bool bHasRequiredEventToEnter = false;
+			FMetaStoryEventDesc RequiredEventToEnter;
+			FMetaStoryStateParameters Parameters;
+			FMetaStoryStateLink LinkedSubtree;
+			TObjectPtr<UMetaStory> LinkedAsset = nullptr;
+		};
+
+		static void ReparentEditorNodesForOwner(TArray<FMetaStoryEditorNode>& Nodes, UMetaStoryState* Owner)
+		{
+			for (FMetaStoryEditorNode& Ed : Nodes)
+			{
+				if (Ed.InstanceObject)
+				{
+					Ed.InstanceObject = DuplicateObject(Ed.InstanceObject, Owner);
+				}
+				if (Ed.ExecutionRuntimeDataObject)
+				{
+					Ed.ExecutionRuntimeDataObject = DuplicateObject(Ed.ExecutionRuntimeDataObject, Owner);
+				}
+			}
+		}
+
+		static void RunPostLoadOnEditorNodes(UMetaStoryState* Owner, TArray<FMetaStoryEditorNode>& Nodes)
+		{
+			for (FMetaStoryEditorNode& Ed : Nodes)
+			{
+				if (FMetaStoryNodeBase* Node = Ed.Node.GetMutablePtr<FMetaStoryNodeBase>())
+				{
+					UE::MetaStoryEditor::EditorNodeUtils::ConditionalUpdateNodeInstanceData(Ed, *Owner);
+					Node->PostLoad(Ed.GetInstance());
+				}
+			}
+		}
+
+		static void RestoreSingleEditorNode(UMetaStoryState* Owner, FMetaStoryEditorNode& Ed)
+		{
+			if (Ed.InstanceObject)
+			{
+				Ed.InstanceObject = DuplicateObject(Ed.InstanceObject, Owner);
+			}
+			if (Ed.ExecutionRuntimeDataObject)
+			{
+				Ed.ExecutionRuntimeDataObject = DuplicateObject(Ed.ExecutionRuntimeDataObject, Owner);
+			}
+			if (FMetaStoryNodeBase* Node = Ed.Node.GetMutablePtr<FMetaStoryNodeBase>())
+			{
+				UE::MetaStoryEditor::EditorNodeUtils::ConditionalUpdateNodeInstanceData(Ed, *Owner);
+				Node->PostLoad(Ed.GetInstance());
+			}
+		}
+
+		static void StashFlowShadowNodeEditorsBeforeSubtreeReset(
+			UMetaStoryEditorData& EditorData,
+			UMetaStoryFlow* Flow,
+			TMap<FGuid, FFlowShadowNodeEditorStash>& OutStashByNodeId)
+		{
+			OutStashByNodeId.Reset();
+			if (!Flow || EditorData.SubTrees.Num() != 1)
+			{
+				return;
+			}
+
+			UMetaStoryState* Root = EditorData.SubTrees[0].Get();
+			if (!Root || Root->Name != GMetaStoryFlowRootStateName)
+			{
+				return;
+			}
+
+			auto CopyRows = [Flow](const TArray<FMetaStoryEditorNode>& Src) -> TArray<FMetaStoryEditorNode>
+			{
+				TArray<FMetaStoryEditorNode> Out;
+				Out.Reserve(Src.Num());
+				for (const FMetaStoryEditorNode& Row : Src)
+				{
+					FMetaStoryEditorNode Copy = Row;
+					if (Copy.InstanceObject)
+					{
+						Copy.InstanceObject = DuplicateObject(Copy.InstanceObject, Flow);
+					}
+					if (Copy.ExecutionRuntimeDataObject)
+					{
+						Copy.ExecutionRuntimeDataObject = DuplicateObject(Copy.ExecutionRuntimeDataObject, Flow);
+					}
+					Out.Add(MoveTemp(Copy));
+				}
+				return Out;
+			};
+
+			auto CopySingleRow = [Flow](const FMetaStoryEditorNode& Src) -> FMetaStoryEditorNode
+			{
+				FMetaStoryEditorNode Copy = Src;
+				if (Copy.InstanceObject)
+				{
+					Copy.InstanceObject = DuplicateObject(Copy.InstanceObject, Flow);
+				}
+				if (Copy.ExecutionRuntimeDataObject)
+				{
+					Copy.ExecutionRuntimeDataObject = DuplicateObject(Copy.ExecutionRuntimeDataObject, Flow);
+				}
+				return Copy;
+			};
+
+			for (UMetaStoryState* Child : Root->Children)
+			{
+				if (!Child || !Child->ID.IsValid())
+				{
+					continue;
+				}
+
+				FFlowShadowNodeEditorStash Stash;
+				Stash.Tasks = CopyRows(Child->Tasks);
+				Stash.EnterConditions = CopyRows(Child->EnterConditions);
+				Stash.Considerations = CopyRows(Child->Considerations);
+				Stash.SingleTask = CopySingleRow(Child->SingleTask);
+
+				Stash.ColorRef = Child->ColorRef;
+				Stash.Tag = Child->Tag;
+				Stash.TasksCompletion = Child->TasksCompletion;
+				Stash.SelectionBehavior = Child->SelectionBehavior;
+				Stash.bEnabled = Child->bEnabled;
+				Stash.Weight = Child->Weight;
+				Stash.bHasCustomTickRate = Child->bHasCustomTickRate;
+				Stash.CustomTickRate = Child->CustomTickRate;
+				Stash.bCheckPrerequisitesWhenActivatingChildDirectly = Child->bCheckPrerequisitesWhenActivatingChildDirectly;
+				Stash.bHasRequiredEventToEnter = Child->bHasRequiredEventToEnter;
+				Stash.RequiredEventToEnter = Child->RequiredEventToEnter;
+				Stash.Parameters = Child->Parameters;
+				Stash.LinkedSubtree = Child->LinkedSubtree;
+				Stash.LinkedAsset = Child->LinkedAsset;
+
+				OutStashByNodeId.Add(Child->ID, MoveTemp(Stash));
+			}
+		}
+
+		static void RestoreFlowShadowNodeFromStash(
+			UMetaStoryState* S,
+			UMetaStoryFlow* Flow,
+			TMap<FGuid, FFlowShadowNodeEditorStash>& InOutStash,
+			const FGuid& NodeId)
+		{
+			if (!S || !Flow || !NodeId.IsValid())
+			{
+				return;
+			}
+
+			FFlowShadowNodeEditorStash* Entry = InOutStash.Find(NodeId);
+			if (!Entry)
+			{
+				return;
+			}
+
+			{
+				TArray<FMetaStoryEditorNode> Nodes = MoveTemp(Entry->Tasks);
+				ReparentEditorNodesForOwner(Nodes, S);
+				S->Tasks = MoveTemp(Nodes);
+				RunPostLoadOnEditorNodes(S, S->Tasks);
+			}
+			{
+				TArray<FMetaStoryEditorNode> Nodes = MoveTemp(Entry->EnterConditions);
+				ReparentEditorNodesForOwner(Nodes, S);
+				S->EnterConditions = MoveTemp(Nodes);
+				RunPostLoadOnEditorNodes(S, S->EnterConditions);
+			}
+			{
+				TArray<FMetaStoryEditorNode> Nodes = MoveTemp(Entry->Considerations);
+				ReparentEditorNodesForOwner(Nodes, S);
+				S->Considerations = MoveTemp(Nodes);
+				RunPostLoadOnEditorNodes(S, S->Considerations);
+			}
+			S->SingleTask = MoveTemp(Entry->SingleTask);
+			RestoreSingleEditorNode(S, S->SingleTask);
+
+			S->ColorRef = Entry->ColorRef;
+			S->Tag = Entry->Tag;
+			S->TasksCompletion = Entry->TasksCompletion;
+			S->SelectionBehavior = Entry->SelectionBehavior;
+			S->bEnabled = Entry->bEnabled;
+			S->Weight = Entry->Weight;
+			S->bHasCustomTickRate = Entry->bHasCustomTickRate;
+			S->CustomTickRate = Entry->CustomTickRate;
+			S->bCheckPrerequisitesWhenActivatingChildDirectly = Entry->bCheckPrerequisitesWhenActivatingChildDirectly;
+			S->bHasRequiredEventToEnter = Entry->bHasRequiredEventToEnter;
+			S->RequiredEventToEnter = Entry->RequiredEventToEnter;
+			S->Parameters = Entry->Parameters;
+			S->LinkedSubtree = Entry->LinkedSubtree;
+			S->LinkedAsset = Entry->LinkedAsset;
+
+			InOutStash.Remove(NodeId);
+		}
+
 		static void Report(FMetaStoryCompilerLog* Log, EMessageSeverity::Type Severity, const FString& Message)
 		{
 			if (Log)
@@ -33,16 +250,10 @@ namespace UE::MetaStory::FlowTopology
 
 	bool RebuildShadowStates(UMetaStoryEditorData& EditorData, FMetaStoryCompilerLog* Log)
 	{
-		if (!EditorData.bUseMetaStoryFlowTopology)
-		{
-			return true;
-		}
-
 		UMetaStoryFlow* Flow = EditorData.MetaStoryFlow;
 		if (!Flow)
 		{
-			Private::Report(Log, EMessageSeverity::Error, TEXT("Flow topology is enabled but MetaStoryFlow is null."));
-			return false;
+			return true;
 		}
 
 		Flow->SyncNodeStatesWithNodes();
@@ -115,18 +326,56 @@ namespace UE::MetaStory::FlowTopology
 			const int32 Inc = InDegree.FindRef(N.NodeId);
 			if (Inc == 0)
 			{
-				Private::Report(Log, EMessageSeverity::Warning, FString::Printf(TEXT("Flow node %s is not reachable (no incoming transitions)."), *N.NodeId.ToString()));
+				// Isolated / draft nodes are normal while editing; avoid Warning spam on PostLoad and editor rebuilds.
+				// Keep Warning in compile log when a compiler is active.
+				const FString Msg = FString::Printf(
+					TEXT("Flow node %s is not reachable (no incoming transitions)."),
+					*N.NodeId.ToString());
+				if (Log)
+				{
+					Private::Report(Log, EMessageSeverity::Warning, Msg);
+				}
+				else
+				{
+					UE_LOG(LogMetaStoryEditor, Verbose, TEXT("%s"), *Msg);
+				}
 			}
 			else if (Inc > 1)
 			{
-				Private::Report(Log, EMessageSeverity::Error, FString::Printf(TEXT("Flow node %s has %d incoming transitions; merge/join is not supported in the flow→MetaStory bridge yet."), *N.NodeId.ToString(), Inc));
-				return false;
+				// Merge/join: multiple Flow transitions targeting this node each become an OnStateCompleted→Goto on their
+				// respective source shadow states. Runtime semantics follow MetaStory transition evaluation order (not deferred).
+				const FString Msg = FString::Printf(
+					TEXT("Flow node %s has %d incoming transitions (merge); lowered as separate transitions from each predecessor."),
+					*N.NodeId.ToString(),
+					Inc);
+				if (Log)
+				{
+					Private::Report(Log, EMessageSeverity::Warning, Msg);
+				}
+				else
+				{
+					UE_LOG(LogMetaStoryEditor, Verbose, TEXT("%s"), *Msg);
+				}
 			}
 		}
 
+		TMap<FGuid, Private::FFlowShadowNodeEditorStash> StashedShadowEditors;
+
+		// Finish UObject loading on deserialized SubTrees before discard/rebuild. During asset PostLoad, children may
+		// still have RF_NeedPostLoad; tearing down / allocating replacement objects with fixed names can otherwise hit
+		// UObjectGlobals StaticReplaceObject asserts.
+		EditorData.VisitHierarchy([](UMetaStoryState& State, UMetaStoryState* /*ParentState*/) mutable
+		{
+			State.ConditionalPostLoad();
+			return EMetaStoryVisitor::Continue;
+		});
+
+		Private::StashFlowShadowNodeEditorsBeforeSubtreeReset(EditorData, Flow, StashedShadowEditors);
+
 		EditorData.SubTrees.Reset();
 
-		UMetaStoryState* Root = NewObject<UMetaStoryState>(&EditorData, TEXT("MetaStoryFlowRoot"), RF_Transactional);
+		const FName RootUObjectName = MakeUniqueObjectName(&EditorData, UMetaStoryState::StaticClass(), TEXT("MetaStoryFlowRoot"));
+		UMetaStoryState* Root = NewObject<UMetaStoryState>(&EditorData, RootUObjectName, RF_Transactional);
 		Root->Name = TEXT("MetaStoryFlowRoot");
 		Root->Type = EMetaStoryStateType::Group;
 		Root->SelectionBehavior = EMetaStoryStateSelectionBehavior::TrySelectChildrenInOrder;
@@ -170,7 +419,9 @@ namespace UE::MetaStory::FlowTopology
 			S->Description = PlotNode.Description.ToString();
 			S->Type = EMetaStoryStateType::State;
 			S->SelectionBehavior = EMetaStoryStateSelectionBehavior::TryEnterState;
-			S->TasksCompletion = (PlotNode.NodeType == EMetaStoryFlowNodeType::Parallel) ? EMetaStoryTaskCompletionType::All : EMetaStoryTaskCompletionType::Any;
+			S->TasksCompletion = EMetaStoryTaskCompletionType::Any;
+
+			Private::RestoreFlowShadowNodeFromStash(S, Flow, StashedShadowEditors, PlotNode.NodeId);
 
 			NodeIdToState.Add(PlotNode.NodeId, S);
 		}

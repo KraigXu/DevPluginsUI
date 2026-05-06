@@ -150,7 +150,7 @@ void UMetaStoryEditorData::OnStateParametersChanged(const UMetaStory& MetaStory,
 
 void UMetaStoryEditorData::EnsureEmbeddedMetaStoryFlow()
 {
-	if (!bUseMetaStoryFlowTopology || MetaStoryFlow)
+	if (MetaStoryFlow)
 	{
 		return;
 	}
@@ -160,8 +160,7 @@ void UMetaStoryEditorData::EnsureEmbeddedMetaStoryFlow()
 
 	FMetaStoryFlowNode StartNode;
 	StartNode.NodeId = FGuid::NewGuid();
-	StartNode.NodeType = EMetaStoryFlowNodeType::Start;
-	StartNode.NodeName = INVTEXT("Start");
+	StartNode.NodeName = INVTEXT("节点");
 	StartNode.StageIndex = 0;
 	StartNode.LayerIndex = 0;
 	MetaStoryFlow->Nodes.Add(StartNode);
@@ -199,12 +198,7 @@ void UMetaStoryEditorData::PostLoad()
 		}
 	}
 
-	if (bUseMetaStoryFlowTopology)
-	{
-		EnsureEmbeddedMetaStoryFlow();
-	}
-
-	if (bUseMetaStoryFlowTopology && MetaStoryFlow)
+	if (MetaStoryFlow)
 	{
 		MetaStoryFlow->ConditionalPostLoad();
 		if (!UE::MetaStory::FlowTopology::RebuildShadowStates(*this, nullptr))
@@ -256,17 +250,13 @@ void UMetaStoryEditorData::PostEditChangeChainProperty(FPropertyChangedChainEven
 		{
 			UE::MetaStory::Delegates::OnParametersChanged.Broadcast(*MetaStory);
 		}
-		else if (MemberName == GET_MEMBER_NAME_CHECKED(UMetaStoryEditorData, bUseMetaStoryFlowTopology))
+		else if (MemberName == GET_MEMBER_NAME_CHECKED(UMetaStoryEditorData, MetaStoryFlow))
 		{
-			if (bUseMetaStoryFlowTopology)
+			if (MetaStoryFlow)
 			{
-				EnsureEmbeddedMetaStoryFlow();
-				if (MetaStoryFlow)
-				{
-					(void)UE::MetaStory::FlowTopology::RebuildShadowStates(*this, nullptr);
-				}
-				UE::MetaStory::Delegates::OnGlobalDataChanged.Broadcast(*MetaStory);
+				(void)UE::MetaStory::FlowTopology::RebuildShadowStates(*this, nullptr);
 			}
+			UE::MetaStory::Delegates::OnGlobalDataChanged.Broadcast(*MetaStory);
 		}
 
 		// Ensure unique ID on duplicated items.

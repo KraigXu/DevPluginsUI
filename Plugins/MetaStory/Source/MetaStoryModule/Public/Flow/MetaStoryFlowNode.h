@@ -6,16 +6,6 @@
 #include "MetaStoryFlowNode.generated.h"
 
 UENUM(BlueprintType)
-enum class EMetaStoryFlowNodeType : uint8
-{
-	Start = 0 UMETA(DisplayName = "Start"),
-	Normal UMETA(DisplayName = "Normal"),
-	Conditional UMETA(DisplayName = "Conditional"),
-	Parallel UMETA(DisplayName = "Parallel"),
-	Terminal UMETA(DisplayName = "Terminal")
-};
-
-UENUM(BlueprintType)
 enum class EMetaStoryFlowNodeResult : uint8
 {
 	None = 0 UMETA(DisplayName = "None"),
@@ -55,9 +45,6 @@ struct METASTORYMODULE_API FMetaStoryFlowNode
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Node", meta = (MultiLine = "true"))
 	FText Description;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Node")
-	EMetaStoryFlowNodeType NodeType = EMetaStoryFlowNodeType::Normal;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Node", meta = (ClampMin = "0"))
 	int32 StageIndex = 0;

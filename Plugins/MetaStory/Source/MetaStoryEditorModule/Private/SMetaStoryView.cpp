@@ -200,6 +200,7 @@ SMetaStoryView::~SMetaStoryView()
 			MetaStoryViewModel->GetOnStatesChanged().RemoveAll(this);
 			MetaStoryViewModel->GetOnSelectionChanged().RemoveAll(this);
 			MetaStoryViewModel->GetOnStateNodesChanged().RemoveAll(this);
+			MetaStoryViewModel->GetOnDebuggerRuntimeOverlayChanged().RemoveAll(this);
 		}
 	}
 }
@@ -215,6 +216,7 @@ void SMetaStoryView::Construct(const FArguments& InArgs, TSharedRef<FMetaStoryVi
 	MetaStoryViewModel->GetOnStatesChanged().AddSP(this, &SMetaStoryView::HandleModelStatesChanged);
 	MetaStoryViewModel->GetOnSelectionChanged().AddSP(this, &SMetaStoryView::HandleModelSelectionChanged);
 	MetaStoryViewModel->GetOnStateNodesChanged().AddSP(this, &SMetaStoryView::HandleModelStateNodesChanged);
+	MetaStoryViewModel->GetOnDebuggerRuntimeOverlayChanged().AddSP(this, &SMetaStoryView::HandleDebuggerRuntimeOverlayChanged);
 
 	SettingsChangedHandle = GetMutableDefault<UMetaStoryEditorUserSettings>()->OnSettingsChanged.AddSP(this, &SMetaStoryView::HandleUserSettingsChanged);
 
@@ -340,17 +342,28 @@ void SMetaStoryView::SyncFlowGraphFromEditorData()
 	if (const UMetaStoryEditorData* EditorData = MetaStoryViewModel->GetMetaStoryEditorData())
 	{
 		EditingFlowAsset = EditorData->MetaStoryFlow;
+		FlowGraph->SetEditorData(EditorData);
 	}
 	else
 	{
 		EditingFlowAsset = nullptr;
+		FlowGraph->SetEditorData(nullptr);
 	}
 
 	if (UMetaStoryFlow* Flow = EditingFlowAsset.Get())
 	{
 		FlowGraph->SetFlowAsset(Flow);
 	}
+	FlowGraph->SetViewModel(MetaStoryViewModel);
 	FlowGraph->SetSelectedNodeId(SelectedNodeId);
+}
+
+void SMetaStoryView::HandleDebuggerRuntimeOverlayChanged()
+{
+	if (FlowGraph.IsValid())
+	{
+		FlowGraph->Invalidate(EInvalidateWidgetReason::Paint);
+	}
 }
 
 void SMetaStoryView::BindCommands()
@@ -696,7 +709,7 @@ bool SMetaStoryView::IsMetaStoryFlowTopologyActive() const
 		return false;
 	}
 	const UMetaStoryEditorData* EditorData = MetaStoryViewModel->GetMetaStoryEditorData();
-	return EditorData && EditorData->bUseMetaStoryFlowTopology && EditorData->MetaStoryFlow != nullptr;
+	return EditorData && EditorData->MetaStoryFlow != nullptr;
 }
 
 bool SMetaStoryView::TryFlowToolbarAddState(EMetaStoryFlowToolbarAddOp Op)
@@ -881,12 +894,7 @@ bool SMetaStoryView::TryFlowToolbarAddState(EMetaStoryFlowToolbarAddOp Op)
 
 	FMetaStoryFlowNode NewNode;
 	NewNode.NodeId = FGuid::NewGuid();
-	NewNode.NodeType = EMetaStoryFlowNodeType::Normal;
-	const UEnum* NodeTypeEnum = StaticEnum<EMetaStoryFlowNodeType>();
-	const FText NodeTypeText = NodeTypeEnum
-		? NodeTypeEnum->GetDisplayNameTextByValue(static_cast<int64>(EMetaStoryFlowNodeType::Normal))
-		: LOCTEXT("ToolbarFallbackNodeTypeText", "Normal");
-	NewNode.NodeName = FText::Format(LOCTEXT("ToolbarNewNodeNameFormat", "{0} State"), NodeTypeText);
+	NewNode.NodeName = LOCTEXT("ToolbarNewFlowNodeName", "节点");
 	NewNode.Description = FText::GetEmpty();
 	NewStage = FMath::Max(0, NewStage);
 	NewLayer = FMath::Max(0, NewLayer);
@@ -1180,7 +1188,7 @@ void SMetaStoryView::OnMainGraphMoveNode(FGuid NodeId, int32 NewStage, int32 New
 	SyncFlowGraphFromEditorData();
 }
 
-void SMetaStoryView::OnMainGraphCreateNodeRequested(EMetaStoryFlowNodeType NodeType, int32 StageIndex, int32 LayerIndex)
+void SMetaStoryView::OnMainGraphCreateNodeRequested(int32 StageIndex, int32 LayerIndex)
 {
 	if (!EditingFlowAsset.IsValid())
 	{
@@ -1194,13 +1202,8 @@ void SMetaStoryView::OnMainGraphCreateNodeRequested(EMetaStoryFlowNodeType NodeT
 
 	FMetaStoryFlowNode NewNode;
 	NewNode.NodeId = FGuid::NewGuid();
-	NewNode.NodeType = NodeType;
-	const UEnum* NodeTypeEnum = StaticEnum<EMetaStoryFlowNodeType>();
-	const FText NodeTypeText = NodeTypeEnum
-		? NodeTypeEnum->GetDisplayNameTextByValue(static_cast<int64>(NodeType))
-		: LOCTEXT("FallbackNodeTypeText", "Normal");
-	NewNode.NodeName = FText::Format(LOCTEXT("ContextCreateNodeNameFormat", "{0} Node"), NodeTypeText);
-	NewNode.Description = LOCTEXT("ContextCreateNodeDescription", "Created from graph search");
+	NewNode.NodeName = LOCTEXT("ContextCreateNodeName", "节点");
+	NewNode.Description = LOCTEXT("ContextCreateNodeDescription", "");
 	NewNode.StageIndex = FMath::Max(0, StageIndex);
 	NewNode.LayerIndex = FMath::Max(0, LayerIndex);
 
@@ -1214,7 +1217,7 @@ void SMetaStoryView::OnMainGraphCreateNodeRequested(EMetaStoryFlowNodeType NodeT
 
 	Flow->Nodes.Add(NewNode);
 	Flow->SyncNodeStatesWithNodes();
-	if (NodeType == EMetaStoryFlowNodeType::Start || !Flow->StartNodeId.IsValid())
+	if (!Flow->StartNodeId.IsValid())
 	{
 		Flow->StartNodeId = NewNode.NodeId;
 	}

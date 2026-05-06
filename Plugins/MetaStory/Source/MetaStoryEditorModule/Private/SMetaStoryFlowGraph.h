@@ -5,13 +5,14 @@
 #include "Widgets/SLeafWidget.h"
 
 class UMetaStoryFlow;
-enum class EMetaStoryFlowNodeType : uint8;
+class UMetaStoryEditorData;
+class FMetaStoryViewModel;
 
 DECLARE_DELEGATE_OneParam(FOnMetaStoryFlowGraphNodeSelected, FGuid);
 DECLARE_DELEGATE_OneParam(FOnMetaStoryFlowGraphHorizontalPanChanged, float);
 DECLARE_DELEGATE_TwoParams(FOnMetaStoryFlowGraphCreateTransition, FGuid, FGuid);
 DECLARE_DELEGATE_ThreeParams(FOnMetaStoryFlowGraphMoveNode, FGuid, int32, int32);
-DECLARE_DELEGATE_ThreeParams(FOnMetaStoryFlowGraphCreateNodeRequested, EMetaStoryFlowNodeType, int32, int32);
+DECLARE_DELEGATE_TwoParams(FOnMetaStoryFlowGraphCreateNodeRequested, int32, int32);
 DECLARE_DELEGATE_OneParam(FOnMetaStoryFlowGraphDeleteNodeRequested, FGuid);
 DECLARE_DELEGATE_TwoParams(FOnMetaStoryFlowGraphDeleteTransitionRequested, FGuid, FGuid);
 
@@ -33,7 +34,11 @@ public:
 	void Construct(const FArguments& InArgs);
 
 	void SetFlowAsset(UMetaStoryFlow* InFlow);
+	/** 可选；用于与影子 UMetaStoryState::Tasks 对齐任务数量（与 Flow NodeStates 取 max）。 */
+	void SetEditorData(const UMetaStoryEditorData* InEditorData);
 	void SetSelectedNodeId(const FGuid& InNodeId);
+	/** 可选；用于 PIE 下调试活动状态与 Flow 节点（NodeId）对齐高亮。 */
+	void SetViewModel(TSharedPtr<FMetaStoryViewModel> InViewModel);
 	void SetHorizontalPanScreen(float InPanScreenX);
 	bool GetHorizontalScrollbarState(float& OutOffsetFraction, float& OutThumbSizeFraction) const;
 
@@ -97,6 +102,8 @@ private:
 
 private:
 	TWeakObjectPtr<UMetaStoryFlow> WeakFlow;
+	TWeakObjectPtr<const UMetaStoryEditorData> WeakEditorData;
+	TWeakPtr<FMetaStoryViewModel> WeakViewModel;
 	FOnMetaStoryFlowGraphNodeSelected OnNodeSelected;
 	FOnMetaStoryFlowGraphHorizontalPanChanged OnHorizontalPanChanged;
 	FOnMetaStoryFlowGraphCreateTransition OnCreateTransition;

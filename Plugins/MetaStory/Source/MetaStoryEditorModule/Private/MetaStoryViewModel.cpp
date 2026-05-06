@@ -1978,6 +1978,7 @@ void FMetaStoryViewModel::BindToDebuggerDelegates()
 				}
 			}
 		}
+		OnDebuggerRuntimeOverlayChanged.Broadcast();
 	});
 #endif // WITH_METASTORY_TRACE_DEBUGGER
 }
@@ -2089,6 +2090,15 @@ bool FMetaStoryViewModel::IsStateActiveInDebugger(const UMetaStoryState& State) 
 {
 #if WITH_METASTORY_TRACE_DEBUGGER
 	return ActiveStates.Contains(State.ID);
+#else
+	return false;
+#endif // WITH_METASTORY_TRACE_DEBUGGER
+}
+
+bool FMetaStoryViewModel::IsStateIdActiveInDebugger(const FGuid& StateId) const
+{
+#if WITH_METASTORY_TRACE_DEBUGGER
+	return StateId.IsValid() && ActiveStates.Contains(StateId);
 #else
 	return false;
 #endif // WITH_METASTORY_TRACE_DEBUGGER

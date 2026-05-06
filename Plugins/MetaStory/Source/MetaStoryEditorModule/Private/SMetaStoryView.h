@@ -63,7 +63,7 @@ private:
 	void HandleDisableSelectedStates();
 
 	void OnMainGraphNodeSelected(FGuid NodeId);
-	void OnMainGraphCreateNodeRequested(EMetaStoryFlowNodeType NodeType, int32 StageIndex, int32 LayerIndex);
+	void OnMainGraphCreateNodeRequested(int32 StageIndex, int32 LayerIndex);
 	void OnMainGraphCreateTransition(FGuid SourceNodeId, FGuid TargetNodeId);
 	void OnMainGraphMoveNode(FGuid NodeId, int32 NewStage, int32 NewLayer);
 	void OnMainGraphDeleteNodeRequested(FGuid NodeId);
@@ -80,6 +80,7 @@ private:
 
 	/** 从 ViewModel 的 EditorData 刷新 MetaStoryFlow 指针并推送到 FlowGraph。 */
 	void SyncFlowGraphFromEditorData();
+	void HandleDebuggerRuntimeOverlayChanged();
 	void DeleteFlowNode(FGuid NodeId);
 	void DeleteFlowTransitionByPair(FGuid SourceNodeId, FGuid TargetNodeId);
 

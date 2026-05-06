@@ -141,7 +141,6 @@ bool UMetaStoryFlow::SyncNodeStatesWithNodes()
 			NewState.ID = Node.NodeId;
 			NewState.Name = Node.NodeName;
 			NewState.Description = Node.Description;
-			NewState.Type = Node.NodeType;
 			NewState.bEnabled = true;
 			bChanged = true;
 		}

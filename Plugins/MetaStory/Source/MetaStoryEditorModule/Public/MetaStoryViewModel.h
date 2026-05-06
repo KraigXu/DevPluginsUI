@@ -58,6 +58,8 @@ public:
 	DECLARE_MULTICAST_DELEGATE_OneParam(FOnStateNodesChanged, const UMetaStoryState* /*AffectedState*/);
 	DECLARE_MULTICAST_DELEGATE_OneParam(FOnSelectionChanged, const TArray<TWeakObjectPtr<UMetaStoryState>>& /*SelectedStates*/);
 	DECLARE_MULTICAST_DELEGATE_TwoParams(FOnBringNodeToFocus, const UMetaStoryState* /*State*/, const FGuid /*NodeID*/);
+	/** PIE / Trace 调试：当前资产的活动状态集合变化时刷新流程图运行时高亮。 */
+	DECLARE_MULTICAST_DELEGATE(FOnDebuggerRuntimeOverlayChanged);
 
 	UE_API FMetaStoryViewModel();
 	UE_API virtual ~FMetaStoryViewModel() override;
@@ -156,6 +158,8 @@ public:
 #endif // WITH_METASTORY_TRACE_DEBUGGER
 
 	UE_API bool IsStateActiveInDebugger(const UMetaStoryState& State) const;
+	/** 与 Flow 节点 NodeId（即 UMetaStoryState::ID）对应；非调试构建恒为 false。 */
+	UE_API bool IsStateIdActiveInDebugger(const FGuid& StateId) const;
 
 	// Called when the whole asset is updated (i.e. undo/redo).
 	FOnAssetChanged& GetOnAssetChanged()
@@ -204,6 +208,11 @@ public:
 		return OnBringNodeToFocus;
 	}
 
+	FOnDebuggerRuntimeOverlayChanged& GetOnDebuggerRuntimeOverlayChanged()
+	{
+		return OnDebuggerRuntimeOverlayChanged;
+	}
+
 protected:
 	UE_API void GetExpandedStatesRecursive(UMetaStoryState* State, TSet<TWeakObjectPtr<UMetaStoryState>>& ExpandedStates);
 
@@ -236,6 +245,7 @@ protected:
 	FOnStateNodesChanged OnStateNodesChanged;
 	FOnSelectionChanged OnSelectionChanged;
 	FOnBringNodeToFocus OnBringNodeToFocus;
+	FOnDebuggerRuntimeOverlayChanged OnDebuggerRuntimeOverlayChanged;
 };
 
 /** Helper class to allow to copy bindings into clipboard. */

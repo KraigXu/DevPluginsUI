@@ -332,6 +332,38 @@ FMetaStoryEditorStyle::FMetaStoryEditorStyle()
 	{
 		Set("Colors.StateLinkingIn", FLinearColor::Yellow);
 		Set("Colors.StateLinkedOut", FLinearColor::Green);
+
+		// Embedded main Flow graph (SMetaStoryFlowGraph) — read via GetColor("FlowGraph.*", Fallback)
+		Set("FlowGraph.Canvas.Background", FLinearColor(0.07f, 0.07f, 0.075f, 1.0f));
+		Set("FlowGraph.Grid.Line", FLinearColor(1.0f, 1.0f, 1.0f, 0.06f));
+		Set("FlowGraph.StageBand.A", FLinearColor(0.17f, 0.23f, 0.34f, 0.05f));
+		Set("FlowGraph.StageBand.B", FLinearColor(0.11f, 0.15f, 0.22f, 0.035f));
+		Set("FlowGraph.StageHeader.Background", FLinearColor(0.08f, 0.11f, 0.17f, 0.78f));
+		Set("FlowGraph.StageHeader.Text", FLinearColor(0.82f, 0.90f, 1.0f, 0.95f));
+		Set("FlowGraph.LayerLabel.Text", FLinearColor(0.70f, 0.76f, 0.84f, 0.9f));
+		Set("FlowGraph.Timeline.Accent", FLinearColor(0.40f, 0.72f, 0.98f, 0.95f));
+		Set("FlowGraph.Link.Emphasized", FLinearColor(0.38f, 0.78f, 1.0f, 0.96f));
+		Set("FlowGraph.Link.Default", FLinearColor(0.68f, 0.70f, 0.74f, 0.52f));
+		Set("FlowGraph.DragCell.Valid", FLinearColor(0.15f, 0.85f, 0.35f, 0.14f));
+		Set("FlowGraph.DragCell.Invalid", FLinearColor(0.95f, 0.28f, 0.22f, 0.11f));
+		Set("FlowGraph.Node.Border", FLinearColor(0.12f, 0.12f, 0.14f, 1.0f));
+		Set("FlowGraph.Node.BorderSelected", FStyleColors::Primary.GetSpecifiedColor());
+		Set("FlowGraph.Node.RuntimeActive", FLinearColor(0.28f, 0.92f, 0.52f, 1.0f));
+		Set("FlowGraph.Preview.Valid", FStyleColors::Primary.GetSpecifiedColor().CopyWithNewOpacity(0.9f));
+		Set("FlowGraph.Preview.Invalid", FLinearColor(1.0f, 0.45f, 0.35f, 0.92f));
+		Set("FlowGraph.Preview.InvalidBackward", FLinearColor(0.65f, 0.65f, 0.68f, 0.95f));
+		Set("FlowGraph.Preview.InvalidSkipStage", FLinearColor(1.0f, 0.62f, 0.30f, 0.95f));
+		Set("FlowGraph.Preview.InvalidDuplicate", FLinearColor(0.95f, 0.80f, 0.30f, 0.95f));
+		Set("FlowGraph.Pin.ActiveValid", FStyleColors::Primary.GetSpecifiedColor());
+		Set("FlowGraph.Pin.ActiveInvalid", FLinearColor(1.0f, 0.35f, 0.35f, 1.0f));
+		Set("FlowGraph.Pin.Idle", FLinearColor(0.70f, 0.74f, 0.80f, 0.95f));
+		Set("FlowGraph.Node.Title", FLinearColor::White);
+		Set("FlowGraph.Node.MetaText", FLinearColor(0.65f, 0.68f, 0.72f, 1.0f));
+		Set("FlowGraph.Node.DescText", FLinearColor(0.75f, 0.78f, 0.82f, 1.0f));
+		Set("FlowGraph.Badge.Background", FLinearColor(0.06f, 0.07f, 0.09f, 0.94f));
+		Set("FlowGraph.Badge.CountZero", FLinearColor(0.52f, 0.55f, 0.60f, 1.0f));
+		Set("FlowGraph.Badge.CountNonZero", FLinearColor(0.92f, 0.94f, 0.98f, 1.0f));
+		Set("FlowGraph.Hint.Warning", FLinearColor(1.0f, 0.70f, 0.65f, 0.98f));
 	}
 }
 

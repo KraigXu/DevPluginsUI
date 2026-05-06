@@ -495,13 +495,8 @@ bool FMetaStoryCompiler::Compile(TNotNull<UMetaStory*> InMetaStory)
 	}
 	MetaStory->NumContextData = static_cast<uint16>(ContextDataIndex);
 
-	if (EditorData->bUseMetaStoryFlowTopology)
+	if (EditorData->MetaStoryFlow)
 	{
-		if (!EditorData->MetaStoryFlow)
-		{
-			Log.Reportf(EMessageSeverity::Error, TEXT("Flow topology is enabled but MetaStoryFlow is not set."));
-			return FailCompilation();
-		}
 		if (!UE::MetaStory::FlowTopology::RebuildShadowStates(*EditorData, &Log))
 		{
 			return FailCompilation();
