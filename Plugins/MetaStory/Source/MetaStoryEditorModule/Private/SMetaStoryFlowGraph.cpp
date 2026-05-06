@@ -2,7 +2,7 @@
 
 #include "SMetaStoryFlowGraph.h"
 
-#include "Flow/MetaplotFlow.h"
+#include "Flow/MetaStoryFlow.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Framework/Commands/UIAction.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
@@ -21,8 +21,8 @@
 
 namespace MetaStoryFlowGraphPlacement
 {
-	/** 与 MetaplotEditor/MetaplotFlowPlacement 一致；MetaStory 模块不依赖 MetaplotEditor Private 头。 */
-	bool IsValidCellForNodeMove(const UMetaplotFlow* Flow, const FGuid& MovingNodeId, int32 NewStage, int32 NewLayer)
+	/** 与既有 Flow 网格规则一致的内联实现。 */
+	bool IsValidCellForNodeMove(const UMetaStoryFlow* Flow, const FGuid& MovingNodeId, int32 NewStage, int32 NewLayer)
 	{
 		if (!Flow || !MovingNodeId.IsValid())
 		{
@@ -34,7 +34,7 @@ namespace MetaStoryFlowGraphPlacement
 			return false;
 		}
 
-		for (const FMetaplotNode& Node : Flow->Nodes)
+		for (const FMetaStoryFlowNode& Node : Flow->Nodes)
 		{
 			if (Node.NodeId == MovingNodeId)
 			{
@@ -52,7 +52,7 @@ namespace MetaStoryFlowGraphPlacement
 			{
 				return NewStage;
 			}
-			const FMetaplotNode* Found = Flow->Nodes.FindByPredicate([NodeId](const FMetaplotNode& N)
+			const FMetaStoryFlowNode* Found = Flow->Nodes.FindByPredicate([NodeId](const FMetaStoryFlowNode& N)
 			{
 				return N.NodeId == NodeId;
 			});
@@ -65,14 +65,14 @@ namespace MetaStoryFlowGraphPlacement
 			{
 				return NewLayer;
 			}
-			const FMetaplotNode* Found = Flow->Nodes.FindByPredicate([NodeId](const FMetaplotNode& N)
+			const FMetaStoryFlowNode* Found = Flow->Nodes.FindByPredicate([NodeId](const FMetaStoryFlowNode& N)
 			{
 				return N.NodeId == NodeId;
 			});
 			return Found ? Found->LayerIndex : 0;
 		};
 
-		for (const FMetaplotTransition& Tr : Flow->Transitions)
+		for (const FMetaStoryFlowTransition& Tr : Flow->Transitions)
 		{
 			if (!Tr.SourceNodeId.IsValid() || !Tr.TargetNodeId.IsValid() || Tr.SourceNodeId == Tr.TargetNodeId)
 			{
@@ -99,11 +99,11 @@ namespace MetaStoryFlowGraphPlacement
 	}
 }
 
-namespace MetaplotGraphWidgetPrivate
+namespace MetaStoryFlowGraphWidgetPrivate
 {
 	struct FNodeSearchItem
 	{
-		EMetaplotNodeType Type = EMetaplotNodeType::Normal;
+		EMetaStoryFlowNodeType Type = EMetaStoryFlowNodeType::Normal;
 		FText Label;
 		FText Keywords;
 	};
@@ -113,7 +113,7 @@ namespace MetaplotGraphWidgetPrivate
 	public:
 		SLATE_BEGIN_ARGS(SNodeSearchMenuWidget) {}
 			SLATE_EVENT(FSimpleDelegate, OnCloseMenu)
-			SLATE_EVENT(FOnMetaplotGraphCreateNodeRequested, OnCreateNodeRequested)
+			SLATE_EVENT(FOnMetaStoryFlowGraphCreateNodeRequested, OnCreateNodeRequested)
 			SLATE_ARGUMENT(int32, StageIndex)
 			SLATE_ARGUMENT(int32, LayerIndex)
 		SLATE_END_ARGS()
@@ -126,11 +126,11 @@ namespace MetaplotGraphWidgetPrivate
 			LayerIndex = InArgs._LayerIndex;
 
 			AllItems = {
-				MakeItem(EMetaplotNodeType::Start, TEXT("Start"), TEXT("开始 起始 起点")),
-				MakeItem(EMetaplotNodeType::Normal, TEXT("Normal"), TEXT("普通 常规")),
-				MakeItem(EMetaplotNodeType::Conditional, TEXT("Conditional"), TEXT("条件 分支 判断")),
-				MakeItem(EMetaplotNodeType::Parallel, TEXT("Parallel"), TEXT("并行")),
-				MakeItem(EMetaplotNodeType::Terminal, TEXT("Terminal"), TEXT("结束 终止"))
+				MakeItem(EMetaStoryFlowNodeType::Start, TEXT("Start"), TEXT("开始 起始 起点")),
+				MakeItem(EMetaStoryFlowNodeType::Normal, TEXT("Normal"), TEXT("普通 常规")),
+				MakeItem(EMetaStoryFlowNodeType::Conditional, TEXT("Conditional"), TEXT("条件 分支 判断")),
+				MakeItem(EMetaStoryFlowNodeType::Parallel, TEXT("Parallel"), TEXT("并行")),
+				MakeItem(EMetaStoryFlowNodeType::Terminal, TEXT("Terminal"), TEXT("结束 终止"))
 			};
 			FilteredItems = AllItems;
 
@@ -176,7 +176,7 @@ namespace MetaplotGraphWidgetPrivate
 		}
 
 	private:
-		static TSharedPtr<FNodeSearchItem> MakeItem(EMetaplotNodeType Type, const TCHAR* LabelText, const TCHAR* KeywordsText)
+		static TSharedPtr<FNodeSearchItem> MakeItem(EMetaStoryFlowNodeType Type, const TCHAR* LabelText, const TCHAR* KeywordsText)
 		{
 			TSharedPtr<FNodeSearchItem> Item = MakeShared<FNodeSearchItem>();
 			Item->Type = Type;
@@ -251,7 +251,7 @@ namespace MetaplotGraphWidgetPrivate
 
 	private:
 		FSimpleDelegate OnCloseMenu;
-		FOnMetaplotGraphCreateNodeRequested OnCreateNodeRequested;
+		FOnMetaStoryFlowGraphCreateNodeRequested OnCreateNodeRequested;
 		int32 StageIndex = 0;
 		int32 LayerIndex = 0;
 		TSharedPtr<SSearchBox> SearchBox;
@@ -280,7 +280,7 @@ namespace MetaplotGraphWidgetPrivate
 		int32 MaxLayer = 3;
 	};
 
-	static FGridRange BuildGridRange(const UMetaplotFlow* Flow)
+	static FGridRange BuildGridRange(const UMetaStoryFlow* Flow)
 	{
 		FGridRange Range;
 		if (!Flow || Flow->Nodes.IsEmpty())
@@ -293,7 +293,7 @@ namespace MetaplotGraphWidgetPrivate
 		Range.MinLayer = Flow->Nodes[0].LayerIndex;
 		Range.MaxLayer = Flow->Nodes[0].LayerIndex;
 
-		for (const FMetaplotNode& Node : Flow->Nodes)
+		for (const FMetaStoryFlowNode& Node : Flow->Nodes)
 		{
 			Range.MinStage = FMath::Min(Range.MinStage, Node.StageIndex);
 			Range.MaxStage = FMath::Max(Range.MaxStage, Node.StageIndex);
@@ -308,59 +308,59 @@ namespace MetaplotGraphWidgetPrivate
 		return Range;
 	}
 
-	static FLinearColor GetTypeAccent(const EMetaplotNodeType Type)
+	static FLinearColor GetTypeAccent(const EMetaStoryFlowNodeType Type)
 	{
 		switch (Type)
 		{
-		case EMetaplotNodeType::Start:
+		case EMetaStoryFlowNodeType::Start:
 			return FLinearColor(0.25f, 0.65f, 0.35f, 1.0f);
-		case EMetaplotNodeType::Normal:
+		case EMetaStoryFlowNodeType::Normal:
 			return FLinearColor(0.30f, 0.55f, 0.95f, 1.0f);
-		case EMetaplotNodeType::Conditional:
+		case EMetaStoryFlowNodeType::Conditional:
 			return FLinearColor(0.95f, 0.75f, 0.25f, 1.0f);
-		case EMetaplotNodeType::Parallel:
+		case EMetaStoryFlowNodeType::Parallel:
 			return FLinearColor(0.75f, 0.45f, 0.95f, 1.0f);
-		case EMetaplotNodeType::Terminal:
+		case EMetaStoryFlowNodeType::Terminal:
 			return FLinearColor(0.95f, 0.40f, 0.35f, 1.0f);
 		default:
 			return FLinearColor(0.55f, 0.55f, 0.58f, 1.0f);
 		}
 	}
 
-	static TCHAR GetTypeGlyph(const EMetaplotNodeType Type)
+	static TCHAR GetTypeGlyph(const EMetaStoryFlowNodeType Type)
 	{
 		switch (Type)
 		{
-		case EMetaplotNodeType::Start: return TEXT('S');
-		case EMetaplotNodeType::Normal: return TEXT('N');
-		case EMetaplotNodeType::Conditional: return TEXT('C');
-		case EMetaplotNodeType::Parallel: return TEXT('P');
-		case EMetaplotNodeType::Terminal: return TEXT('T');
+		case EMetaStoryFlowNodeType::Start: return TEXT('S');
+		case EMetaStoryFlowNodeType::Normal: return TEXT('N');
+		case EMetaStoryFlowNodeType::Conditional: return TEXT('C');
+		case EMetaStoryFlowNodeType::Parallel: return TEXT('P');
+		case EMetaStoryFlowNodeType::Terminal: return TEXT('T');
 		default: return TEXT('?');
 		}
 	}
 
-	static FString GetTypeLabel(const EMetaplotNodeType Type)
+	static FString GetTypeLabel(const EMetaStoryFlowNodeType Type)
 	{
 		switch (Type)
 		{
-		case EMetaplotNodeType::Start: return TEXT("Start");
-		case EMetaplotNodeType::Normal: return TEXT("Normal");
-		case EMetaplotNodeType::Conditional: return TEXT("Conditional");
-		case EMetaplotNodeType::Parallel: return TEXT("Parallel");
-		case EMetaplotNodeType::Terminal: return TEXT("Terminal");
+		case EMetaStoryFlowNodeType::Start: return TEXT("Start");
+		case EMetaStoryFlowNodeType::Normal: return TEXT("Normal");
+		case EMetaStoryFlowNodeType::Conditional: return TEXT("Conditional");
+		case EMetaStoryFlowNodeType::Parallel: return TEXT("Parallel");
+		case EMetaStoryFlowNodeType::Terminal: return TEXT("Terminal");
 		default: return TEXT("Node");
 		}
 	}
 
-	static int32 GetTaskCount(const UMetaplotFlow* Flow, const FGuid& NodeId)
+	static int32 GetTaskCount(const UMetaStoryFlow* Flow, const FGuid& NodeId)
 	{
 		if (!Flow || !NodeId.IsValid())
 		{
 			return 0;
 		}
 
-		const FMetaplotNodeState* NodeState = Flow->NodeStates.FindByPredicate([NodeId](const FMetaplotNodeState& Entry)
+		const FMetaStoryFlowNodeState* NodeState = Flow->NodeStates.FindByPredicate([NodeId](const FMetaStoryFlowNodeState& Entry)
 		{
 			return Entry.ID == NodeId;
 		});
@@ -479,7 +479,7 @@ void SMetaStoryFlowGraph::Construct(const FArguments& InArgs)
 	SelectedNodeId = FGuid();
 }
 
-void SMetaStoryFlowGraph::SetFlowAsset(UMetaplotFlow* InFlow)
+void SMetaStoryFlowGraph::SetFlowAsset(UMetaStoryFlow* InFlow)
 {
 	WeakFlow = InFlow;
 	PanScreen = FVector2D::ZeroVector;
@@ -526,7 +526,7 @@ FVector2D SMetaStoryFlowGraph::ComputeDesiredSize(float LayoutScaleMultiplier) c
 	return FVector2D(320.0f, 240.0f);
 }
 
-FVector2D SMetaStoryFlowGraph::GetNodeSize(const FMetaplotNode& Node)
+FVector2D SMetaStoryFlowGraph::GetNodeSize(const FMetaStoryFlowNode& Node)
 {
 	const FString Desc = Node.Description.ToString();
 	const int32 DescLen = Desc.Len();
@@ -536,7 +536,7 @@ FVector2D SMetaStoryFlowGraph::GetNodeSize(const FMetaplotNode& Node)
 	return FVector2D(NodeWidth, Height);
 }
 
-FVector2D SMetaStoryFlowGraph::GetNodeTopLeftGraph(const FMetaplotNode& Node) const
+FVector2D SMetaStoryFlowGraph::GetNodeTopLeftGraph(const FMetaStoryFlowNode& Node) const
 {
 	const FVector2D Size = GetNodeSize(Node);
 	const float X = Node.StageIndex * StageCellWidth + (StageCellWidth - NodeWidth) * 0.5f;
@@ -544,7 +544,7 @@ FVector2D SMetaStoryFlowGraph::GetNodeTopLeftGraph(const FMetaplotNode& Node) co
 	return FVector2D(X, Y);
 }
 
-FVector2D SMetaStoryFlowGraph::GetPinGraphPosition(const FMetaplotNode& Node, const EPinSide Side) const
+FVector2D SMetaStoryFlowGraph::GetPinGraphPosition(const FMetaStoryFlowNode& Node, const EPinSide Side) const
 {
 	const FVector2D TL = GetNodeTopLeftGraph(Node);
 	const FVector2D Sz = GetNodeSize(Node);
@@ -559,7 +559,7 @@ FVector2D SMetaStoryFlowGraph::GetPinGraphPosition(const FMetaplotNode& Node, co
 	return TL + Sz * 0.5f;
 }
 
-FVector2D SMetaStoryFlowGraph::GetPinStubGraphPosition(const FMetaplotNode& Node, const EPinSide Side) const
+FVector2D SMetaStoryFlowGraph::GetPinStubGraphPosition(const FMetaStoryFlowNode& Node, const EPinSide Side) const
 {
 	const FVector2D Pin = GetPinGraphPosition(Node, Side);
 	if (Side == EPinSide::Left)
@@ -592,8 +592,8 @@ void SMetaStoryFlowGraph::ClampPanToContent(const FVector2D& LocalSize)
 	float BoundMinX, BoundMinY, BoundMaxX, BoundMaxY;
 	GetContentBounds(BoundMinX, BoundMinY, BoundMaxX, BoundMaxY);
 
-	const float MinPanX = (LocalSize.X - MetaplotGraphWidgetPrivate::ViewInsetRight) - BoundMaxX;
-	const float MaxPanX = MetaplotGraphWidgetPrivate::ViewInsetLeft - BoundMinX;
+	const float MinPanX = (LocalSize.X - MetaStoryFlowGraphWidgetPrivate::ViewInsetRight) - BoundMaxX;
+	const float MaxPanX = MetaStoryFlowGraphWidgetPrivate::ViewInsetLeft - BoundMinX;
 	if (MinPanX > MaxPanX)
 	{
 		PanScreen.X = MaxPanX;
@@ -603,8 +603,8 @@ void SMetaStoryFlowGraph::ClampPanToContent(const FVector2D& LocalSize)
 		PanScreen.X = FMath::Clamp(PanScreen.X, MinPanX, MaxPanX);
 	}
 
-	const float MinPanY = (LocalSize.Y - MetaplotGraphWidgetPrivate::ViewInsetBottom) - BoundMaxY;
-	const float MaxPanY = MetaplotGraphWidgetPrivate::ViewInsetTop - BoundMinY;
+	const float MinPanY = (LocalSize.Y - MetaStoryFlowGraphWidgetPrivate::ViewInsetBottom) - BoundMaxY;
+	const float MaxPanY = MetaStoryFlowGraphWidgetPrivate::ViewInsetTop - BoundMinY;
 	if (MinPanY > MaxPanY)
 	{
 		PanScreen.Y = MaxPanY;
@@ -622,13 +622,13 @@ void SMetaStoryFlowGraph::ClampPanToContent(const FVector2D& LocalSize)
 
 void SMetaStoryFlowGraph::GetContentBounds(float& OutMinX, float& OutMinY, float& OutMaxX, float& OutMaxY) const
 {
-	UMetaplotFlow* Flow = WeakFlow.Get();
+	UMetaStoryFlow* Flow = WeakFlow.Get();
 	if (!Flow || Flow->Nodes.IsEmpty())
 	{
-		const MetaplotGraphWidgetPrivate::FGridRange GridRange = MetaplotGraphWidgetPrivate::BuildGridRange(Flow);
+		const MetaStoryFlowGraphWidgetPrivate::FGridRange GridRange = MetaStoryFlowGraphWidgetPrivate::BuildGridRange(Flow);
 		OutMinX = GridRange.MinStage * StageCellWidth;
 		OutMaxX = (GridRange.MaxStage + 1) * StageCellWidth;
-		OutMinY = MetaplotGraphWidgetPrivate::GridHeaderTop;
+		OutMinY = MetaStoryFlowGraphWidgetPrivate::GridHeaderTop;
 		OutMaxY = (GridRange.MaxLayer + 1) * LayerCellHeight;
 		return;
 	}
@@ -639,7 +639,7 @@ void SMetaStoryFlowGraph::GetContentBounds(float& OutMinX, float& OutMinY, float
 	float MaxY = TNumericLimits<float>::Lowest();
 	int32 MaxLayer = 0;
 
-	for (const FMetaplotNode& Node : Flow->Nodes)
+	for (const FMetaStoryFlowNode& Node : Flow->Nodes)
 	{
 		const FVector2D TopLeft = GetNodeTopLeftGraph(Node);
 		const FVector2D Size = GetNodeSize(Node);
@@ -650,11 +650,11 @@ void SMetaStoryFlowGraph::GetContentBounds(float& OutMinX, float& OutMinY, float
 		MaxLayer = FMath::Max(MaxLayer, Node.LayerIndex);
 	}
 
-	OutMinX = MinX - MetaplotGraphWidgetPrivate::FitPaddingX;
-	OutMaxX = MaxX + MetaplotGraphWidgetPrivate::FitPaddingX;
-	OutMinY = FMath::Min(MinY - MetaplotGraphWidgetPrivate::FitPaddingY, MetaplotGraphWidgetPrivate::GridHeaderTop);
+	OutMinX = MinX - MetaStoryFlowGraphWidgetPrivate::FitPaddingX;
+	OutMaxX = MaxX + MetaStoryFlowGraphWidgetPrivate::FitPaddingX;
+	OutMinY = FMath::Min(MinY - MetaStoryFlowGraphWidgetPrivate::FitPaddingY, MetaStoryFlowGraphWidgetPrivate::GridHeaderTop);
 	const float GridBottomY = (MaxLayer + 1) * LayerCellHeight;
-	OutMaxY = FMath::Max(MaxY + MetaplotGraphWidgetPrivate::FitPaddingY, GridBottomY);
+	OutMaxY = FMath::Max(MaxY + MetaStoryFlowGraphWidgetPrivate::FitPaddingY, GridBottomY);
 }
 
 bool SMetaStoryFlowGraph::HitTestNode(const FGeometry& MyGeometry, const FVector2D& LocalPos, FGuid& OutNodeId) const
@@ -663,7 +663,7 @@ bool SMetaStoryFlowGraph::HitTestNode(const FGeometry& MyGeometry, const FVector
 	const FVector2D LocalSize = MyGeometry.GetLocalSize();
 	const FVector2D G = LocalToGraph(LocalPos, LocalSize);
 
-	UMetaplotFlow* Flow = WeakFlow.Get();
+	UMetaStoryFlow* Flow = WeakFlow.Get();
 	if (!Flow)
 	{
 		return false;
@@ -671,7 +671,7 @@ bool SMetaStoryFlowGraph::HitTestNode(const FGeometry& MyGeometry, const FVector
 
 	for (int32 Index = Flow->Nodes.Num() - 1; Index >= 0; --Index)
 	{
-		const FMetaplotNode& Node = Flow->Nodes[Index];
+		const FMetaStoryFlowNode& Node = Flow->Nodes[Index];
 		const FVector2D TL = GetNodeTopLeftGraph(Node);
 		const FVector2D Sz = GetNodeSize(Node);
 		if (G.X >= TL.X && G.X <= TL.X + Sz.X && G.Y >= TL.Y && G.Y <= TL.Y + Sz.Y)
@@ -689,7 +689,7 @@ bool SMetaStoryFlowGraph::HitTestPin(const FGeometry& MyGeometry, const FVector2
 	OutNodeId = FGuid();
 	OutSide = EPinSide::None;
 
-	UMetaplotFlow* Flow = WeakFlow.Get();
+	UMetaStoryFlow* Flow = WeakFlow.Get();
 	if (!Flow)
 	{
 		return false;
@@ -699,7 +699,7 @@ bool SMetaStoryFlowGraph::HitTestPin(const FGeometry& MyGeometry, const FVector2
 	const FVector2D LocalSize = MyGeometry.GetLocalSize();
 	for (int32 Index = Flow->Nodes.Num() - 1; Index >= 0; --Index)
 	{
-		const FMetaplotNode& Node = Flow->Nodes[Index];
+		const FMetaStoryFlowNode& Node = Flow->Nodes[Index];
 		const FVector2D LeftLocal = GraphToLocal(GetPinGraphPosition(Node, EPinSide::Left), LocalSize);
 		if ((LocalPos - LeftLocal).SizeSquared() <= FMath::Square(HitRadius))
 		{
@@ -729,7 +729,7 @@ bool SMetaStoryFlowGraph::HitTestTransition(
 	OutSourceNodeId.Invalidate();
 	OutTargetNodeId.Invalidate();
 
-	UMetaplotFlow* Flow = WeakFlow.Get();
+	UMetaStoryFlow* Flow = WeakFlow.Get();
 	if (!Flow || Flow->Transitions.IsEmpty())
 	{
 		return false;
@@ -739,13 +739,13 @@ bool SMetaStoryFlowGraph::HitTestTransition(
 	const float HitThresholdSq = FMath::Square(7.0f);
 	float BestDistSq = TNumericLimits<float>::Max();
 
-	for (const FMetaplotTransition& Transition : Flow->Transitions)
+	for (const FMetaStoryFlowTransition& Transition : Flow->Transitions)
 	{
-		const FMetaplotNode* SourceNode = Flow->Nodes.FindByPredicate([&Transition](const FMetaplotNode& Node)
+		const FMetaStoryFlowNode* SourceNode = Flow->Nodes.FindByPredicate([&Transition](const FMetaStoryFlowNode& Node)
 		{
 			return Node.NodeId == Transition.SourceNodeId;
 		});
-		const FMetaplotNode* TargetNode = Flow->Nodes.FindByPredicate([&Transition](const FMetaplotNode& Node)
+		const FMetaStoryFlowNode* TargetNode = Flow->Nodes.FindByPredicate([&Transition](const FMetaStoryFlowNode& Node)
 		{
 			return Node.NodeId == Transition.TargetNodeId;
 		});
@@ -757,7 +757,7 @@ bool SMetaStoryFlowGraph::HitTestTransition(
 		const FVector2D StartLocal = GraphToLocal(GetPinStubGraphPosition(*SourceNode, EPinSide::Right), LocalSize);
 		const FVector2D EndLocal = GraphToLocal(GetPinStubGraphPosition(*TargetNode, EPinSide::Left), LocalSize);
 		TArray<FVector2D> PathPoints;
-		MetaplotGraphWidgetPrivate::BuildRoundedOrthogonalPath(StartLocal, EndLocal, PanScreen, PathPoints);
+		MetaStoryFlowGraphWidgetPrivate::BuildRoundedOrthogonalPath(StartLocal, EndLocal, PanScreen, PathPoints);
 		if (PathPoints.Num() < 2)
 		{
 			continue;
@@ -765,7 +765,7 @@ bool SMetaStoryFlowGraph::HitTestTransition(
 
 		for (int32 Index = 1; Index < PathPoints.Num(); ++Index)
 		{
-			const float DistSq = MetaplotGraphWidgetPrivate::DistanceSquaredToSegment(LocalPos, PathPoints[Index - 1], PathPoints[Index]);
+			const float DistSq = MetaStoryFlowGraphWidgetPrivate::DistanceSquaredToSegment(LocalPos, PathPoints[Index - 1], PathPoints[Index]);
 			if (DistSq <= HitThresholdSq && DistSq < BestDistSq)
 			{
 				BestDistSq = DistSq;
@@ -826,7 +826,7 @@ void SMetaStoryFlowGraph::OpenContextMenuAtScreen(
 void SMetaStoryFlowGraph::OpenCreateNodeSearchMenuAtScreen(const FPointerEvent& MouseEvent, int32 StageIndex, int32 LayerIndex)
 {
 	TSharedRef<SWidget> MenuWidget =
-		SNew(MetaplotGraphWidgetPrivate::SNodeSearchMenuWidget)
+		SNew(MetaStoryFlowGraphWidgetPrivate::SNodeSearchMenuWidget)
 		.OnCloseMenu(FSimpleDelegate::CreateLambda([]()
 		{
 			FSlateApplication::Get().DismissAllMenus();
@@ -859,17 +859,17 @@ SMetaStoryFlowGraph::EConnectionInvalidReason SMetaStoryFlowGraph::GetTransition
 		return EConnectionInvalidReason::SameNode;
 	}
 
-	UMetaplotFlow* Flow = WeakFlow.Get();
+	UMetaStoryFlow* Flow = WeakFlow.Get();
 	if (!Flow)
 	{
 		return EConnectionInvalidReason::InvalidPinPair;
 	}
 
-	const FMetaplotNode* SourceNode = Flow->Nodes.FindByPredicate([SourceNodeId](const FMetaplotNode& Node)
+	const FMetaStoryFlowNode* SourceNode = Flow->Nodes.FindByPredicate([SourceNodeId](const FMetaStoryFlowNode& Node)
 	{
 		return Node.NodeId == SourceNodeId;
 	});
-	const FMetaplotNode* TargetNode = Flow->Nodes.FindByPredicate([TargetNodeId](const FMetaplotNode& Node)
+	const FMetaStoryFlowNode* TargetNode = Flow->Nodes.FindByPredicate([TargetNodeId](const FMetaStoryFlowNode& Node)
 	{
 		return Node.NodeId == TargetNodeId;
 	});
@@ -924,8 +924,8 @@ SMetaStoryFlowGraph::EConnectionInvalidReason SMetaStoryFlowGraph::GetConnection
 		return EConnectionInvalidReason::InvalidPinPair;
 	}
 
-	UMetaplotFlow* Flow = WeakFlow.Get();
-	if (Flow && Flow->Transitions.ContainsByPredicate([SourceNodeId, TargetNodeId](const FMetaplotTransition& Transition)
+	UMetaStoryFlow* Flow = WeakFlow.Get();
+	if (Flow && Flow->Transitions.ContainsByPredicate([SourceNodeId, TargetNodeId](const FMetaStoryFlowTransition& Transition)
 	{
 		return Transition.SourceNodeId == SourceNodeId && Transition.TargetNodeId == TargetNodeId;
 	}))
@@ -954,7 +954,7 @@ bool SMetaStoryFlowGraph::WouldCreateCycle(const FGuid& SourceNodeId, const FGui
 		return true;
 	}
 
-	UMetaplotFlow* Flow = WeakFlow.Get();
+	UMetaStoryFlow* Flow = WeakFlow.Get();
 	if (!Flow)
 	{
 		return false;
@@ -978,7 +978,7 @@ bool SMetaStoryFlowGraph::WouldCreateCycle(const FGuid& SourceNodeId, const FGui
 			return true;
 		}
 
-		for (const FMetaplotTransition& Transition : Flow->Transitions)
+		for (const FMetaStoryFlowTransition& Transition : Flow->Transitions)
 		{
 			if (Transition.SourceNodeId == Current && Transition.TargetNodeId.IsValid())
 			{
@@ -997,13 +997,13 @@ bool SMetaStoryFlowGraph::IsConnectionCandidateValid(const FGuid& PinDragNodeId,
 
 void SMetaStoryFlowGraph::UpdateDragNodePlacementPreview(const FVector2D& LocalPos, const FVector2D& LocalSize)
 {
-	UMetaplotFlow* Flow = WeakFlow.Get();
+	UMetaStoryFlow* Flow = WeakFlow.Get();
 	if (!Flow || !DragNodeId.IsValid())
 	{
 		return;
 	}
 
-	const FMetaplotNode* Node = Flow->Nodes.FindByPredicate([this](const FMetaplotNode& N)
+	const FMetaStoryFlowNode* Node = Flow->Nodes.FindByPredicate([this](const FMetaStoryFlowNode& N)
 	{
 		return N.NodeId == DragNodeId;
 	});
@@ -1058,8 +1058,8 @@ FReply SMetaStoryFlowGraph::OnMouseButtonDown(const FGeometry& MyGeometry, const
 		FGuid HitId;
 		if (HitTestNode(MyGeometry, LocalPos, HitId))
 		{
-			UMetaplotFlow* Flow = WeakFlow.Get();
-			const FMetaplotNode* HitNode = Flow ? Flow->Nodes.FindByPredicate([HitId](const FMetaplotNode& N)
+			UMetaStoryFlow* Flow = WeakFlow.Get();
+			const FMetaStoryFlowNode* HitNode = Flow ? Flow->Nodes.FindByPredicate([HitId](const FMetaStoryFlowNode& N)
 			{
 				return N.NodeId == HitId;
 			}) : nullptr;
@@ -1143,7 +1143,7 @@ FReply SMetaStoryFlowGraph::OnMouseButtonUp(const FGeometry& MyGeometry, const F
 
 	if (MouseEvent.GetEffectingButton() == EKeys::LeftMouseButton && bDraggingNode)
 	{
-		UMetaplotFlow* Flow = WeakFlow.Get();
+		UMetaStoryFlow* Flow = WeakFlow.Get();
 		const bool bMoved = (DragPreviewStage != DragOrigStage || DragPreviewLayer != DragOrigLayer);
 		if (Flow && DragNodeId.IsValid() && bDragNodePlacementValid && bMoved && OnMoveNode.IsBound())
 		{
@@ -1332,14 +1332,14 @@ int32 SMetaStoryFlowGraph::OnPaint(
 
 	++LayerId;
 
-	UMetaplotFlow* Flow = WeakFlow.Get();
+	UMetaStoryFlow* Flow = WeakFlow.Get();
 
 	float BoundMinX, BoundMinY, BoundMaxX, BoundMaxY;
 	GetContentBounds(BoundMinX, BoundMinY, BoundMaxX, BoundMaxY);
 
 	// Grid (major lines at stage/layer cells)
 	{
-		const MetaplotGraphWidgetPrivate::FGridRange GridRange = MetaplotGraphWidgetPrivate::BuildGridRange(Flow);
+		const MetaStoryFlowGraphWidgetPrivate::FGridRange GridRange = MetaStoryFlowGraphWidgetPrivate::BuildGridRange(Flow);
 		const int32 MinStage = GridRange.MinStage;
 		const int32 MaxStage = GridRange.MaxStage;
 		const int32 MinLayer = GridRange.MinLayer;
@@ -1347,8 +1347,8 @@ int32 SMetaStoryFlowGraph::OnPaint(
 		const FLinearColor GridColor(1.0f, 1.0f, 1.0f, 0.06f);
 		const FLinearColor StageBandA(0.17f, 0.23f, 0.34f, 0.05f);
 		const FLinearColor StageBandB(0.11f, 0.15f, 0.22f, 0.035f);
-		const float HeaderTop = MetaplotGraphWidgetPrivate::GridHeaderTop;
-		const float HeaderHeight = MetaplotGraphWidgetPrivate::GridHeaderHeight;
+		const float HeaderTop = MetaStoryFlowGraphWidgetPrivate::GridHeaderTop;
+		const float HeaderHeight = MetaStoryFlowGraphWidgetPrivate::GridHeaderHeight;
 
 		for (int32 S = MinStage; S <= MaxStage; ++S)
 		{
@@ -1436,8 +1436,8 @@ int32 SMetaStoryFlowGraph::OnPaint(
 			}
 		}
 
-		const FVector2D TimelineStart = GraphToLocal(FVector2D(MinStage * StageCellWidth, MetaplotGraphWidgetPrivate::TimelineY), LocalSize);
-		const FVector2D TimelineEnd = GraphToLocal(FVector2D((MaxStage + 1) * StageCellWidth, MetaplotGraphWidgetPrivate::TimelineY), LocalSize);
+		const FVector2D TimelineStart = GraphToLocal(FVector2D(MinStage * StageCellWidth, MetaStoryFlowGraphWidgetPrivate::TimelineY), LocalSize);
+		const FVector2D TimelineEnd = GraphToLocal(FVector2D((MaxStage + 1) * StageCellWidth, MetaStoryFlowGraphWidgetPrivate::TimelineY), LocalSize);
 		TArray<FVector2D> TimelineLine;
 		TimelineLine.Add(TimelineStart);
 		TimelineLine.Add(TimelineEnd);
@@ -1471,23 +1471,23 @@ int32 SMetaStoryFlowGraph::OnPaint(
 
 	++LayerId;
 
-	auto ResolveNode = [Flow](const FGuid& Id) -> const FMetaplotNode*
+	auto ResolveNode = [Flow](const FGuid& Id) -> const FMetaStoryFlowNode*
 	{
 		if (!Flow)
 		{
 			return nullptr;
 		}
-		return Flow->Nodes.FindByPredicate([Id](const FMetaplotNode& N)
+		return Flow->Nodes.FindByPredicate([Id](const FMetaStoryFlowNode& N)
 		{
 			return N.NodeId == Id;
 		});
 	};
 
-	const auto LayoutForDraw = [this](const FMetaplotNode& N) -> FMetaplotNode
+	const auto LayoutForDraw = [this](const FMetaStoryFlowNode& N) -> FMetaStoryFlowNode
 	{
 		if (bDraggingNode && N.NodeId == DragNodeId)
 		{
-			FMetaplotNode M = N;
+			FMetaStoryFlowNode M = N;
 			M.StageIndex = DragPreviewStage;
 			M.LayerIndex = DragPreviewLayer;
 			return M;
@@ -1497,7 +1497,7 @@ int32 SMetaStoryFlowGraph::OnPaint(
 
 	if (bDraggingNode && Flow && DragNodeId.IsValid())
 	{
-		const MetaplotGraphWidgetPrivate::FGridRange GR0 = MetaplotGraphWidgetPrivate::BuildGridRange(Flow);
+		const MetaStoryFlowGraphWidgetPrivate::FGridRange GR0 = MetaStoryFlowGraphWidgetPrivate::BuildGridRange(Flow);
 		const int32 HS0 = FMath::Min(GR0.MinStage, DragPreviewStage - 2);
 		const int32 HS1 = FMath::Max(GR0.MaxStage, DragPreviewStage + 2);
 		const int32 HL0 = FMath::Min(GR0.MinLayer, DragPreviewLayer - 2);
@@ -1529,9 +1529,9 @@ int32 SMetaStoryFlowGraph::OnPaint(
 	{
 		struct FTransitionDrawLaneData
 		{
-			const FMetaplotTransition* Transition = nullptr;
-			FMetaplotNode Src;
-			FMetaplotNode Dst;
+			const FMetaStoryFlowTransition* Transition = nullptr;
+			FMetaStoryFlowNode Src;
+			FMetaStoryFlowNode Dst;
 			int32 SrcStage = 0;
 			int32 DstStage = 0;
 			int32 SrcLayer = 0;
@@ -1541,10 +1541,10 @@ int32 SMetaStoryFlowGraph::OnPaint(
 		TArray<FTransitionDrawLaneData> TransitionLanes;
 		TransitionLanes.Reserve(Flow->Transitions.Num());
 
-		for (const FMetaplotTransition& Tr : Flow->Transitions)
+		for (const FMetaStoryFlowTransition& Tr : Flow->Transitions)
 		{
-			const FMetaplotNode* Src = ResolveNode(Tr.SourceNodeId);
-			const FMetaplotNode* Dst = ResolveNode(Tr.TargetNodeId);
+			const FMetaStoryFlowNode* Src = ResolveNode(Tr.SourceNodeId);
+			const FMetaStoryFlowNode* Dst = ResolveNode(Tr.TargetNodeId);
 			if (!Src || !Dst)
 			{
 				continue;
@@ -1624,7 +1624,7 @@ int32 SMetaStoryFlowGraph::OnPaint(
 				const float EntryX = GraphToLocal(FVector2D(EntryGraphX, 0.0f), LocalSize).X;
 				const float ExitX = GraphToLocal(FVector2D(ExitGraphX, 0.0f), LocalSize).X;
 				const float BridgeY = ((P0.Y + P3.Y) * 0.5f) + LaneOffset * 10.0f;
-				MetaplotGraphWidgetPrivate::BuildBundledOrthogonalPath(
+				MetaStoryFlowGraphWidgetPrivate::BuildBundledOrthogonalPath(
 					P0,
 					P3,
 					FMath::Clamp(EntryX, P0.X + 22.0f, P3.X - 40.0f),
@@ -1637,7 +1637,7 @@ int32 SMetaStoryFlowGraph::OnPaint(
 			{
 				const float MidBase = (P0.X + P3.X) * 0.5f;
 				const float MidX = FMath::Clamp(MidBase + MidXOffset, P0.X + 24.0f, P3.X - 24.0f);
-				MetaplotGraphWidgetPrivate::BuildRoundedOrthogonalPathViaX(P0, P3, MidX, PanScreen, PathPoints);
+				MetaStoryFlowGraphWidgetPrivate::BuildRoundedOrthogonalPathViaX(P0, P3, MidX, PanScreen, PathPoints);
 			}
 			if (PathPoints.Num() >= 2)
 			{
@@ -1665,14 +1665,14 @@ int32 SMetaStoryFlowGraph::OnPaint(
 
 	if (bDraggingConnection && DragPinNodeId.IsValid())
 	{
-		const FMetaplotNode* DragNode = ResolveNode(DragPinNodeId);
+		const FMetaStoryFlowNode* DragNode = ResolveNode(DragPinNodeId);
 		if (DragNode)
 		{
-			const FMetaplotNode DragLayout = LayoutForDraw(*DragNode);
+			const FMetaStoryFlowNode DragLayout = LayoutForDraw(*DragNode);
 			const FVector2D P0 = GraphToLocal(GetPinStubGraphPosition(DragLayout, DragPinSide), LocalSize);
 			const FVector2D P3 = DragCurrentLocal;
 			TArray<FVector2D> PreviewPath;
-			MetaplotGraphWidgetPrivate::BuildRoundedOrthogonalPath(P0, P3, PanScreen, PreviewPath);
+			MetaStoryFlowGraphWidgetPrivate::BuildRoundedOrthogonalPath(P0, P3, PanScreen, PreviewPath);
 			FLinearColor InvalidPreviewColor(1.0f, 0.45f, 0.35f, 0.92f);
 			switch (HoveredPinInvalidReason)
 			{
@@ -1713,14 +1713,14 @@ int32 SMetaStoryFlowGraph::OnPaint(
 	// Nodes
 	if (Flow)
 	{
-		for (const FMetaplotNode& Node : Flow->Nodes)
+		for (const FMetaStoryFlowNode& Node : Flow->Nodes)
 		{
-			const FMetaplotNode DrawLayout = LayoutForDraw(Node);
+			const FMetaStoryFlowNode DrawLayout = LayoutForDraw(Node);
 			const FVector2D TL = GetNodeTopLeftGraph(DrawLayout);
 			const FVector2D Sz = GetNodeSize(Node);
 			const FVector2D LocalTL = GraphToLocal(TL, LocalSize);
 
-			const FLinearColor Accent = MetaplotGraphWidgetPrivate::GetTypeAccent(Node.NodeType);
+			const FLinearColor Accent = MetaStoryFlowGraphWidgetPrivate::GetTypeAccent(Node.NodeType);
 			const bool bIsStart = Flow->StartNodeId == Node.NodeId;
 			const bool bSelected = Node.NodeId == SelectedNodeId;
 			const bool bHover = Node.NodeId == HoveredNodeId;
@@ -1754,7 +1754,7 @@ int32 SMetaStoryFlowGraph::OnPaint(
 				ESlateDrawEffect::None,
 				FLinearColor::White);
 
-			const FString TypeLine = MetaplotGraphWidgetPrivate::GetTypeLabel(Node.NodeType) + (bIsStart ? TEXT("  · Start") : TEXT(""));
+			const FString TypeLine = MetaStoryFlowGraphWidgetPrivate::GetTypeLabel(Node.NodeType) + (bIsStart ? TEXT("  · Start") : TEXT(""));
 			FSlateDrawElement::MakeText(
 				OutDrawElements,
 				LayerId,
@@ -1774,7 +1774,7 @@ int32 SMetaStoryFlowGraph::OnPaint(
 				ESlateDrawEffect::None,
 				FLinearColor(0.65f, 0.68f, 0.72f, 1.0f));
 
-			const int32 TaskCount = MetaplotGraphWidgetPrivate::GetTaskCount(Flow, Node.NodeId);
+			const int32 TaskCount = MetaStoryFlowGraphWidgetPrivate::GetTaskCount(Flow, Node.NodeId);
 			const FString TaskMeta = FString::Printf(TEXT("Tasks %d"), TaskCount);
 			FSlateDrawElement::MakeText(
 				OutDrawElements,
@@ -1805,7 +1805,7 @@ int32 SMetaStoryFlowGraph::OnPaint(
 			}
 
 			FString Badge;
-			Badge.AppendChar(MetaplotGraphWidgetPrivate::GetTypeGlyph(Node.NodeType));
+			Badge.AppendChar(MetaStoryFlowGraphWidgetPrivate::GetTypeGlyph(Node.NodeType));
 			FSlateDrawElement::MakeText(
 				OutDrawElements,
 				LayerId,

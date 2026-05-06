@@ -1,7 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "MetaStoryEditorData.h"
-#include "MetaStoryMetaplotTopology.h"
+#include "MetaStoryFlowTopology.h"
 #include "MetaStory.h"
 #include "MetaStoryDelegates.h"
 #include "MetaStoryConditionBase.h"
@@ -148,25 +148,25 @@ void UMetaStoryEditorData::OnStateParametersChanged(const UMetaStory& MetaStory,
 	}
 }
 
-void UMetaStoryEditorData::EnsureEmbeddedMetaplotFlow()
+void UMetaStoryEditorData::EnsureEmbeddedMetaStoryFlow()
 {
-	if (!bUseMetaplotFlowTopology || MetaplotFlow)
+	if (!bUseMetaStoryFlowTopology || MetaStoryFlow)
 	{
 		return;
 	}
 
 	Modify();
-	MetaplotFlow = NewObject<UMetaplotFlow>(this, TEXT("MetaplotFlow"), RF_Transactional);
+	MetaStoryFlow = NewObject<UMetaStoryFlow>(this, TEXT("MetaStoryFlow"), RF_Transactional);
 
-	FMetaplotNode StartNode;
+	FMetaStoryFlowNode StartNode;
 	StartNode.NodeId = FGuid::NewGuid();
-	StartNode.NodeType = EMetaplotNodeType::Start;
+	StartNode.NodeType = EMetaStoryFlowNodeType::Start;
 	StartNode.NodeName = INVTEXT("Start");
 	StartNode.StageIndex = 0;
 	StartNode.LayerIndex = 0;
-	MetaplotFlow->Nodes.Add(StartNode);
-	MetaplotFlow->StartNodeId = StartNode.NodeId;
-	MetaplotFlow->SyncNodeStatesWithNodes();
+	MetaStoryFlow->Nodes.Add(StartNode);
+	MetaStoryFlow->StartNodeId = StartNode.NodeId;
+	MetaStoryFlow->SyncNodeStatesWithNodes();
 }
 
 void UMetaStoryEditorData::PostLoad()
@@ -199,17 +199,17 @@ void UMetaStoryEditorData::PostLoad()
 		}
 	}
 
-	if (bUseMetaplotFlowTopology)
+	if (bUseMetaStoryFlowTopology)
 	{
-		EnsureEmbeddedMetaplotFlow();
+		EnsureEmbeddedMetaStoryFlow();
 	}
 
-	if (bUseMetaplotFlowTopology && MetaplotFlow)
+	if (bUseMetaStoryFlowTopology && MetaStoryFlow)
 	{
-		MetaplotFlow->ConditionalPostLoad();
-		if (!UE::MetaStory::MetaplotTopology::RebuildShadowStates(*this, nullptr))
+		MetaStoryFlow->ConditionalPostLoad();
+		if (!UE::MetaStory::FlowTopology::RebuildShadowStates(*this, nullptr))
 		{
-			UE_LOG(LogMetaStoryEditor, Error, TEXT("Metaplot topology: RebuildShadowStates failed during PostLoad."));
+			UE_LOG(LogMetaStoryEditor, Error, TEXT("Flow topology: RebuildShadowStates failed during PostLoad."));
 		}
 	}
 
@@ -256,14 +256,14 @@ void UMetaStoryEditorData::PostEditChangeChainProperty(FPropertyChangedChainEven
 		{
 			UE::MetaStory::Delegates::OnParametersChanged.Broadcast(*MetaStory);
 		}
-		else if (MemberName == GET_MEMBER_NAME_CHECKED(UMetaStoryEditorData, bUseMetaplotFlowTopology))
+		else if (MemberName == GET_MEMBER_NAME_CHECKED(UMetaStoryEditorData, bUseMetaStoryFlowTopology))
 		{
-			if (bUseMetaplotFlowTopology)
+			if (bUseMetaStoryFlowTopology)
 			{
-				EnsureEmbeddedMetaplotFlow();
-				if (MetaplotFlow)
+				EnsureEmbeddedMetaStoryFlow();
+				if (MetaStoryFlow)
 				{
-					(void)UE::MetaStory::MetaplotTopology::RebuildShadowStates(*this, nullptr);
+					(void)UE::MetaStory::FlowTopology::RebuildShadowStates(*this, nullptr);
 				}
 				UE::MetaStory::Delegates::OnGlobalDataChanged.Broadcast(*MetaStory);
 			}

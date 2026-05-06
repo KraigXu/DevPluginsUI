@@ -1,7 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "MetaStoryCompiler.h"
-#include "MetaStoryMetaplotTopology.h"
+#include "MetaStoryFlowTopology.h"
 #include "MetaStory.h"
 #include "MetaStoryAnyEnum.h"
 #include "MetaStoryCompilerLog.h"
@@ -495,14 +495,14 @@ bool FMetaStoryCompiler::Compile(TNotNull<UMetaStory*> InMetaStory)
 	}
 	MetaStory->NumContextData = static_cast<uint16>(ContextDataIndex);
 
-	if (EditorData->bUseMetaplotFlowTopology)
+	if (EditorData->bUseMetaStoryFlowTopology)
 	{
-		if (!EditorData->MetaplotFlow)
+		if (!EditorData->MetaStoryFlow)
 		{
-			Log.Reportf(EMessageSeverity::Error, TEXT("Metaplot topology is enabled but MetaplotFlow is not set."));
+			Log.Reportf(EMessageSeverity::Error, TEXT("Flow topology is enabled but MetaStoryFlow is not set."));
 			return FailCompilation();
 		}
-		if (!UE::MetaStory::MetaplotTopology::RebuildShadowStates(*EditorData, &Log))
+		if (!UE::MetaStory::FlowTopology::RebuildShadowStates(*EditorData, &Log))
 		{
 			return FailCompilation();
 		}

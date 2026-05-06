@@ -4,35 +4,35 @@
 #include "Delegates/Delegate.h"
 #include "Widgets/SLeafWidget.h"
 
-class UMetaplotFlow;
-enum class EMetaplotNodeType : uint8;
+class UMetaStoryFlow;
+enum class EMetaStoryFlowNodeType : uint8;
 
-DECLARE_DELEGATE_OneParam(FOnMetaplotGraphNodeSelected, FGuid);
-DECLARE_DELEGATE_OneParam(FOnMetaplotGraphHorizontalPanChanged, float);
-DECLARE_DELEGATE_TwoParams(FOnMetaplotGraphCreateTransition, FGuid, FGuid);
-DECLARE_DELEGATE_ThreeParams(FOnMetaplotGraphMoveNode, FGuid, int32, int32);
-DECLARE_DELEGATE_ThreeParams(FOnMetaplotGraphCreateNodeRequested, EMetaplotNodeType, int32, int32);
-DECLARE_DELEGATE_OneParam(FOnMetaplotGraphDeleteNodeRequested, FGuid);
-DECLARE_DELEGATE_TwoParams(FOnMetaplotGraphDeleteTransitionRequested, FGuid, FGuid);
+DECLARE_DELEGATE_OneParam(FOnMetaStoryFlowGraphNodeSelected, FGuid);
+DECLARE_DELEGATE_OneParam(FOnMetaStoryFlowGraphHorizontalPanChanged, float);
+DECLARE_DELEGATE_TwoParams(FOnMetaStoryFlowGraphCreateTransition, FGuid, FGuid);
+DECLARE_DELEGATE_ThreeParams(FOnMetaStoryFlowGraphMoveNode, FGuid, int32, int32);
+DECLARE_DELEGATE_ThreeParams(FOnMetaStoryFlowGraphCreateNodeRequested, EMetaStoryFlowNodeType, int32, int32);
+DECLARE_DELEGATE_OneParam(FOnMetaStoryFlowGraphDeleteNodeRequested, FGuid);
+DECLARE_DELEGATE_TwoParams(FOnMetaStoryFlowGraphDeleteTransitionRequested, FGuid, FGuid);
 
 /** 主视图：科技树风格网格画布（Stage 水平、Layer 垂直）、正交连线与中键平移。 */
 class SMetaStoryFlowGraph : public SLeafWidget
 {
 public:
 	SLATE_BEGIN_ARGS(SMetaStoryFlowGraph) {}
-		SLATE_ARGUMENT(TWeakObjectPtr<UMetaplotFlow>, FlowAsset)
-		SLATE_EVENT(FOnMetaplotGraphNodeSelected, OnNodeSelected)
-		SLATE_EVENT(FOnMetaplotGraphHorizontalPanChanged, OnHorizontalPanChanged)
-		SLATE_EVENT(FOnMetaplotGraphCreateTransition, OnCreateTransition)
-		SLATE_EVENT(FOnMetaplotGraphMoveNode, OnMoveNode)
-		SLATE_EVENT(FOnMetaplotGraphCreateNodeRequested, OnCreateNodeRequested)
-		SLATE_EVENT(FOnMetaplotGraphDeleteNodeRequested, OnDeleteNodeRequested)
-		SLATE_EVENT(FOnMetaplotGraphDeleteTransitionRequested, OnDeleteTransitionRequested)
+		SLATE_ARGUMENT(TWeakObjectPtr<UMetaStoryFlow>, FlowAsset)
+		SLATE_EVENT(FOnMetaStoryFlowGraphNodeSelected, OnNodeSelected)
+		SLATE_EVENT(FOnMetaStoryFlowGraphHorizontalPanChanged, OnHorizontalPanChanged)
+		SLATE_EVENT(FOnMetaStoryFlowGraphCreateTransition, OnCreateTransition)
+		SLATE_EVENT(FOnMetaStoryFlowGraphMoveNode, OnMoveNode)
+		SLATE_EVENT(FOnMetaStoryFlowGraphCreateNodeRequested, OnCreateNodeRequested)
+		SLATE_EVENT(FOnMetaStoryFlowGraphDeleteNodeRequested, OnDeleteNodeRequested)
+		SLATE_EVENT(FOnMetaStoryFlowGraphDeleteTransitionRequested, OnDeleteTransitionRequested)
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs);
 
-	void SetFlowAsset(UMetaplotFlow* InFlow);
+	void SetFlowAsset(UMetaStoryFlow* InFlow);
 	void SetSelectedNodeId(const FGuid& InNodeId);
 	void SetHorizontalPanScreen(float InPanScreenX);
 	bool GetHorizontalScrollbarState(float& OutOffsetFraction, float& OutThumbSizeFraction) const;
@@ -74,10 +74,10 @@ private:
 		Cycle
 	};
 
-	static FVector2D GetNodeSize(const struct FMetaplotNode& Node);
-	FVector2D GetNodeTopLeftGraph(const struct FMetaplotNode& Node) const;
-	FVector2D GetPinGraphPosition(const struct FMetaplotNode& Node, EPinSide Side) const;
-	FVector2D GetPinStubGraphPosition(const struct FMetaplotNode& Node, EPinSide Side) const;
+	static FVector2D GetNodeSize(const struct FMetaStoryFlowNode& Node);
+	FVector2D GetNodeTopLeftGraph(const struct FMetaStoryFlowNode& Node) const;
+	FVector2D GetPinGraphPosition(const struct FMetaStoryFlowNode& Node, EPinSide Side) const;
+	FVector2D GetPinStubGraphPosition(const struct FMetaStoryFlowNode& Node, EPinSide Side) const;
 	FVector2D GraphToLocal(const FVector2D& GraphPos, const FVector2D& LocalSize) const;
 	FVector2D LocalToGraph(const FVector2D& LocalPos, const FVector2D& LocalSize) const;
 	bool HitTestNode(const FGeometry& MyGeometry, const FVector2D& LocalPos, FGuid& OutNodeId) const;
@@ -96,14 +96,14 @@ private:
 	void OpenCreateNodeSearchMenuAtScreen(const FPointerEvent& MouseEvent, int32 StageIndex, int32 LayerIndex);
 
 private:
-	TWeakObjectPtr<UMetaplotFlow> WeakFlow;
-	FOnMetaplotGraphNodeSelected OnNodeSelected;
-	FOnMetaplotGraphHorizontalPanChanged OnHorizontalPanChanged;
-	FOnMetaplotGraphCreateTransition OnCreateTransition;
-	FOnMetaplotGraphMoveNode OnMoveNode;
-	FOnMetaplotGraphCreateNodeRequested OnCreateNodeRequested;
-	FOnMetaplotGraphDeleteNodeRequested OnDeleteNodeRequested;
-	FOnMetaplotGraphDeleteTransitionRequested OnDeleteTransitionRequested;
+	TWeakObjectPtr<UMetaStoryFlow> WeakFlow;
+	FOnMetaStoryFlowGraphNodeSelected OnNodeSelected;
+	FOnMetaStoryFlowGraphHorizontalPanChanged OnHorizontalPanChanged;
+	FOnMetaStoryFlowGraphCreateTransition OnCreateTransition;
+	FOnMetaStoryFlowGraphMoveNode OnMoveNode;
+	FOnMetaStoryFlowGraphCreateNodeRequested OnCreateNodeRequested;
+	FOnMetaStoryFlowGraphDeleteNodeRequested OnDeleteNodeRequested;
+	FOnMetaStoryFlowGraphDeleteTransitionRequested OnDeleteTransitionRequested;
 
 	FVector2D PanScreen = FVector2D(80.0f, 80.0f);
 	bool bPanning = false;

@@ -27,7 +27,8 @@ namespace UnrealBuildTool.Rules
 					"Engine",
 					"AIModule",
 					"GameplayTags",
-					"PropertyBindingUtils"
+					"PropertyBindingUtils",
+					"StructUtils"
 				}
 			);
 

@@ -11,7 +11,7 @@
 #include "MetaStoryState.h"
 #include "MetaStoryEditorCommands.h"
 #include "MetaStoryEditorData.h"
-#include "MetaStoryMetaplotTopology.h"
+#include "MetaStoryFlowTopology.h"
 #include "MetaStoryEditorUserSettings.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SScrollBar.h"
@@ -30,24 +30,24 @@
 #include "PropertyEditorModule.h"
 #include "ScopedTransaction.h"
 
-#include "Flow/MetaplotFlow.h"
+#include "Flow/MetaStoryFlow.h"
 
 #define LOCTEXT_NAMESPACE "MetaStoryEditor"
 
-namespace MetaStoryViewMetaplotGraphPrivate
+namespace MetaStoryViewFlowGraphPrivate
 {
-	static bool IsTransitionRuleValid(const UMetaplotFlow* Flow, const FGuid& SourceNodeId, const FGuid& TargetNodeId)
+	static bool IsTransitionRuleValid(const UMetaStoryFlow* Flow, const FGuid& SourceNodeId, const FGuid& TargetNodeId)
 	{
 		if (!Flow || !SourceNodeId.IsValid() || !TargetNodeId.IsValid() || SourceNodeId == TargetNodeId)
 		{
 			return false;
 		}
 
-		const FMetaplotNode* SourceNode = Flow->Nodes.FindByPredicate([SourceNodeId](const FMetaplotNode& Node)
+		const FMetaStoryFlowNode* SourceNode = Flow->Nodes.FindByPredicate([SourceNodeId](const FMetaStoryFlowNode& Node)
 		{
 			return Node.NodeId == SourceNodeId;
 		});
-		const FMetaplotNode* TargetNode = Flow->Nodes.FindByPredicate([TargetNodeId](const FMetaplotNode& Node)
+		const FMetaStoryFlowNode* TargetNode = Flow->Nodes.FindByPredicate([TargetNodeId](const FMetaStoryFlowNode& Node)
 		{
 			return Node.NodeId == TargetNodeId;
 		});
@@ -69,7 +69,7 @@ namespace MetaStoryViewMetaplotGraphPrivate
 		return true;
 	}
 
-	static bool WouldCreateCycle(const UMetaplotFlow* Flow, const FGuid& SourceNodeId, const FGuid& TargetNodeId)
+	static bool WouldCreateCycle(const UMetaStoryFlow* Flow, const FGuid& SourceNodeId, const FGuid& TargetNodeId)
 	{
 		if (!Flow || !SourceNodeId.IsValid() || !TargetNodeId.IsValid() || SourceNodeId == TargetNodeId)
 		{
@@ -94,7 +94,7 @@ namespace MetaStoryViewMetaplotGraphPrivate
 				return true;
 			}
 
-			for (const FMetaplotTransition& Transition : Flow->Transitions)
+			for (const FMetaStoryFlowTransition& Transition : Flow->Transitions)
 			{
 				if (Transition.SourceNodeId == Current && Transition.TargetNodeId.IsValid())
 				{
@@ -106,7 +106,7 @@ namespace MetaStoryViewMetaplotGraphPrivate
 		return false;
 	}
 
-	static bool IsValidCellForNodeMove(const UMetaplotFlow* Flow, const FGuid& MovingNodeId, int32 NewStage, int32 NewLayer)
+	static bool IsValidCellForNodeMove(const UMetaStoryFlow* Flow, const FGuid& MovingNodeId, int32 NewStage, int32 NewLayer)
 	{
 		if (!Flow || !MovingNodeId.IsValid())
 		{
@@ -118,7 +118,7 @@ namespace MetaStoryViewMetaplotGraphPrivate
 			return false;
 		}
 
-		for (const FMetaplotNode& Node : Flow->Nodes)
+		for (const FMetaStoryFlowNode& Node : Flow->Nodes)
 		{
 			if (Node.NodeId == MovingNodeId)
 			{
@@ -136,7 +136,7 @@ namespace MetaStoryViewMetaplotGraphPrivate
 			{
 				return NewStage;
 			}
-			const FMetaplotNode* Found = Flow->Nodes.FindByPredicate([NodeId](const FMetaplotNode& N)
+			const FMetaStoryFlowNode* Found = Flow->Nodes.FindByPredicate([NodeId](const FMetaStoryFlowNode& N)
 			{
 				return N.NodeId == NodeId;
 			});
@@ -149,14 +149,14 @@ namespace MetaStoryViewMetaplotGraphPrivate
 			{
 				return NewLayer;
 			}
-			const FMetaplotNode* Found = Flow->Nodes.FindByPredicate([NodeId](const FMetaplotNode& N)
+			const FMetaStoryFlowNode* Found = Flow->Nodes.FindByPredicate([NodeId](const FMetaStoryFlowNode& N)
 			{
 				return N.NodeId == NodeId;
 			});
 			return Found ? Found->LayerIndex : 0;
 		};
 
-		for (const FMetaplotTransition& Tr : Flow->Transitions)
+		for (const FMetaStoryFlowTransition& Tr : Flow->Transitions)
 		{
 			if (!Tr.SourceNodeId.IsValid() || !Tr.TargetNodeId.IsValid() || Tr.SourceNodeId == Tr.TargetNodeId)
 			{
@@ -220,7 +220,7 @@ void SMetaStoryView::Construct(const FArguments& InArgs, TSharedRef<FMetaStoryVi
 
 	if (const UMetaStoryEditorData* EditorData = MetaStoryViewModel->GetMetaStoryEditorData())
 	{
-		EditingFlowAsset = EditorData->MetaplotFlow;
+		EditingFlowAsset = EditorData->MetaStoryFlow;
 	}
 
 	TSharedRef<SScrollBar> HorizontalScrollBar = SNew(SScrollBar)
@@ -301,13 +301,13 @@ void SMetaStoryView::Construct(const FArguments& InArgs, TSharedRef<FMetaStoryVi
 				[
 					SAssignNew(FlowGraph, SMetaStoryFlowGraph)
 					.FlowAsset(EditingFlowAsset)
-					.OnNodeSelected(FOnMetaplotGraphNodeSelected::CreateSP(this, &SMetaStoryView::OnMainGraphNodeSelected))
-					.OnCreateNodeRequested(FOnMetaplotGraphCreateNodeRequested::CreateSP(this, &SMetaStoryView::OnMainGraphCreateNodeRequested))
-					.OnCreateTransition(FOnMetaplotGraphCreateTransition::CreateSP(this, &SMetaStoryView::OnMainGraphCreateTransition))
-					.OnMoveNode(FOnMetaplotGraphMoveNode::CreateSP(this, &SMetaStoryView::OnMainGraphMoveNode))
-					.OnDeleteNodeRequested(FOnMetaplotGraphDeleteNodeRequested::CreateSP(this, &SMetaStoryView::OnMainGraphDeleteNodeRequested))
-					.OnDeleteTransitionRequested(FOnMetaplotGraphDeleteTransitionRequested::CreateSP(this, &SMetaStoryView::OnMainGraphDeleteTransitionRequested))
-					.OnHorizontalPanChanged(FOnMetaplotGraphHorizontalPanChanged::CreateSP(this, &SMetaStoryView::OnMainGraphHorizontalPanChanged))
+					.OnNodeSelected(FOnMetaStoryFlowGraphNodeSelected::CreateSP(this, &SMetaStoryView::OnMainGraphNodeSelected))
+					.OnCreateNodeRequested(FOnMetaStoryFlowGraphCreateNodeRequested::CreateSP(this, &SMetaStoryView::OnMainGraphCreateNodeRequested))
+					.OnCreateTransition(FOnMetaStoryFlowGraphCreateTransition::CreateSP(this, &SMetaStoryView::OnMainGraphCreateTransition))
+					.OnMoveNode(FOnMetaStoryFlowGraphMoveNode::CreateSP(this, &SMetaStoryView::OnMainGraphMoveNode))
+					.OnDeleteNodeRequested(FOnMetaStoryFlowGraphDeleteNodeRequested::CreateSP(this, &SMetaStoryView::OnMainGraphDeleteNodeRequested))
+					.OnDeleteTransitionRequested(FOnMetaStoryFlowGraphDeleteTransitionRequested::CreateSP(this, &SMetaStoryView::OnMainGraphDeleteTransitionRequested))
+					.OnHorizontalPanChanged(FOnMetaStoryFlowGraphHorizontalPanChanged::CreateSP(this, &SMetaStoryView::OnMainGraphHorizontalPanChanged))
 				]
 			]
 
@@ -339,14 +339,14 @@ void SMetaStoryView::SyncFlowGraphFromEditorData()
 
 	if (const UMetaStoryEditorData* EditorData = MetaStoryViewModel->GetMetaStoryEditorData())
 	{
-		EditingFlowAsset = EditorData->MetaplotFlow;
+		EditingFlowAsset = EditorData->MetaStoryFlow;
 	}
 	else
 	{
 		EditingFlowAsset = nullptr;
 	}
 
-	if (UMetaplotFlow* Flow = EditingFlowAsset.Get())
+	if (UMetaStoryFlow* Flow = EditingFlowAsset.Get())
 	{
 		FlowGraph->SetFlowAsset(Flow);
 	}
@@ -689,38 +689,38 @@ TSharedPtr<SWidget> SMetaStoryView::HandleContextMenuOpening()
 	return MenuBuilder.MakeWidget();
 }
 
-bool SMetaStoryView::IsMetaplotFlowTopologyActive() const
+bool SMetaStoryView::IsMetaStoryFlowTopologyActive() const
 {
 	if (!MetaStoryViewModel)
 	{
 		return false;
 	}
 	const UMetaStoryEditorData* EditorData = MetaStoryViewModel->GetMetaStoryEditorData();
-	return EditorData && EditorData->bUseMetaplotFlowTopology && EditorData->MetaplotFlow != nullptr;
+	return EditorData && EditorData->bUseMetaStoryFlowTopology && EditorData->MetaStoryFlow != nullptr;
 }
 
-bool SMetaStoryView::TryMetaplotToolbarAddState(EMetaplotToolbarAddOp Op)
+bool SMetaStoryView::TryFlowToolbarAddState(EMetaStoryFlowToolbarAddOp Op)
 {
-	if (!IsMetaplotFlowTopologyActive() || !MetaStoryViewModel)
+	if (!IsMetaStoryFlowTopologyActive() || !MetaStoryViewModel)
 	{
 		return false;
 	}
 
 	UMetaStoryEditorData* EditorData = const_cast<UMetaStoryEditorData*>(MetaStoryViewModel->GetMetaStoryEditorData());
-	UMetaplotFlow* Flow = EditorData->MetaplotFlow;
+	UMetaStoryFlow* Flow = EditorData->MetaStoryFlow;
 	if (!Flow)
 	{
 		return false;
 	}
 
 	UMetaStoryState* Sel = GetFirstSelectedState();
-	const auto FindPlotNodePtr = [Flow](const FGuid& Id) -> const FMetaplotNode*
+	const auto FindPlotNodePtr = [Flow](const FGuid& Id) -> const FMetaStoryFlowNode*
 	{
 		if (!Id.IsValid())
 		{
 			return nullptr;
 		}
-		for (const FMetaplotNode& N : Flow->Nodes)
+		for (const FMetaStoryFlowNode& N : Flow->Nodes)
 		{
 			if (N.NodeId == Id)
 			{
@@ -729,7 +729,7 @@ bool SMetaStoryView::TryMetaplotToolbarAddState(EMetaplotToolbarAddOp Op)
 		}
 		return nullptr;
 	};
-	const FMetaplotNode* SelPlotNode = Sel ? FindPlotNodePtr(Sel->ID) : nullptr;
+	const FMetaStoryFlowNode* SelPlotNode = Sel ? FindPlotNodePtr(Sel->ID) : nullptr;
 
 	const auto IsContainerRoot = [&](const UMetaStoryState* S) -> bool
 	{
@@ -744,14 +744,14 @@ bool SMetaStoryView::TryMetaplotToolbarAddState(EMetaplotToolbarAddOp Op)
 	const auto PlanAppendAfterMaxStage = [&]()
 	{
 		int32 MaxStage = 0;
-		for (const FMetaplotNode& N : Flow->Nodes)
+		for (const FMetaStoryFlowNode& N : Flow->Nodes)
 		{
 			MaxStage = FMath::Max(MaxStage, N.StageIndex);
 		}
 		NewStage = MaxStage + 1;
 		NewLayer = 0;
-		const FMetaplotNode* SrcPick = nullptr;
-		for (const FMetaplotNode& N : Flow->Nodes)
+		const FMetaStoryFlowNode* SrcPick = nullptr;
+		for (const FMetaStoryFlowNode& N : Flow->Nodes)
 		{
 			if (N.StageIndex == MaxStage && (!SrcPick || N.LayerIndex > SrcPick->LayerIndex))
 			{
@@ -772,14 +772,14 @@ bool SMetaStoryView::TryMetaplotToolbarAddState(EMetaplotToolbarAddOp Op)
 
 	switch (Op)
 	{
-	case EMetaplotToolbarAddOp::Main:
+	case EMetaStoryFlowToolbarAddOp::Main:
 		if (!Sel)
 		{
 			PlanAppendAfterMaxStage();
 		}
 		else if (IsContainerRoot(Sel))
 		{
-			const FMetaplotNode* StartN = FindPlotNodePtr(Flow->StartNodeId);
+			const FMetaStoryFlowNode* StartN = FindPlotNodePtr(Flow->StartNodeId);
 			if (StartN)
 			{
 				NewStage = StartN->StageIndex + 1;
@@ -809,7 +809,7 @@ bool SMetaStoryView::TryMetaplotToolbarAddState(EMetaplotToolbarAddOp Op)
 		}
 		break;
 
-	case EMetaplotToolbarAddOp::Sibling:
+	case EMetaStoryFlowToolbarAddOp::Sibling:
 		if (!Sel)
 		{
 			PlanAppendAfterMaxStage();
@@ -822,7 +822,7 @@ bool SMetaStoryView::TryMetaplotToolbarAddState(EMetaplotToolbarAddOp Op)
 		{
 			NewStage = SelPlotNode->StageIndex;
 			NewLayer = SelPlotNode->LayerIndex + 1;
-			for (const FMetaplotTransition& T : Flow->Transitions)
+			for (const FMetaStoryFlowTransition& T : Flow->Transitions)
 			{
 				if (T.TargetNodeId == SelPlotNode->NodeId && T.SourceNodeId.IsValid())
 				{
@@ -834,14 +834,14 @@ bool SMetaStoryView::TryMetaplotToolbarAddState(EMetaplotToolbarAddOp Op)
 		}
 		break;
 
-	case EMetaplotToolbarAddOp::Child:
+	case EMetaStoryFlowToolbarAddOp::Child:
 		if (!Sel)
 		{
 			return false;
 		}
 		if (IsContainerRoot(Sel))
 		{
-			const FMetaplotNode* StartN = FindPlotNodePtr(Flow->StartNodeId);
+			const FMetaStoryFlowNode* StartN = FindPlotNodePtr(Flow->StartNodeId);
 			if (StartN)
 			{
 				NewStage = StartN->StageIndex + 1;
@@ -875,16 +875,16 @@ bool SMetaStoryView::TryMetaplotToolbarAddState(EMetaplotToolbarAddOp Op)
 		return false;
 	}
 
-	const FScopedTransaction Transaction(LOCTEXT("MetaplotToolbarAddState", "Add Metaplot Flow State"));
+	const FScopedTransaction Transaction(LOCTEXT("MetaStoryToolbarAddFlowState", "Add Flow State"));
 	EditorData->Modify();
 	Flow->Modify();
 
-	FMetaplotNode NewNode;
+	FMetaStoryFlowNode NewNode;
 	NewNode.NodeId = FGuid::NewGuid();
-	NewNode.NodeType = EMetaplotNodeType::Normal;
-	const UEnum* NodeTypeEnum = StaticEnum<EMetaplotNodeType>();
+	NewNode.NodeType = EMetaStoryFlowNodeType::Normal;
+	const UEnum* NodeTypeEnum = StaticEnum<EMetaStoryFlowNodeType>();
 	const FText NodeTypeText = NodeTypeEnum
-		? NodeTypeEnum->GetDisplayNameTextByValue(static_cast<int64>(EMetaplotNodeType::Normal))
+		? NodeTypeEnum->GetDisplayNameTextByValue(static_cast<int64>(EMetaStoryFlowNodeType::Normal))
 		: LOCTEXT("ToolbarFallbackNodeTypeText", "Normal");
 	NewNode.NodeName = FText::Format(LOCTEXT("ToolbarNewNodeNameFormat", "{0} State"), NodeTypeText);
 	NewNode.Description = FText::GetEmpty();
@@ -893,7 +893,7 @@ bool SMetaStoryView::TryMetaplotToolbarAddState(EMetaplotToolbarAddOp Op)
 	NewNode.StageIndex = NewStage;
 	NewNode.LayerIndex = NewLayer;
 
-	while (Flow->Nodes.ContainsByPredicate([&](const FMetaplotNode& Node)
+	while (Flow->Nodes.ContainsByPredicate([&](const FMetaStoryFlowNode& Node)
 	{
 		return Node.NodeId != NewNode.NodeId && Node.StageIndex == NewNode.StageIndex && Node.LayerIndex == NewNode.LayerIndex;
 	}))
@@ -906,15 +906,15 @@ bool SMetaStoryView::TryMetaplotToolbarAddState(EMetaplotToolbarAddOp Op)
 
 	if (bHaveSource && SourceNodeId.IsValid() && SourceNodeId != NewNode.NodeId)
 	{
-		const bool bDup = Flow->Transitions.ContainsByPredicate([&](const FMetaplotTransition& T)
+		const bool bDup = Flow->Transitions.ContainsByPredicate([&](const FMetaStoryFlowTransition& T)
 		{
 			return T.SourceNodeId == SourceNodeId && T.TargetNodeId == NewNode.NodeId;
 		});
 		if (!bDup
-			&& MetaStoryViewMetaplotGraphPrivate::IsTransitionRuleValid(Flow, SourceNodeId, NewNode.NodeId)
-			&& !MetaStoryViewMetaplotGraphPrivate::WouldCreateCycle(Flow, SourceNodeId, NewNode.NodeId))
+			&& MetaStoryViewFlowGraphPrivate::IsTransitionRuleValid(Flow, SourceNodeId, NewNode.NodeId)
+			&& !MetaStoryViewFlowGraphPrivate::WouldCreateCycle(Flow, SourceNodeId, NewNode.NodeId))
 		{
-			FMetaplotTransition Tr;
+			FMetaStoryFlowTransition Tr;
 			Tr.SourceNodeId = SourceNodeId;
 			Tr.TargetNodeId = NewNode.NodeId;
 			Flow->Transitions.Add(Tr);
@@ -923,7 +923,7 @@ bool SMetaStoryView::TryMetaplotToolbarAddState(EMetaplotToolbarAddOp Op)
 
 	Flow->MarkPackageDirty();
 
-	(void)UE::MetaStory::MetaplotTopology::RebuildShadowStates(*EditorData, nullptr);
+	(void)UE::MetaStory::FlowTopology::RebuildShadowStates(*EditorData, nullptr);
 
 	if (UMetaStoryState* NewState = MetaStoryViewModel->GetMutableStateByID(NewNode.NodeId))
 	{
@@ -943,12 +943,12 @@ FReply SMetaStoryView::HandleAddStateButton()
 		return FReply::Handled();
 	}
 
-	if (TryMetaplotToolbarAddState(EMetaplotToolbarAddOp::Main))
+	if (TryFlowToolbarAddState(EMetaStoryFlowToolbarAddOp::Main))
 	{
 		return FReply::Handled();
 	}
 
-	if (IsMetaplotFlowTopologyActive())
+	if (IsMetaStoryFlowTopologyActive())
 	{
 		return FReply::Handled();
 	}
@@ -993,12 +993,12 @@ void SMetaStoryView::HandleAddSiblingState()
 		return;
 	}
 
-	if (TryMetaplotToolbarAddState(EMetaplotToolbarAddOp::Sibling))
+	if (TryFlowToolbarAddState(EMetaStoryFlowToolbarAddOp::Sibling))
 	{
 		return;
 	}
 
-	if (IsMetaplotFlowTopologyActive())
+	if (IsMetaStoryFlowTopologyActive())
 	{
 		return;
 	}
@@ -1013,12 +1013,12 @@ void SMetaStoryView::HandleAddChildState()
 		return;
 	}
 
-	if (TryMetaplotToolbarAddState(EMetaplotToolbarAddOp::Child))
+	if (TryFlowToolbarAddState(EMetaStoryFlowToolbarAddOp::Child))
 	{
 		return;
 	}
 
-	if (IsMetaplotFlowTopologyActive())
+	if (IsMetaStoryFlowTopologyActive())
 	{
 		return;
 	}
@@ -1149,13 +1149,13 @@ void SMetaStoryView::OnMainGraphMoveNode(FGuid NodeId, int32 NewStage, int32 New
 	NewStage = FMath::Max(0, NewStage);
 	NewLayer = FMath::Max(0, NewLayer);
 
-	UMetaplotFlow* Flow = EditingFlowAsset.Get();
-	if (!MetaStoryViewMetaplotGraphPrivate::IsValidCellForNodeMove(Flow, NodeId, NewStage, NewLayer))
+	UMetaStoryFlow* Flow = EditingFlowAsset.Get();
+	if (!MetaStoryViewFlowGraphPrivate::IsValidCellForNodeMove(Flow, NodeId, NewStage, NewLayer))
 	{
 		return;
 	}
 
-	const int32 NodeIndex = Flow->Nodes.IndexOfByPredicate([NodeId](const FMetaplotNode& N)
+	const int32 NodeIndex = Flow->Nodes.IndexOfByPredicate([NodeId](const FMetaStoryFlowNode& N)
 	{
 		return N.NodeId == NodeId;
 	});
@@ -1164,13 +1164,13 @@ void SMetaStoryView::OnMainGraphMoveNode(FGuid NodeId, int32 NewStage, int32 New
 		return;
 	}
 
-	FMetaplotNode& Node = Flow->Nodes[NodeIndex];
+	FMetaStoryFlowNode& Node = Flow->Nodes[NodeIndex];
 	if (Node.StageIndex == NewStage && Node.LayerIndex == NewLayer)
 	{
 		return;
 	}
 
-	const FScopedTransaction Transaction(LOCTEXT("MoveMetaplotNodeTransaction", "Move Metaplot Node"));
+	const FScopedTransaction Transaction(LOCTEXT("MoveFlowNodeTransaction", "Move Flow Node"));
 	Flow->Modify();
 
 	Node.StageIndex = NewStage;
@@ -1180,22 +1180,22 @@ void SMetaStoryView::OnMainGraphMoveNode(FGuid NodeId, int32 NewStage, int32 New
 	SyncFlowGraphFromEditorData();
 }
 
-void SMetaStoryView::OnMainGraphCreateNodeRequested(EMetaplotNodeType NodeType, int32 StageIndex, int32 LayerIndex)
+void SMetaStoryView::OnMainGraphCreateNodeRequested(EMetaStoryFlowNodeType NodeType, int32 StageIndex, int32 LayerIndex)
 {
 	if (!EditingFlowAsset.IsValid())
 	{
 		return;
 	}
 
-	UMetaplotFlow* Flow = EditingFlowAsset.Get();
+	UMetaStoryFlow* Flow = EditingFlowAsset.Get();
 
-	const FScopedTransaction Transaction(LOCTEXT("CreateNodeByContextMenuTransaction", "Create Metaplot Node From Graph Search"));
+	const FScopedTransaction Transaction(LOCTEXT("CreateNodeByContextMenuTransaction", "Create Flow Node From Graph Search"));
 	Flow->Modify();
 
-	FMetaplotNode NewNode;
+	FMetaStoryFlowNode NewNode;
 	NewNode.NodeId = FGuid::NewGuid();
 	NewNode.NodeType = NodeType;
-	const UEnum* NodeTypeEnum = StaticEnum<EMetaplotNodeType>();
+	const UEnum* NodeTypeEnum = StaticEnum<EMetaStoryFlowNodeType>();
 	const FText NodeTypeText = NodeTypeEnum
 		? NodeTypeEnum->GetDisplayNameTextByValue(static_cast<int64>(NodeType))
 		: LOCTEXT("FallbackNodeTypeText", "Normal");
@@ -1204,7 +1204,7 @@ void SMetaStoryView::OnMainGraphCreateNodeRequested(EMetaplotNodeType NodeType, 
 	NewNode.StageIndex = FMath::Max(0, StageIndex);
 	NewNode.LayerIndex = FMath::Max(0, LayerIndex);
 
-	while (Flow->Nodes.ContainsByPredicate([&NewNode](const FMetaplotNode& Node)
+	while (Flow->Nodes.ContainsByPredicate([&NewNode](const FMetaStoryFlowNode& Node)
 	{
 		return Node.StageIndex == NewNode.StageIndex && Node.LayerIndex == NewNode.LayerIndex;
 	}))
@@ -1214,7 +1214,7 @@ void SMetaStoryView::OnMainGraphCreateNodeRequested(EMetaplotNodeType NodeType, 
 
 	Flow->Nodes.Add(NewNode);
 	Flow->SyncNodeStatesWithNodes();
-	if (NodeType == EMetaplotNodeType::Start || !Flow->StartNodeId.IsValid())
+	if (NodeType == EMetaStoryFlowNodeType::Start || !Flow->StartNodeId.IsValid())
 	{
 		Flow->StartNodeId = NewNode.NodeId;
 	}
@@ -1232,18 +1232,18 @@ void SMetaStoryView::OnMainGraphDeleteNodeRequested(FGuid NodeId)
 	}
 
 	SelectedNodeId = NodeId;
-	DeleteMetaplotNode(NodeId);
+	DeleteFlowNode(NodeId);
 }
 
-void SMetaStoryView::DeleteMetaplotNode(FGuid NodeId)
+void SMetaStoryView::DeleteFlowNode(FGuid NodeId)
 {
 	if (!EditingFlowAsset.IsValid() || !NodeId.IsValid())
 	{
 		return;
 	}
 
-	UMetaplotFlow* Flow = EditingFlowAsset.Get();
-	const int32 NodeIndex = Flow->Nodes.IndexOfByPredicate([NodeId](const FMetaplotNode& Node)
+	UMetaStoryFlow* Flow = EditingFlowAsset.Get();
+	const int32 NodeIndex = Flow->Nodes.IndexOfByPredicate([NodeId](const FMetaStoryFlowNode& Node)
 	{
 		return Node.NodeId == NodeId;
 	});
@@ -1252,16 +1252,16 @@ void SMetaStoryView::DeleteMetaplotNode(FGuid NodeId)
 		return;
 	}
 
-	const FScopedTransaction Transaction(LOCTEXT("DeleteNodeTransaction", "Delete Metaplot Node"));
+	const FScopedTransaction Transaction(LOCTEXT("DeleteNodeTransaction", "Delete Flow Node"));
 	Flow->Modify();
 
 	const FGuid NodeIdToDelete = NodeId;
 	Flow->Nodes.RemoveAt(NodeIndex);
-	Flow->NodeStates.RemoveAll([NodeIdToDelete](const FMetaplotNodeState& State)
+	Flow->NodeStates.RemoveAll([NodeIdToDelete](const FMetaStoryFlowNodeState& State)
 	{
 		return State.ID == NodeIdToDelete;
 	});
-	Flow->Transitions.RemoveAll([NodeIdToDelete](const FMetaplotTransition& Transition)
+	Flow->Transitions.RemoveAll([NodeIdToDelete](const FMetaStoryFlowTransition& Transition)
 	{
 		return Transition.SourceNodeId == NodeIdToDelete || Transition.TargetNodeId == NodeIdToDelete;
 	});
@@ -1282,18 +1282,18 @@ void SMetaStoryView::DeleteMetaplotNode(FGuid NodeId)
 
 void SMetaStoryView::OnMainGraphDeleteTransitionRequested(FGuid SourceNodeId, FGuid TargetNodeId)
 {
-	DeleteMetaplotTransitionByPair(SourceNodeId, TargetNodeId);
+	DeleteFlowTransitionByPair(SourceNodeId, TargetNodeId);
 }
 
-void SMetaStoryView::DeleteMetaplotTransitionByPair(FGuid SourceNodeId, FGuid TargetNodeId)
+void SMetaStoryView::DeleteFlowTransitionByPair(FGuid SourceNodeId, FGuid TargetNodeId)
 {
 	if (!EditingFlowAsset.IsValid() || !SourceNodeId.IsValid() || !TargetNodeId.IsValid())
 	{
 		return;
 	}
 
-	UMetaplotFlow* Flow = EditingFlowAsset.Get();
-	const int32 TransitionIndex = Flow->Transitions.IndexOfByPredicate([SourceNodeId, TargetNodeId](const FMetaplotTransition& Transition)
+	UMetaStoryFlow* Flow = EditingFlowAsset.Get();
+	const int32 TransitionIndex = Flow->Transitions.IndexOfByPredicate([SourceNodeId, TargetNodeId](const FMetaStoryFlowTransition& Transition)
 	{
 		return Transition.SourceNodeId == SourceNodeId && Transition.TargetNodeId == TargetNodeId;
 	});
@@ -1302,7 +1302,7 @@ void SMetaStoryView::DeleteMetaplotTransitionByPair(FGuid SourceNodeId, FGuid Ta
 		return;
 	}
 
-	const FScopedTransaction Transaction(LOCTEXT("DeleteTransitionTransaction", "Delete Metaplot Transition"));
+	const FScopedTransaction Transaction(LOCTEXT("DeleteTransitionTransaction", "Delete Flow Transition"));
 	Flow->Modify();
 	Flow->Transitions.RemoveAt(TransitionIndex);
 
@@ -1317,13 +1317,13 @@ void SMetaStoryView::OnMainGraphCreateTransition(FGuid SourceNodeId, FGuid Targe
 		return;
 	}
 
-	UMetaplotFlow* Flow = EditingFlowAsset.Get();
+	UMetaStoryFlow* Flow = EditingFlowAsset.Get();
 
-	const bool bSourceExists = Flow->Nodes.ContainsByPredicate([SourceNodeId](const FMetaplotNode& Node)
+	const bool bSourceExists = Flow->Nodes.ContainsByPredicate([SourceNodeId](const FMetaStoryFlowNode& Node)
 	{
 		return Node.NodeId == SourceNodeId;
 	});
-	const bool bTargetExists = Flow->Nodes.ContainsByPredicate([TargetNodeId](const FMetaplotNode& Node)
+	const bool bTargetExists = Flow->Nodes.ContainsByPredicate([TargetNodeId](const FMetaStoryFlowNode& Node)
 	{
 		return Node.NodeId == TargetNodeId;
 	});
@@ -1332,21 +1332,21 @@ void SMetaStoryView::OnMainGraphCreateTransition(FGuid SourceNodeId, FGuid Targe
 		return;
 	}
 
-	const bool bAlreadyExists = Flow->Transitions.ContainsByPredicate([SourceNodeId, TargetNodeId](const FMetaplotTransition& Transition)
+	const bool bAlreadyExists = Flow->Transitions.ContainsByPredicate([SourceNodeId, TargetNodeId](const FMetaStoryFlowTransition& Transition)
 	{
 		return Transition.SourceNodeId == SourceNodeId && Transition.TargetNodeId == TargetNodeId;
 	});
 	if (bAlreadyExists ||
-		!MetaStoryViewMetaplotGraphPrivate::IsTransitionRuleValid(Flow, SourceNodeId, TargetNodeId) ||
-		MetaStoryViewMetaplotGraphPrivate::WouldCreateCycle(Flow, SourceNodeId, TargetNodeId))
+		!MetaStoryViewFlowGraphPrivate::IsTransitionRuleValid(Flow, SourceNodeId, TargetNodeId) ||
+		MetaStoryViewFlowGraphPrivate::WouldCreateCycle(Flow, SourceNodeId, TargetNodeId))
 	{
 		return;
 	}
 
-	const FScopedTransaction Transaction(LOCTEXT("CreateTransitionByPinTransaction", "Create Metaplot Transition By Pin"));
+	const FScopedTransaction Transaction(LOCTEXT("CreateTransitionByPinTransaction", "Create Flow Transition By Pin"));
 	Flow->Modify();
 
-	FMetaplotTransition NewTransition;
+	FMetaStoryFlowTransition NewTransition;
 	NewTransition.SourceNodeId = SourceNodeId;
 	NewTransition.TargetNodeId = TargetNodeId;
 	Flow->Transitions.Add(NewTransition);

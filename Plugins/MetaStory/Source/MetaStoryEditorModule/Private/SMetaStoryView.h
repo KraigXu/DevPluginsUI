@@ -8,11 +8,11 @@
 class FMetaStoryViewModel;
 struct FPropertyChangedEvent;
 class UMetaStoryState;
-class UMetaplotFlow;
+class UMetaStoryFlow;
 class SScrollBox;
 class FUICommandList;
 
-/** MetaStory 主视图：Metaplot 流程图编辑；状态树 UI 已移除，状态操作仍通过 ViewModel（与 Outliner 等一致）。 */
+/** MetaStory 主视图：内嵌 Flow 流程图编辑；状态树 UI 已移除，状态操作仍通过 ViewModel（与 Outliner 等一致）。 */
 class SMetaStoryView : public SCompoundWidget
 {
 public:
@@ -63,7 +63,7 @@ private:
 	void HandleDisableSelectedStates();
 
 	void OnMainGraphNodeSelected(FGuid NodeId);
-	void OnMainGraphCreateNodeRequested(EMetaplotNodeType NodeType, int32 StageIndex, int32 LayerIndex);
+	void OnMainGraphCreateNodeRequested(EMetaStoryFlowNodeType NodeType, int32 StageIndex, int32 LayerIndex);
 	void OnMainGraphCreateTransition(FGuid SourceNodeId, FGuid TargetNodeId);
 	void OnMainGraphMoveNode(FGuid NodeId, int32 NewStage, int32 NewLayer);
 	void OnMainGraphDeleteNodeRequested(FGuid NodeId);
@@ -78,27 +78,27 @@ private:
 
 	void BindCommands();
 
-	/** 从 ViewModel 的 EditorData 刷新 Metaplot Flow 指针并推送到 FlowGraph。 */
+	/** 从 ViewModel 的 EditorData 刷新 MetaStoryFlow 指针并推送到 FlowGraph。 */
 	void SyncFlowGraphFromEditorData();
-	void DeleteMetaplotNode(FGuid NodeId);
-	void DeleteMetaplotTransitionByPair(FGuid SourceNodeId, FGuid TargetNodeId);
+	void DeleteFlowNode(FGuid NodeId);
+	void DeleteFlowTransitionByPair(FGuid SourceNodeId, FGuid TargetNodeId);
 
-	enum class EMetaplotToolbarAddOp : uint8
+	enum class EMetaStoryFlowToolbarAddOp : uint8
 	{
 		Main,
 		Sibling,
 		Child,
 	};
-	bool IsMetaplotFlowTopologyActive() const;
-	/** 在 Metaplot 拓扑模式下向 Flow 添加节点并 Rebuild 影子树；成功则不再走 SubTrees 的 AddState。 */
-	bool TryMetaplotToolbarAddState(EMetaplotToolbarAddOp Op);
+	bool IsMetaStoryFlowTopologyActive() const;
+	/** 在 Flow 拓扑模式下向 Flow 添加节点并 Rebuild 影子树；成功则不再走 SubTrees 的 AddState。 */
+	bool TryFlowToolbarAddState(EMetaStoryFlowToolbarAddOp Op);
 
 	TSharedPtr<FMetaStoryViewModel> MetaStoryViewModel;
 
 	TSharedPtr<SMetaStoryFlowGraph> FlowGraph;
 	TSharedPtr<SScrollBox> ViewBox;
 
-	TWeakObjectPtr<UMetaplotFlow> EditingFlowAsset;
+	TWeakObjectPtr<UMetaStoryFlow> EditingFlowAsset;
 	FGuid SelectedNodeId;
 
 	TSharedPtr<FUICommandList> CommandList;

@@ -33,6 +33,10 @@
 	],
 	"Plugins": [
 		{
+			"Name": "StructUtils",
+			"Enabled": true
+		},
+		{
 			"Name": "GameplayInsights",
 			"Enabled": true,
 			"TargetAllowList": [
@@ -45,10 +49,6 @@
 		},
 		{
 			"Name": "PropertyBindingUtils",
-			"Enabled": true
-		},
-		{
-			"Name": "Metaplot",
 			"Enabled": true
 		}
 	]

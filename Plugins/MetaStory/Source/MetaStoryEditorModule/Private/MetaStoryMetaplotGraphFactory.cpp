@@ -35,8 +35,8 @@ UObject* UMetaStoryMetaplotGraphFactory::FactoryCreateNew(UClass* Class, UObject
 	NewMetaStory->EditorData = EditorData;
 
 	EditorData->Schema = NewObject<UMetaStorySchema>(EditorData, MetaStorySchemaClass, FName(), RF_Transactional);
-	EditorData->bUseMetaplotFlowTopology = true;
-	EditorData->EnsureEmbeddedMetaplotFlow();
+	EditorData->bUseMetaStoryFlowTopology = true;
+	EditorData->EnsureEmbeddedMetaStoryFlow();
 
 	TNonNullSubclassOf<UMetaStoryEditorSchema> EditorSchemaClass = FMetaStoryEditorModule::GetModule().GetEditorSchemaClass(MetaStorySchemaClass.Get());
 	EditorData->EditorSchema = NewObject<UMetaStoryEditorSchema>(EditorData, EditorSchemaClass, FName(), RF_Transactional);

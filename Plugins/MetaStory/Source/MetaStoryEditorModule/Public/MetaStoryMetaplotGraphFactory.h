@@ -8,9 +8,9 @@
 #define UE_API METASTORYEDITORMODULE_API
 
 /**
- * Creates a UMetaStory whose topology is driven by an embedded UMetaplotFlow (route A).
+ * Creates a UMetaStory whose topology is driven by an embedded UMetaStoryFlow.
  */
-UCLASS(DisplayName = "MetaStory (Metaplot Graph)")
+UCLASS(DisplayName = "MetaStory (Flow Graph)")
 class UMetaStoryMetaplotGraphFactory : public UMetaStoryFactory
 {
 	GENERATED_BODY()
